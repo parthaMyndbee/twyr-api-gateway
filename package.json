@@ -1,0 +1,68 @@
+{
+	"name": "twyr-api-gateway",
+	"version": "0.7.1",
+	"description": "The Server Architecture and Design Template for an API Gateway",
+	"keywords": [
+		"twyr",
+		"server",
+		"framework"
+	],
+	"author": {
+		"name": "Vish Desai",
+		"email": "vishwakarma_d@hotmail.com",
+		"url": "https://www.linkedin.com/in/vishdesai"
+	},
+	"homepage": "https://twyr.github.io",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/twyr/twyr-api-gateway"
+	},
+	"main": "index.js",
+	"scripts": {
+		"start": "BLUEBIRD_DEBUG=1 node index.js",
+		"test": "echo \"Error: no test specified! Configure in package.json\" && exit 1"
+	},
+	"engines": {
+		"node": ">=4.0"
+	},
+	"dependencies": {
+		"ascoltatori": "*",
+		"babel-runtime": "*",
+		"bookshelf": "*",
+		"bluebird": "*",
+		"chokidar": "*",
+		"deep-equal": "*",
+		"deepmerge": "*",
+		"dependency-graph" :"*",
+		"fs-extra": "*",
+		"inflection": "*",
+		"knex": "*",
+		"lodash": "*",
+		"node-print": "*",
+		"node-uuid": "*",
+		"patrun": "*",
+		"pg": "*",
+		"prime":"*",
+		"hiredis": "*",
+		"redis": "*",
+		"winston": "*"
+	},
+	"devDependencies": {
+	},
+	"maintainers": [{
+		"name": "Vish Desai",
+		"email": "vishwakarma_d@hotmail.com",
+		"url": "https://www.linkedin.com/in/vishdesai"
+	}],
+	"contributors": [{
+		"name": "Vish Desai",
+		"email": "vishwakarma_d@hotmail.com",
+		"url": "https://www.linkedin.com/in/vishdesai"
+	}],
+	"bugs": {
+		"url": "https://github.com/twyr/twyr-api-gateway/issues",
+		"email": "vishwakarma_d@hotmail.com"
+	},
+	"license": "MITNFA",
+	"readmeFilename": "README.md"
+}

@@ -1,0 +1,393 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+CAUTION: Do not modify this file unless you know what you are doing.
+         Unexpected results may occur if the code is changed deliberately.
+-->
+<dbmodel pgmodeler-ver="0.8.1" last-position="0,0" last-zoom="1"
+	 default-schema="public" default-owner="postgres">
+<database name="twyr-api-gateway">
+</database>
+
+<schema name="public" protected="true" fill-color="#e1e1e1" sql-disabled="true">
+</schema>
+
+<usertype name="module_type" configuration="enumeration">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<enumeration values="component,service"/>
+</usertype>
+
+<extension name="uuid-ossp">
+	<schema name="public"/>
+</extension>
+
+<table name="modules">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="273" y="19"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="parent_id">
+		<type name="uuid"/>
+	</column>
+	<column name="type" not-null="true" default-value="'component'">
+		<type name="public.module_type"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="display_name" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="description" not-null="true" default-value="'Another Twyr Module'">
+		<type name="text"/>
+	</column>
+	<column name="configuration" not-null="true" default-value="'{}'::json">
+		<type name="jsonb"/>
+	</column>
+	<column name="enabled" not-null="true" default-value="true::boolean">
+		<type name="boolean"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_modules" type="pk-constr" table="public.modules">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<index name="uidx_parent_name" table="public.modules"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="parent_id"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="name"/>
+		</idxelement>
+</index>
+
+<function name="fn_get_module_ancestors"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<parameter name="level">
+		<type name="integer"/>
+	</parameter>
+	<parameter name="id">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="parent_id">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="name">
+		<type name="text"/>
+	</parameter>
+	<parameter name="type">
+		<type name="public.module_type" precision="0"/>
+	</parameter>
+	</return-type>
+	<parameter name="moduleid" in="true">
+		<type name="uuid"/>
+	</parameter>
+	<definition><![CDATA[
+BEGIN
+	RETURN QUERY
+	WITH RECURSIVE q AS (
+		SELECT
+			1 AS level,
+			A.id,
+			A.parent_id,
+			A.name,
+			A.type
+		FROM
+			modules A
+		WHERE
+			A.id = moduleid
+		UNION ALL
+		SELECT
+			q.level + 1,
+			B.id,
+			B.parent_id,
+			B.name,
+			B.type
+		FROM
+			q,
+			modules B
+		WHERE
+			B.id = q.parent_id
+	)
+	SELECT DISTINCT
+		q.level,
+		q.id,
+		q.parent_id,
+		q.name,
+		q.type
+	FROM
+		q
+	ORDER BY
+		q.level,
+		q.parent_id;
+END;
+]]></definition>
+</function>
+
+<function name="fn_get_module_descendants"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<parameter name="level">
+		<type name="integer"/>
+	</parameter>
+	<parameter name="id">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="parent_id">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="name">
+		<type name="text"/>
+	</parameter>
+	<parameter name="type">
+		<type name="public.module_type" precision="0"/>
+	</parameter>
+	<parameter name="enabled">
+		<type name="boolean"/>
+	</parameter>
+	</return-type>
+	<parameter name="moduleid" in="true">
+		<type name="uuid"/>
+	</parameter>
+	<definition><![CDATA[
+BEGIN
+	RETURN QUERY
+	WITH RECURSIVE q AS (
+		SELECT
+			1 AS level,
+			A.id,
+			A.parent_id,
+			A.name,
+			A.type,
+			fn_is_module_enabled(A.id) AS enabled
+		FROM
+			modules A
+		WHERE
+			A.id = moduleid
+		UNION ALL
+		SELECT
+			q.level + 1,
+			B.id,
+			B.parent_id,
+			B.name,
+			B.type,
+			fn_is_module_enabled(B.id) AS enabled
+		FROM
+			q,
+			modules B
+		WHERE
+			B.parent_id = q.id
+	)
+	SELECT DISTINCT
+		q.level,
+		q.id,
+		q.parent_id,
+		q.name,
+		q.type,
+		q.enabled
+	FROM
+		q
+	ORDER BY
+		q.level,
+		q.parent_id;
+END;
+]]></definition>
+</function>
+
+<function name="fn_is_module_enabled"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="boolean"/>
+	</return-type>
+	<parameter name="moduleid" in="true">
+		<type name="uuid"/>
+	</parameter>
+	<definition><![CDATA[
+DECLARE
+	is_disabled	integer;
+BEGIN
+	SELECT
+		COUNT(*)
+	FROM
+		modules
+	WHERE
+		id IN  (SELECT id FROM fn_get_module_ancestors(moduleid)) AND
+		enabled = false
+	INTO
+		is_disabled;
+
+	RETURN is_disabled <= 0;
+END;
+]]></definition>
+</function>
+
+<function name="fn_check_module_upsert_is_valid"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[
+DECLARE
+	is_module_in_tree	INTEGER;
+BEGIN
+	IF NEW.parent_id IS NULL
+	THEN
+		RETURN NEW;
+	END IF;
+
+	IF NEW.id = NEW.parent_id
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Module cannot be its own parent';
+		RETURN NULL;
+	END IF;
+
+	/* Check if the module is its own ancestor */
+	is_module_in_tree := 0;
+	SELECT
+		COUNT(id)
+	FROM
+		fn_get_module_ancestors(NEW.parent_id)
+	WHERE
+		id = NEW.id
+	INTO
+		is_module_in_tree;
+
+	IF is_module_in_tree > 0
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Module cannot be its own ancestor';
+		RETURN NULL;
+	END IF;
+
+	/* Check if the module is its own descendant */
+	is_module_in_tree := 0;
+	SELECT
+		COUNT(id)
+	FROM
+		fn_get_module_descendants(NEW.id)
+	WHERE
+		id = NEW.id AND
+		level > 1
+	INTO
+		is_module_in_tree;
+
+	IF is_module_in_tree > 0
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Component cannot be its own descendant';
+		RETURN NULL;
+	END IF;
+
+	RETURN NEW;
+END;
+]]></definition>
+</function>
+
+<trigger name="trigger_check_module_upsert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.modules">
+		<function signature="public.fn_check_module_upsert_is_valid()"/>
+</trigger>
+
+<function name="fn_notify_config_change"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[
+BEGIN
+	IF OLD.configuration = NEW.configuration AND OLD.enabled = NEW.enabled
+	THEN
+		RETURN NEW;
+	END IF;
+
+	IF OLD.configuration <> NEW.configuration
+	THEN
+		PERFORM pg_notify('config-change', CAST(NEW.id AS text));
+	END IF;
+
+	IF OLD.enabled <> NEW.enabled
+	THEN
+		PERFORM pg_notify('state-change', CAST(NEW.id AS text));
+	END IF;
+
+	RETURN NEW;
+END;
+]]></definition>
+</function>
+
+<trigger name="trigger_notify_config_change" firing-type="AFTER" per-line="true" constraint="false"
+	 ins-event="false" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.modules">
+		<function signature="public.fn_notify_config_change()"/>
+</trigger>
+
+<constraint name="fk_modules_modules" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.modules" table="public.modules">
+	<columns names="parent_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<relationship name="rel_modules_modules" type="relfk"
+	 src-table="public.modules"
+	 dst-table="public.modules"
+	 src-required="false" dst-required="false">
+	<line>
+		<position x="717.828" y="102.28"/>
+	<position x="717.828" y="9"/>
+	<position x="562.885" y="9"/>
+	</line>
+</relationship>
+
+</dbmodel>
