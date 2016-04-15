@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="0,0" last-zoom="1"
+<dbmodel pgmodeler-ver="0.8.1" last-position="34,0" last-zoom="1"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -14,7 +14,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <usertype name="module_type" configuration="enumeration">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<enumeration values="component,service"/>
+	<enumeration values="component,middleware,service,template"/>
 </usertype>
 
 <extension name="uuid-ossp">
@@ -363,8 +363,7 @@ BEGIN
 	END IF;
 
 	RETURN NEW;
-END;
-]]></definition>
+END;]]></definition>
 </function>
 
 <trigger name="trigger_notify_config_change" firing-type="AFTER" per-line="true" constraint="false"

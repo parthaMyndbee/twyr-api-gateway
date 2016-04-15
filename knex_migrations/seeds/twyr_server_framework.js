@@ -15,6 +15,7 @@ exports.seed = function(knex, Promise) {
 					knex("modules").insert({ 'parent_id': parentId, 'type': 'service', 'name': 'pubsub-service', 'display_name': 'Publish/Subscribe Service', 'description': 'The Twy\'r API Gateway Publish/Subscribe Service - based on Ascoltatori' }),
 					knex("modules").insert({ 'parent_id': parentId, 'type': 'service', 'name': 'database-service', 'display_name': 'Database Service', 'description': 'The Twy\'r API Gateway Database Service - built on top of Knex / Booksshelf and so supports MySQL, PostgreSQL, and a few others' }),
 					knex("modules").insert({ 'parent_id': parentId, 'type': 'service', 'name': 'api-service', 'display_name': 'API Service', 'description': 'The Twy\'r API Gateway API Service - allows modules to expose interfaces for use by other modules without direct references to each other' }),
+					knex("modules").insert({ 'parent_id': parentId, 'type': 'service', 'name': 'auth-service', 'display_name': 'Authentication Service', 'description': 'The Twy\'r API Gateway Authentication Service - based on Passport and its infinite strategies' }),
 					knex("modules").insert({ 'parent_id': parentId, 'type': 'service', 'name': 'configuration-service', 'display_name': 'Configuration Service', 'description': 'The Twy\'r API Gateway Configuration Service' }).returning('id')
 					.then(function(configSrvcId) {
 						configSrvcId = configSrvcId[0];

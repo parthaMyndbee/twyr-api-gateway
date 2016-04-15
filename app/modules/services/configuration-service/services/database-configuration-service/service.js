@@ -106,7 +106,7 @@ var databaseConfigurationService = prime({
 				return;
 			}
 
-			self['$database'].queryAsync('UNLISTEN "config-change"')
+			promises.all([self['$database'].queryAsync('UNLISTEN "config-change"'), self['$database'].queryAsync('UNLISTEN "state-change"')])
 			.then(function() {
 				self.$database.end();
 				delete self['$database'];

@@ -23,65 +23,84 @@ var promises = require('bluebird'),
 // Get what we need - environment, and the configuration specific to that environment
 var env = (process.env.NODE_ENV || 'development').toLowerCase(),
 	config = require(path.join(__dirname, 'config', env, 'index-config')).config,
-	numCPUs = require('os').cpus().length;
+	numForks = Math.floor(require('os').cpus().length * config['loadFactor']);
 
 var timeoutMonitor = {},
 	clusterId = uuid.v4().toString().replace(/-/g, ''),
 	cluster = promises.promisifyAll(require('cluster'));
 
+// One log to rule them all, one log to find them...
+var onlineCount = 0,
+	port = 0;
+
+process.title = config['title'];
+
 // Instantiate the application, and start the execution
 if (cluster.isMaster) {
 	cluster
-		.on('fork', function(worker) {
-			console.log('\nForked Twyr API Gateway #' + worker.id);
-			timeoutMonitor[worker.id] = setTimeout(function() {
-				console.error('Twyr API Gateway #' + worker.id + ' did not start in time! KILL!!');
-				worker.kill();
-			}, 5000);
-		})
-		.on('online', function(worker, address) {
-			console.log('Twyr API Gateway #' + worker.id + ': Now online!\n');
-			clearTimeout(timeoutMonitor[worker.id]);
-		})
-		.on('listening', function(worker, address) {
-			clearTimeout(timeoutMonitor[worker.id]);
+	.on('fork', function(worker) {
+		console.log('\nForked Twyr API Gateway #' + worker.id);
+		timeoutMonitor[worker.id] = setTimeout(function() {
+			console.error('Twyr API Gateway #' + worker.id + ' did not start in time! KILL!!');
+			worker.kill();
+		}, 300000);
+	})
+	.on('online', function(worker, address) {
+		console.log('Twyr API Gateway #' + worker.id + ': Now online!\n');
+		clearTimeout(timeoutMonitor[worker.id]);
+	})
+	.on('listening', function(worker, address) {
+		console.log('Twyr API Gateway #' + worker.id + ': Now listening\n');
+		clearTimeout(timeoutMonitor[worker.id]);
 
-			var networkInterfaces = require('os').networkInterfaces(),
-				forPrint = [];
+		port = address.port;
+	})
+	.on('disconnect', function(worker) {
+		console.log('Twyr API Gateway #' + worker.id + ': Disconnected');
+		clearTimeout(timeoutMonitor[worker.id]);
+		if (cluster.isMaster && config['restart']) cluster.fork();
+	})
+	.on('exit', function(worker, code, signal) {
+		console.log('Twyr API Gateway #' + worker.id + ': Exited with code: ' + code + ' on signal: ' + signal);
+		clearTimeout(timeoutMonitor[worker.id]);
+	})
+	.on('death', function(worker) {
+		console.error('Twyr API Gateway #' + worker.pid + ': Death!');
+		clearTimeout(timeoutMonitor[worker.id]);
+	});
 
-			for(var intIdx in networkInterfaces) {
-				var thisNetworkInterface = networkInterfaces[intIdx];
-				for(var addIdx in thisNetworkInterface) {
-					var thisAddress = thisNetworkInterface[addIdx];
-					forPrint.push({
-						'Interface': intIdx,
-						'Protocol': thisAddress.family,
-						'Address': thisAddress.address,
-						'Port': address.port
-					});
-				}
+	// Setup listener for online counts
+	cluster.on('message', function(msg) {
+		if(msg != 'worker-online')
+			return;
+
+		onlineCount++;
+		if(onlineCount < numForks)
+			return;
+
+		var networkInterfaces = require('os').networkInterfaces(),
+			forPrint = [];
+
+		for(var intIdx in networkInterfaces) {
+			var thisNetworkInterface = networkInterfaces[intIdx];
+			for(var addIdx in thisNetworkInterface) {
+				var thisAddress = thisNetworkInterface[addIdx];
+				forPrint.push({
+					'Interface': intIdx,
+					'Protocol': thisAddress.family,
+					'Address': thisAddress.address,
+					'Port': port
+				});
 			}
+		}
 
-			console.log('Twyr API Gateway #' + worker.id + ': Now listening at:\n');
-			if (forPrint.length) printf.printTable(forPrint);
-			console.log('\n');
-		})
-		.on('disconnect', function(worker) {
-			console.log('Twyr API Gateway #' + worker.id + ': Disconnected');
-			clearTimeout(timeoutMonitor[worker.id]);
-			if (cluster.isMaster && config['restart']) cluster.fork();
-		})
-		.on('exit', function(worker, code, signal) {
-			console.log('Twyr API Gateway #' + worker.id + ': Exited with code: ' + code + ' on signal: ' + signal);
-			clearTimeout(timeoutMonitor[worker.id]);
-		})
-		.on('death', function(worker) {
-			console.error('Twyr API Gateway #' + worker.pid + ': Death!');
-			clearTimeout(timeoutMonitor[worker.id]);
-		});
+		console.log('\n\n' + process.title + ' Listening On:');
+		if (forPrint.length) printf.printTable(forPrint);
+		console.log('\n\n');
+	});
 
 	// Fork workers.
-	for (var i = 0; i < (numCPUs * config['loadFactor']); i++) {
+	for (var i = 0; i < numForks; i++) {
 		cluster.fork();
 	}
 
@@ -126,28 +145,28 @@ else {
 	// Worker processes have a Twyr API Gateway running in their own
 	// domain so that the rest of the process is not infected on error
 	var serverDomain = domain.create(),
-		TwyrServer = require(config['main']).twyrServer,
-		twyrServer = promises.promisifyAll(new TwyrServer(null, clusterId, cluster.worker.id));
+		TwyrAPIGateway = require(config['main']).twyrAPIGateway,
+		twyrAPIGateway = promises.promisifyAll(new TwyrAPIGateway(null, clusterId, cluster.worker.id));
 
 	var startupFn = function () {
 		var allStatuses = [];
-		if(!twyrServer) return;
+		if(!twyrAPIGateway) return;
 
 		// Call load / initialize / start...
-		twyrServer.loadAsync(null)
+		twyrAPIGateway.loadAsync(null)
 		.timeout(60000)
 		.then(function(status) {
 			allStatuses.push('Twyr API Gateway #' + cluster.worker.id + '::Load status:\n' + JSON.stringify(status, null, '\t') + '\n\n');
 			if(!status) throw status;
 
-			return twyrServer.initializeAsync();
+			return twyrAPIGateway.initializeAsync();
 		})
 		.timeout(60000)
 		.then(function(status) {
 			allStatuses.push('Twyr API Gateway #' + cluster.worker.id + '::Initialize status:\n' + JSON.stringify(status, null, '\t') + '\n\n');
 			if(!status) throw status;
 
-			return twyrServer.startAsync(null);
+			return twyrAPIGateway.startAsync(null);
 		})
 		.timeout(60000)
 		.then(function(status) {
@@ -163,28 +182,29 @@ else {
 		})
 		.finally(function () {
 			console.log(allStatuses.join('\n'));
+			process.send('worker-online');
 			return null;
 		});
 	};
 
 	var shutdownFn = function () {
 		var allStatuses = [];
-		if(!twyrServer) return;
+		if(!twyrAPIGateway) return;
 
-		twyrServer.stopAsync()
+		twyrAPIGateway.stopAsync()
 		.timeout(60000)
 		.then(function (status) {
 			allStatuses.push('Twyr API Gateway #' + cluster.worker.id + '::Stop Status:\n' + JSON.stringify(status, null, '\t') + '\n\n');
 			if (!status) throw status;
 
-			return twyrServer.uninitializeAsync();
+			return twyrAPIGateway.uninitializeAsync();
 		})
 		.timeout(60000)
 		.then(function (status) {
 			allStatuses.push('Twyr API Gateway #' + cluster.worker.id + '::Uninitialize Status:\n' + JSON.stringify(status, null, '\t') + '\n\n');
 			if (!status) throw status;
 
-			return twyrServer.unloadAsync();
+			return twyrAPIGateway.unloadAsync();
 		})
 		.timeout(60000)
 		.then(function (status) {

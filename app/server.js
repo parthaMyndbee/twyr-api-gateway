@@ -43,4 +43,4 @@ var app = prime({
 	'dependencies': []
 });
 
-exports.twyrServer = app;
+exports.twyrAPIGateway = app;
