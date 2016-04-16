@@ -37,6 +37,32 @@ process.title = config['title'];
 
 // Instantiate the application, and start the execution
 if (cluster.isMaster) {
+	var printNetworkInterfaceList = function() {
+		onlineCount++;
+		if(onlineCount < numForks)
+			return;
+
+		var networkInterfaces = require('os').networkInterfaces(),
+			forPrint = [];
+
+		for(var intIdx in networkInterfaces) {
+			var thisNetworkInterface = networkInterfaces[intIdx];
+			for(var addIdx in thisNetworkInterface) {
+				var thisAddress = thisNetworkInterface[addIdx];
+				forPrint.push({
+					'Interface': intIdx,
+					'Protocol': thisAddress.family,
+					'Address': thisAddress.address,
+					'Port': port ? port : 'NOT LISTENING'
+				});
+			}
+		}
+
+		console.log('\n\n' + process.title + ' Listening On:');
+		if (forPrint.length) printf.printTable(forPrint);
+		console.log('\n\n');
+	};
+
 	cluster
 	.on('fork', function(worker) {
 		console.log('\nForked Twyr API Gateway #' + worker.id);
@@ -51,13 +77,18 @@ if (cluster.isMaster) {
 	})
 	.on('listening', function(worker, address) {
 		console.log('Twyr API Gateway #' + worker.id + ': Now listening\n');
-		clearTimeout(timeoutMonitor[worker.id]);
 
 		port = address.port;
+		clearTimeout(timeoutMonitor[worker.id]);
+		if(onlineCount >= numForks) printNetworkInterfaceList();
 	})
 	.on('disconnect', function(worker) {
 		console.log('Twyr API Gateway #' + worker.id + ': Disconnected');
-		clearTimeout(timeoutMonitor[worker.id]);
+		timeoutMonitor[worker.id] = setTimeout(function() {
+			worker.kill();
+		}, 2000);
+
+		timeoutMonitor[worker.id].unref();
 		if (cluster.isMaster && config['restart']) cluster.fork();
 	})
 	.on('exit', function(worker, code, signal) {
@@ -74,29 +105,7 @@ if (cluster.isMaster) {
 		if(msg != 'worker-online')
 			return;
 
-		onlineCount++;
-		if(onlineCount < numForks)
-			return;
-
-		var networkInterfaces = require('os').networkInterfaces(),
-			forPrint = [];
-
-		for(var intIdx in networkInterfaces) {
-			var thisNetworkInterface = networkInterfaces[intIdx];
-			for(var addIdx in thisNetworkInterface) {
-				var thisAddress = thisNetworkInterface[addIdx];
-				forPrint.push({
-					'Interface': intIdx,
-					'Protocol': thisAddress.family,
-					'Address': thisAddress.address,
-					'Port': port
-				});
-			}
-		}
-
-		console.log('\n\n' + process.title + ' Listening On:');
-		if (forPrint.length) printf.printTable(forPrint);
-		console.log('\n\n');
+		printNetworkInterfaceList();
 	});
 
 	// Fork workers.
@@ -216,11 +225,6 @@ else {
 		.timeout(60000)
 		.then(function() {
 	        cluster.worker.disconnect();
-			timeoutMonitor[cluster.worker.id] = setTimeout(function() {
-				cluster.worker.kill();
-			}, 2000);
-
-			timeoutMonitor[cluster.worker.id].unref();
 			return null;
 		})
 		.catch(function (err) {

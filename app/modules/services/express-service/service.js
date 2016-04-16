@@ -4,7 +4,7 @@
  * Version		: 0.7.1
  * Copyright	: Copyright (c) 2014 - 2016 Vish Desai (https://www.linkedin.com/in/vishdesai).
  * License		: The MITNFA License (https://spdx.org/licenses/MITNFA.html).
- * Description	: The Twy\'r Portal Webserver Service - based on Express and node.js HTTP/HTTPS modules
+ * Description	: The Twy\'r API Gateway Webserver Service - based on Express and node.js HTTP/HTTPS modules
  *
  */
 
@@ -29,9 +29,63 @@ var expressService = prime({
 
 	'constructor': function(module) {
 		base.call(this, module);
+
+		this._setupExpressAsync = promises.promisify(this._setupExpress.bind(this));
+		this._teardownExpressAsync = promises.promisify(this._teardownExpress.bind(this));
 	},
 
 	'start': function(dependencies, callback) {
+		var self = this;
+
+		self._setupExpressAsync(dependencies)
+		.catch(function(err) {
+			if(callback) callback(err);
+		})
+		.finally(function() {
+			expressService.parent.start.call(self, dependencies, callback);
+			return null;
+		});
+	},
+
+	'getInterface': function() {
+		return this.$express;
+	},
+
+	'stop': function(callback) {
+		var self = this;
+
+		self._teardownExpressAsync()
+		.then(function() {
+			expressService.parent.stop.call(self, function(err, status) {
+				if(err) {
+					if(callback) callback(err);
+					return;
+				}
+
+				if(callback) callback(null, status);
+			});
+
+			return null;
+		})
+		.catch(function(err) {
+			if(callback) callback(err);
+		})
+	},
+
+	'_reconfigure': function(config) {
+		var self = this;
+
+		self._teardownExpressAsync()
+		.then(function() {
+			self['$config'] = config;
+			return self._setupExpressAsync(self.dependencies);
+		})
+		.catch(function(err) {
+			self.dependencies['logger-service'].error(self.name + '::_reconfigure:\n', err);
+		});
+	},
+
+	'_setupExpress': function(dependencies, callback) {
 		var self = this;
 
 		// Step 1: Require the Web Server
@@ -107,6 +161,23 @@ var expressService = prime({
 		.use(logger('combined', {
 			'stream': loggerStream
 		}))
+		.use(function(request, response, next) {
+			if(!self['$enabled']) {
+				response.status(500).redirect('/error');
+				return;
+			}
+
+			var requestDomain = domain.create();
+			requestDomain.add(request);
+			requestDomain.add(response);
+
+			requestDomain.on('error', function(error) {
+				loggerSrvc.error('Error servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', error);
+				response.status(500).redirect('/error');
+			});
+
+			next();
+		})
 		.use(debounce())
 		.use(cors(corsOptions))
 		.use(acceptOverride())
@@ -135,19 +206,7 @@ var expressService = prime({
 			'limit': self.$config.maxRequestSize
 		}))
 		.use(dependencies['auth-service'].initialize())
-		.use(dependencies['auth-service'].session())
-		.use(function(request, response, next) {
-			var requestDomain = domain.create();
-			requestDomain.add(request);
-			requestDomain.add(response);
-
-			requestDomain.on('error', function(error) {
-				loggerSrvc.error('Error servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', error);
-				response.status(500).redirect('/error');
-			});
-
-			next();
-		});
+		.use(dependencies['auth-service'].session());
 
 		// Step 6: Create the Server
 		var protocol = require(self.$config.protocol || 'http');
@@ -169,33 +228,23 @@ var expressService = prime({
 			self.$server.on('connection', self._serverConnection.bind(self));
 			self.$server.on('error', self._serverError.bind(self));
 
-			expressService.parent.start.call(self, dependencies, callback);
+			if(callback) callback(null, true);
 		});
 
 		// Step 8: Start listening...
 		self.$server.listen(self.$config.port || 8000);
 	},
 
-	'getInterface': function() {
-		return this.$express;
-	},
-
-	'stop': function(callback) {
+	'_teardownExpress': function(callback) {
 		var self = this;
 
-		this.$server.on('close', function() {
+		this.$server.once('close', function() {
 			delete self['$server'];
+			delete self['$express'];
 			delete self['$session'];
 			delete self['$cookieParser'];
 
-			expressService.parent.stop.call(self, function(err, status) {
-				if(err) {
-					if(callback) callback(err);
-					return;
-				}
-
-				if(callback) callback(null, status);
-			});
+			if(callback) callback(null, true);
 		});
 
 		self.$server.close();

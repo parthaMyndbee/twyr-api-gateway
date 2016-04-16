@@ -1,35 +1,29 @@
 exports.config = ({
-	'protocol': 'http',
-	'port': 8080,
-
-	'poweredBy': 'Twyr Portal',
-
-	'cookieParser': {
-		'path': '/',
-		'domain': '.twyrframework.com',
-		'secure': false,
-		'httpOnly': false
+	"ssl": {
+		"key": "./ssl/portal.key",
+		"cert": "./ssl/portal.crt",
+		"rejectUnauthorized": false
 	},
-
-	'session': {
-		'key': 'twyr-portal',
-		'secret': 'Th1s!sTheTwyrP0rta1Framew0rk',
-		'ttl': 86400,
-		'store': {
-			'media': 'redis',
-			'prefix': 'twyr!portal!session!'
-		}
+	"port": 8080,
+	"session": {
+		"key": "twyr-portal",
+		"ttl": 86400,
+		"store": {
+			"media": "redis",
+			"prefix": "twyr!portal!session!"
+		},
+		"secret": "Th1s!sTheTwyrP0rta1Framew0rk"
 	},
-
-	'ssl': {
-		'key': './ssl/portal.key',
-		'cert': './ssl/portal.crt',
-		'rejectUnauthorized': false
+	"protocol": "http",
+	"poweredBy": "Twyr Portal",
+	"cookieParser": {
+		"path": "/",
+		"domain": ".twyrframework.com",
+		"secure": false,
+		"httpOnly": false
 	},
-
-	'templateEngine': 'ejs',
-
-	'maxRequestSize': 1e6,
-	'requestTimeout': 25,
-	'connectionTimeout': 30,
+	"maxRequestSize": 1000000,
+	"requestTimeout": 25,
+	"templateEngine": "ejs",
+	"connectionTimeout": 30
 });
