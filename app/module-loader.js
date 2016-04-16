@@ -479,9 +479,17 @@ var moduleLoader = prime({
 		});
 
 		// Start Services one after the other
-		promises.mapSeries(promiseResolutions, function(serviceStart) {
-			return serviceStart();
-		})
+		promises.reduce(promiseResolutions, function(result, serviceStart) {
+			return serviceStart()
+			.then(function(status) {
+				result.push(status);
+				return result;
+			})
+			.catch(function(err) {
+				result.push(err);
+				return result;
+			});
+		}, [])
 		// Wait for the services to start...
 		.then(function(startStatuses) {
 			return self._processPromisesAsync(serviceNames, startStatuses);
@@ -607,9 +615,17 @@ var moduleLoader = prime({
 		});
 
 		// Stop Services one after the other
-		promises.mapSeries(promiseResolutions, function(serviceStop) {
-			return serviceStop();
-		})
+		promises.reduce(promiseResolutions, function(result, serviceStop, index) {
+			return serviceStop()
+			.then(function(status) {
+				result.push(status);
+				return result;
+			})
+			.catch(function(err) {
+				result.push(err);
+				return result;
+			});
+		}, [])
 		// Wait for the services to stop...
 		.then(function(stopStatuses) {
 			return self._processPromisesAsync(serviceNames, stopStatuses);
