@@ -95,7 +95,32 @@ var websocketService = prime({
 
 		// Step 3: Primus extensions...
 		self.$websocketServer.before('cookies', dependencies['express-service']['$cookieParser']);
-		self.$websocketServer.before('session', dependencies['express-service']['$session']);
+		self.$websocketServer.before('session', function (request, response, next) {
+			try {
+				var sid = request.signedCookies['connect.sid'];
+				if (!sid) { return next(); }
+
+				request.pause();
+				self.dependencies['express-service']['$sessionStore'].get(sid, function (err, session) {
+					if (err) {
+						self.$websocketServer.emit('log', 'error', err);
+						return next();
+					}
+
+					if(session) {
+						request.sessionID = sid;
+						request.session = self.dependencies['express-service']['$sessionStore'].createSession(request, session);
+						request.sessionStore = self.dependencies['express-service']['$sessionStore'];
+					}
+
+					request.resume();
+					next();
+				});
+			}
+			catch(error) {
+				console.log(error);
+			}
+		});
 //		self.$websocketServer.use('rooms', PrimusRooms);
 
 		// Step 4: Attach the event handlers...
@@ -126,29 +151,29 @@ var websocketService = prime({
 	},
 
 	'_authorizeWebsocketConnection': function(request, done) {
+		console.log(this.name + '::_authorizeWebsocketConnection: ' + JSON.stringify(request.session, null, '\t'));
 		done();
 	},
 
 	'_websocketServerInitialised': function(transformer, parser, options) {
-		this.dependencies['logger-service'].debug('Websocket Server has been initialised with:\nOptions: ', options);
-		this.$module.emit('websocket-start');
+		this.dependencies['logger-service'].debug('Websocket Server has been initialised with options: ' + JSON.stringify(options, null, '\t') + '\n');
 	},
 
 	'_websocketServerLog': function() {
-		this.dependencies['logger-service'].debug('Websocket Server Log: ', arguments);
+		this.dependencies['logger-service'].debug('Websocket Server Log: ' + JSON.stringify(arguments, null, '\t'));
 	},
 
 	'_websocketServerError': function() {
-		this.dependencies['logger-service'].error('Websocket Server Error: ', arguments);
-		this.$module.emit('websocket-error', arguments);
+		this.dependencies['logger-service'].error('Websocket Server Error: ' + JSON.stringify(arguments, null, '\t'));
+		this.emit('websocket-error', arguments);
 	},
 
 	'_websocketServerConnection': function(spark) {
-		this.$module.emit('websocket-connect', spark);
+		this.emit('websocket-connect', spark);
 	},
 
 	'_websocketServerDisconnection': function(spark) {
-		this.$module.emit('websocket-disconnect', spark);
+		this.emit('websocket-disconnect', spark);
 //		spark.leaveAll();
 //		spark.removeAllListeners();
 	},

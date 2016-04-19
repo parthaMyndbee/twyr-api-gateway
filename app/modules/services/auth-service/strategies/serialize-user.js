@@ -20,7 +20,7 @@ exports.strategy = (function() {
 		logger = self.dependencies['logger-service'];
 
 	auth.serializeUser(function(user, done) {
-		self.$module.$utilities.userSessionCacheAsync(user.id)
+		self.$utilities.userSessionCacheAsync(user.id)
 		.then(function(deserializedUser) {
 			done(null, deserializedUser.id);
 			return null;
@@ -32,7 +32,7 @@ exports.strategy = (function() {
 	});
 
 	auth.deserializeUser(function(id, done) {
-		self.$module.$utilities.userSessionCacheAsync(id)
+		self.$utilities.userSessionCacheAsync(id)
 		.then(function(deserializedUser) {
 			done(null, deserializedUser);
 			return null;

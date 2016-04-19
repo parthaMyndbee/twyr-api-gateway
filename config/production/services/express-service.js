@@ -7,7 +7,7 @@ exports.config = ({
 	'cookieParser': {
 		'path': '/',
 		'domain': '.twyrframework.com',
-		'secure': false,
+		'secure': true,
 		'httpOnly': false
 	},
 

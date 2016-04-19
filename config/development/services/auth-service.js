@@ -1,4 +1,8 @@
 exports.config = ({
+	'utilities': {
+		'path': './modules/utilities'
+	},
+
 	'strategies': {
 		'path': './strategies',
 
