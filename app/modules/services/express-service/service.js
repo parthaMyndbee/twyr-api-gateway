@@ -128,7 +128,7 @@ var expressService = prime({
 			'credentials': true
 		};
 
-		// Step 4: Setup Session
+		// Step 4: Setup Session Store, etc.
 		var sessionStore = new sessStore({
 			'client': dependencies['cache-service'],
 			'prefix': self.$config.session.store.prefix,
@@ -233,12 +233,21 @@ var expressService = prime({
 
 		// Step 8: Start listening...
 		self.$server.listen(self.$config.port || 8000);
+
+		// Miscellaneous...
+		self['$express']['$server'] =  self['$server'];
+		self['$express']['$session'] =  self['$session'];
+		self['$express']['$cookieParser'] = self['$cookieParser'];
 	},
 
 	'_teardownExpress': function(callback) {
 		var self = this;
 
 		this.$server.once('close', function() {
+			delete self['$express']['$server'];
+			delete self['$express']['$session'];
+			delete self['$express']['$cookieParser'];
+
 			delete self['$server'];
 			delete self['$express'];
 			delete self['$session'];

@@ -68,8 +68,10 @@
 		"patrun": "*",
 		"pg": "*",
 		"prime":"*",
+		"primus": "*",
 		"redis": "*",
-		"winston": "*"
+		"winston": "*",
+		"ws": "*"
 	},
 	"devDependencies": {
 	},

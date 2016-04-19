@@ -33,7 +33,7 @@ var timeoutMonitor = {},
 var onlineCount = 0,
 	port = 0;
 
-process.title = config['title'];
+process.title = config['title'].substring(0, 11);
 
 // Instantiate the application, and start the execution
 if (cluster.isMaster) {

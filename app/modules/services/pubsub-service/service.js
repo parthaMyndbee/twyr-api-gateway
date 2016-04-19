@@ -207,9 +207,11 @@ var pubsubService = prime({
 
 		promises.all(promiseResolutions)
 		.then(function() {
-			listeners = {};
-			if(callback) callback(null);
+			Object.keys(listeners).forEach(function(listener) {
+				delete listeners[listener];
+			});
 
+			if(callback) callback(null);
 			return null;
 		})
 		.catch(function(err) {
