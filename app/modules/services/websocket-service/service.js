@@ -94,7 +94,14 @@ var websocketService = prime({
 			return;
 
 		var thisConfig = JSON.parse(JSON.stringify(this['$config']));
-		this._reconfigure(thisConfig);
+		return this._reconfigure(thisConfig);
+	},
+
+	'_dependencyStateChange': function(dependency, state) {
+		if(dependency != 'express-service')
+			return;
+
+		return this._changeState(state);
 	},
 
 	'_setupPrimus': function(dependencies, callback) {

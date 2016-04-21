@@ -218,6 +218,32 @@ var twyrModuleBase = prime({
 
 		if(self['$enabled']) {
 			self.startAsync(self['disabled-dependencies'])
+			.then(function() {
+				if(self.$services)
+				Object.keys(self.$services).forEach(function(serviceName) {
+					self.$services[serviceName]._parentStateChange(newState);
+				});
+
+				if(self.$middlewares)
+				Object.keys(self.$middlewares).forEach(function(middlewareName) {
+					self.$middlewares[middlewareName]._parentStateChange(newState);
+				});
+
+				if(self.$components)
+				Object.keys(self.$components).forEach(function(componentName) {
+					self.$components[componentName]._parentStateChange(newState);
+				});
+
+				if(self.$templates)
+				Object.keys(self.$templates).forEach(function(templateName) {
+					self.$templates[templateName]._parentStateChange(newState);
+				});
+
+				if(self.$dependants)
+				Object.keys(self.$dependants).forEach(function(dependantName) {
+					self.$dependants[dependantName]._dependencyStateChange(self.name, newState);
+				});
+			})
 			.catch(function(err) {
 				console.error(self.name + '::_changeState: ' + newState + '\nError: ' + JSON.stringify(err, null, '\t'));
 			})
@@ -228,6 +254,32 @@ var twyrModuleBase = prime({
 		else {
 			self['disabled-dependencies'] = self['dependencies'];
 			self.stopAsync()
+			.then(function() {
+				if(self.$services)
+				Object.keys(self.$services).forEach(function(serviceName) {
+					self.$services[serviceName]._parentStateChange(newState);
+				});
+
+				if(self.$middlewares)
+				Object.keys(self.$middlewares).forEach(function(middlewareName) {
+					self.$middlewares[middlewareName]._parentStateChange(newState);
+				});
+
+				if(self.$components)
+				Object.keys(self.$components).forEach(function(componentName) {
+					self.$components[componentName]._parentStateChange(newState);
+				});
+
+				if(self.$templates)
+				Object.keys(self.$templates).forEach(function(templateName) {
+					self.$templates[templateName]._parentStateChange(newState);
+				});
+
+				if(self.$dependants)
+				Object.keys(self.$dependants).forEach(function(dependantName) {
+					self.$dependants[dependantName]._dependencyStateChange(self.name, newState);
+				});
+			})
 			.catch(function(err) {
 				console.error(self.name + '::_changeState: ' + newState + '\nError: ' + JSON.stringify(err, null, '\t'));
 			});
@@ -240,6 +292,14 @@ var twyrModuleBase = prime({
 
 	'_dependencyReconfigure': function(dependency) {
 		console.log(this.name + '::_dependencyReconfigure: ' + dependency);
+	},
+
+	'_parentStateChange': function(state) {
+		console.log(this.name + '::_parentStateChange: ' + self.$module.name + ' is now ' + (state ? 'enabled' : 'disabled'));
+	},
+
+	'_dependencyStateChange': function(dependency, state) {
+		console.log(this.name + '::_dependencyStateChange: ' + dependency + ' is now ' + (state ? 'enabled' : 'disabled'));
 	},
 
 	'_exists': function (path, mode, callback) {
