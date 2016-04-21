@@ -29,24 +29,32 @@ var apiService = prime({
 	},
 
 	'start': function(dependencies, callback) {
-		var customMatch = (function(pattern, data) {
-			var items = this.find(pattern, true) || [];
-			items.push(data);
-
-			return {
-				'find': function(search, api) {
-					return items.length ? items : [];
-				},
-
-				'remove': function(search, api) {
-					items.pop();
-					return !items.length;
-				}
+		var self = this;
+		apiService.parent.start.call(self, dependencies, function(err, status) {
+			if(err) {
+				if(callback) callback(err);
+				return;
 			}
-		});
 
-		this['$patrun'] = require('patrun')(customMatch);
-		apiService.parent.start.call(this, dependencies, callback);
+			var customMatch = (function(pattern, data) {
+				var items = this.find(pattern, true) || [];
+				items.push(data);
+
+				return {
+					'find': function(search, api) {
+						return items.length ? items : [];
+					},
+
+					'remove': function(search, api) {
+						items.pop();
+						return !items.length;
+					}
+				}
+			});
+
+			self['$patrun'] = require('patrun')(customMatch);
+			if(callback) callback(null, status);
+		});
 	},
 
 	'getInterface': function() {

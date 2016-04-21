@@ -38,14 +38,20 @@ var cacheService = prime({
 
 	'start': function(dependencies, callback) {
 		var self = this;
+		cacheService.parent.start.call(self, dependencies, function(err, status) {
+			if(err) {
+				if(callback) callback(err);
+				return;
+			}
 
-		self._setupCacheAsync()
-		.then(function(status) {
-			cacheService.parent.start.call(self, dependencies, callback);
-			return null;
-		})
-		.catch(function(err) {
-			if(callback) callback(err);
+			self._setupCacheAsync()
+			.then(function() {
+				if(callback) callback(null, status);
+				return null;
+			})
+			.catch(function(err) {
+				if(callback) callback(err);
+			});
 		});
 	},
 
@@ -79,6 +85,9 @@ var cacheService = prime({
 		.then(function() {
 			self['$config'] = config;
 			return self._setupCacheAsync();
+		})
+		.then(function() {
+			return cacheService.parent._reconfigure.call(self, config);
 		})
 		.catch(function(err) {
 			self.dependencies['logger-service'].error(self.name + '::_reconfigure:\n', err);

@@ -36,14 +36,20 @@ var databaseService = prime({
 
 	'start': function(dependencies, callback) {
 		var self = this;
+		databaseService.parent.start.call(self, dependencies, function(err, status) {
+			if(err) {
+				if(callback) callback(err);
+				return;
+			}
 
-		self._setupBookshelfAsync()
-		.then(function() {
-			databaseService.parent.start.call(self, dependencies, callback);
-			return null;
-		})
-		.catch(function(err) {
-			if(callback) callback(err);
+			self._setupBookshelfAsync()
+			.then(function() {
+				if(callback) callback(null, status);
+				return null;
+			})
+			.catch(function(err) {
+				if(callback) callback(err);
+			});
 		});
 	},
 
@@ -53,8 +59,6 @@ var databaseService = prime({
 
 	'stop': function(callback) {
 		var self = this;
-
-		// Stop sub-services, if any...
 		databaseService.parent.stop.call(self, function(err, status) {
 			if(err) {
 				if(callback) callback(err);
@@ -79,6 +83,9 @@ var databaseService = prime({
 		.then(function() {
 			self['$config'] = config;
 			return self._setupBookshelfAsync();
+		})
+		.then(function() {
+			return databaseService.parent._reconfigure.call(self, config);
 		})
 		.catch(function(err) {
 			self.dependencies['logger-service'].error(self.name + '::_reconfigure:\n', err);

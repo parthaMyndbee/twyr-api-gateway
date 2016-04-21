@@ -33,14 +33,20 @@ var websocketService = prime({
 
 	'start': function(dependencies, callback) {
 		var self = this;
+		websocketService.parent.start.call(self, dependencies, function(err, status) {
+			if(err) {
+				if(callback) callback(err);
+				return;
+			}
 
-		self._setupPrimusAsync(dependencies)
-		.then(function() {
-			websocketService.parent.start.call(self, dependencies, callback);
-			return null;
-		})
-		.catch(function(err) {
-			if(callback) callback(err);
+			self._setupPrimusAsync(dependencies)
+			.then(function() {
+				if(callback) callback(null, status);
+				return null;
+			})
+			.catch(function(err) {
+				if(callback) callback(err);
+			});
 		});
 	},
 
@@ -71,14 +77,24 @@ var websocketService = prime({
 		var self = this;
 
 		self._teardownPrimusAsync()
-		.delay(500)
 		.then(function() {
 			self['$config'] = config;
 			return self._setupPrimusAsync(self.dependencies);
 		})
+		.then(function() {
+			return websocketService.parent._reconfigure.call(self, config);
+		})
 		.catch(function(err) {
 			self.dependencies['logger-service'].error(self.name + '::_reconfigure:\n', err);
 		});
+	},
+
+	'_dependencyReconfigure': function(dependency) {
+		if(dependency != 'express-service')
+			return;
+
+		var thisConfig = JSON.parse(JSON.stringify(this['$config']));
+		this._reconfigure(thisConfig);
 	},
 
 	'_setupPrimus': function(dependencies, callback) {
@@ -132,7 +148,7 @@ var websocketService = prime({
 		self.$websocketServer.on('connection', self._websocketServerConnection.bind(self));
 		self.$websocketServer.on('disconnection', self._websocketServerDisconnection.bind(self));
 
-		if(callback) callback(null);
+		if(callback) callback(null, true);
 	},
 
 	'_teardownPrimus': function(callback) {
@@ -156,15 +172,15 @@ var websocketService = prime({
 	},
 
 	'_websocketServerInitialised': function(transformer, parser, options) {
-		this.dependencies['logger-service'].debug('Websocket Server has been initialised with options: ' + JSON.stringify(options, null, '\t') + '\n');
+		console.log('Websocket Server has been initialised with options: ' + JSON.stringify(options, null, '\t') + '\n');
 	},
 
 	'_websocketServerLog': function() {
-		this.dependencies['logger-service'].debug('Websocket Server Log: ' + JSON.stringify(arguments, null, '\t'));
+		console.log('Websocket Server Log: ' + JSON.stringify(arguments, null, '\t'));
 	},
 
 	'_websocketServerError': function() {
-		this.dependencies['logger-service'].error('Websocket Server Error: ' + JSON.stringify(arguments, null, '\t'));
+		console.error('Websocket Server Error: ' + JSON.stringify(arguments, null, '\t'));
 		this.emit('websocket-error', arguments);
 	},
 

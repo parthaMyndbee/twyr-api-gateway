@@ -45,7 +45,7 @@ var twyrModuleBase = prime({
 	},
 
 	'load': function(configSrvc, callback) {
-		// console.log(this.name + ' Load');
+		//console.log(this.name + ' Load');
 
 		var self = this,
 			promiseResolutions = [];
@@ -75,7 +75,7 @@ var twyrModuleBase = prime({
 	},
 
 	'initialize': function(callback) {
-		// console.log(this.name + ' Initialize');
+		//console.log(this.name + ' Initialize');
 		var self = this;
 
 		this.$loader.initializeAsync()
@@ -94,8 +94,16 @@ var twyrModuleBase = prime({
 	'start': function(dependencies, callback) {
 		// console.log(this.name + ' Start');
 		var self = this;
-		self['dependencies'] = dependencies;
+		if(!self['$enabled']) {
+			self['dependencies'] = null;
+			self['disabled-dependencies'] = dependencies;
 
+			var startErr = new Error('Disabled in the configuration');
+			if(callback) callback(startErr, false);
+			return;
+		}
+
+		self['dependencies'] = dependencies;
 		this.$loader.startAsync()
 		.then(function(status) {
 			if(!status) throw status;
@@ -112,6 +120,10 @@ var twyrModuleBase = prime({
 	'stop': function(callback) {
 		// console.log(this.name + ' Stop');
 		var self = this;
+		if(!self['$enabled']) {
+			if(callback) callback(null, []);
+			return;
+		}
 
 		this.$loader.stopAsync()
 		.then(function(status) {
@@ -128,7 +140,7 @@ var twyrModuleBase = prime({
 	},
 
 	'uninitialize': function(callback) {
-		// console.log(this.name + ' Uninitialize');
+		//console.log(this.name + ' Uninitialize');
 		var self = this;
 
 		this.$loader.uninitializeAsync()
@@ -145,7 +157,7 @@ var twyrModuleBase = prime({
 	},
 
 	'unload': function(callback) {
-		// console.log(this.name + ' Unload');
+		//console.log(this.name + ' Unload');
 		var self = this;
 
 		this.$loader.unloadAsync()
@@ -160,6 +172,7 @@ var twyrModuleBase = prime({
 			if(callback) callback(err);
 		})
 		.finally(function() {
+			delete self['$config'];
 			delete self['$loader'];
 			delete self['$module'];
 
@@ -168,12 +181,65 @@ var twyrModuleBase = prime({
 	},
 
 	'_reconfigure': function(newConfig) {
-		console.log(this.name + '::_reconfigure:\n' + JSON.stringify(newConfig, null, '\t'));
+		var self = this;
+
+		if(self.$services)
+		Object.keys(self.$services).forEach(function(serviceName) {
+			self.$services[serviceName]._parentReconfigure();
+		});
+
+		if(self.$middlewares)
+		Object.keys(self.$middlewares).forEach(function(middlewareName) {
+			self.$middlewares[middlewareName]._parentReconfigure();
+		});
+
+		if(self.$components)
+		Object.keys(self.$components).forEach(function(componentName) {
+			self.$components[componentName]._parentReconfigure();
+		});
+
+		if(self.$templates)
+		Object.keys(self.$templates).forEach(function(templateName) {
+			self.$templates[templateName]._parentReconfigure();
+		});
+
+		if(self.$dependants)
+		Object.keys(self.$dependants).forEach(function(dependantName) {
+			self.$dependants[dependantName]._dependencyReconfigure(self.name);
+		});
 	},
 
 	'_changeState': function(newState) {
-		console.log(this.name + '::_changeState: ' + newState);
-		this['$enabled'] = newState;
+		if(this['$enabled'] == newState)
+			return;
+
+		var self = this;
+		self['$enabled'] = newState;
+
+		if(self['$enabled']) {
+			self.startAsync(self['disabled-dependencies'])
+			.catch(function(err) {
+				console.error(self.name + '::_changeState: ' + newState + '\nError: ' + JSON.stringify(err, null, '\t'));
+			})
+			.finally(function() {
+				delete self['disabled-dependencies'];
+			});
+		}
+		else {
+			self['disabled-dependencies'] = self['dependencies'];
+			self.stopAsync()
+			.catch(function(err) {
+				console.error(self.name + '::_changeState: ' + newState + '\nError: ' + JSON.stringify(err, null, '\t'));
+			});
+		}
+	},
+
+	'_parentReconfigure': function() {
+		console.log(this.name + '::_parentReconfigure');
+	},
+
+	'_dependencyReconfigure': function(dependency) {
+		console.log(this.name + '::_dependencyReconfigure: ' + dependency);
 	},
 
 	'_exists': function (path, mode, callback) {

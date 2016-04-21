@@ -237,6 +237,7 @@ var moduleLoader = prime({
 
 					// Ok... valid definition. Construct the service
 					configSrvc = new Service(this.$module);
+					configSrvc['$dependants'] = [];
 
 					// Store the promisified object...
 					this.$module.$services[configSrvc.name] = promises.promisifyAll(configSrvc);
@@ -263,6 +264,7 @@ var moduleLoader = prime({
 
 					// Ok... valid definition. Construct the service
 					var serviceInstance = new Service(self.$module);
+					serviceInstance['$dependants'] = [];
 
 					// Store the promisified object...
 					self.$module.$services[serviceInstance.name] = promises.promisifyAll(serviceInstance);
@@ -471,6 +473,8 @@ var moduleLoader = prime({
 						'enumerable': true,
 						'get': interfaceMethod
 					});
+
+					currentDependency['$dependants'].push(thisService);
 				}
 			});
 
@@ -545,6 +549,8 @@ var moduleLoader = prime({
 						'enumerable': true,
 						'get': interfaceMethod
 					});
+
+					currentDependency['$dependants'].push(thisComponent);
 				}
 			});
 
@@ -589,6 +595,7 @@ var moduleLoader = prime({
 
 			Object.keys(this.$module.$services).forEach(function (serviceName) {
 				var thisService = self.$module.$services[serviceName];
+				if(!thisService.dependencies) return;
 
 				Object.keys(thisService.dependencies).forEach(function(thisServiceDependency) {
 					try {
@@ -609,6 +616,7 @@ var moduleLoader = prime({
 
 		uninitOrderList.forEach(function (thisServiceName) {
 			var thisService = self.$module.$services[thisServiceName];
+			thisService['$dependants'].length = 0;
 
 			serviceNames.push(thisService.name);
 			promiseResolutions.push(thisService.stopAsync.bind(thisService));
@@ -824,11 +832,14 @@ var moduleLoader = prime({
 
 			if (typeof (thisStatus.status) == 'object') {
 				Object.keys(thisStatus.status).forEach(function (key) {
-					if (!Array.isArray(thisStatus.status[key]))
-						return;
+					if(thisStatus.status[key] instanceof Error) {
+						thisStatus.status[key] = thisStatus.status[key]['message'];
+					}
 
-					thisStatus.status[key] = self._filterStatus(thisStatus.status[key]);
-					if (!thisStatus.status[key].length) thisStatus.status[key] = true;
+					if (Array.isArray(thisStatus.status[key])) {
+						thisStatus.status[key] = self._filterStatus(thisStatus.status[key]);
+						if (!thisStatus.status[key].length) thisStatus.status[key] = true;
+					}
 				});
 			}
 

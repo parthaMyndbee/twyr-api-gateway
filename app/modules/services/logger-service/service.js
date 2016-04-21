@@ -31,21 +31,28 @@ var loggerService = prime({
 	},
 
 	'start': function(dependencies, callback) {
-		this['$winston'] = new winston.Logger({
-			'transports': [ new (winston.transports.Console)() ]
+		var self = this;
+		loggerService.parent.start.call(self, dependencies, function(err, status) {
+			if(err) {
+				callback(err);
+				return;
+			}
+
+			self['$winston'] = new winston.Logger({
+				'transports': [ new (winston.transports.Console)() ]
+			});
+
+			self._setupWinston(self['$config'], self['$winston']);
+
+			// The first log of the day...
+			self.$winston.info('Winston Logger successfully setup, and running...');
+
+			// Ensure the logger isn't crashing the Server :-)
+			self.$winston.exitOnError = false;
+			self.$winston.emitErrs = false;
+
+			if(callback) callback(null, status);
 		});
-
-		this._setupWinston(this['$config'], this['$winston']);
-
-		// The first log of the day...
-		this.$winston.info('Winston Logger successfully setup, and running...');
-
-		// Ensure the logger isn't crashing the Server :-)
-		this.$winston.exitOnError = false;
-		this.$winston.emitErrs = false;
-
-		// Start the sub-services, if any...
-		loggerService.parent.start.call(this, dependencies, callback);
 	},
 
 	'getInterface': function() {
@@ -54,8 +61,6 @@ var loggerService = prime({
 
 	'stop': function(callback) {
 		var self = this;
-
-		// Stop the sub-services, if any...
 		loggerService.parent.stop.call(self, function(err, status) {
 			if(err) {
 				callback(err);
@@ -75,6 +80,7 @@ var loggerService = prime({
 		try {
 			this['$config'] = config;
 			this._setupWinston(this['$config'], this['$winston']);
+			loggerService.parent._reconfigure.call(this, config);
 		}
 		catch(err) {
 			console.error(this.name + '::_reconfigure error: ', err);

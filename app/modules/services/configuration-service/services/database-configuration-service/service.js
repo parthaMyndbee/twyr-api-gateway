@@ -426,7 +426,7 @@ var databaseConfigurationService = prime({
 			return null;
 		})
 		.catch(function(err) {
-			console.error('Error retrieving configuration for ' + moduleId + ':\n', err);
+			console.error('Error retrieving configuration for ' + moduleId + ': ' + JSON.stringify(err, null, '\t'));
 		});
 	},
 
@@ -461,7 +461,7 @@ var databaseConfigurationService = prime({
 			return null;
 		})
 		.catch(function(err) {
-			console.error('Error retrieving state for ' + moduleId + ':\n', err);
+			console.error('Error retrieving state for ' + moduleId + ': ' + JSON.stringify(err, null, '\t'));
 		});
 	},
 

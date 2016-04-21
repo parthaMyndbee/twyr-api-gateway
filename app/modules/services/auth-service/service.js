@@ -36,7 +36,6 @@ var authService = prime({
 
 	'start': function(dependencies, callback) {
 		var self = this;
-
 		authService.parent.start.call(self, dependencies, function(err, status) {
 			if(err) {
 				if(callback) callback(err);
@@ -84,6 +83,9 @@ var authService = prime({
 		.then(function() {
 			self['$config'] = config;
 			return self._setupPassportAsync();
+		})
+		.then(function() {
+			return authService.parent._reconfigure.call(self, config);
 		})
 		.catch(function(err) {
 			self.dependencies['logger-service'].error(self.name + '::_reconfigure:\n', err);

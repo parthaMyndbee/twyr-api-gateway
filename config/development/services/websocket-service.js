@@ -1,5 +1,5 @@
 exports.config = ({
 	"parser": "JSON",
-	"pathname": "/webs",
+	"pathname": "/websockets",
 	"transformer": "websockets"
 });

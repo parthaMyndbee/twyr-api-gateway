@@ -34,7 +34,6 @@ var pubsubService = prime({
 
 	'start': function(dependencies, callback) {
 		var self = this;
-
 		pubsubService.parent.start.call(self, dependencies, function(err, status) {
 			if(err) {
 				if(callback) callback(err);
@@ -45,6 +44,7 @@ var pubsubService = prime({
 			self._setupAscoltatoriAsync(self['$config'], self['$listeners'])
 			.then(function() {
 				if(callback) callback(null, status);
+				return null;
 			})
 			.catch(function(setupErr) {
 				if(callback) callback(setupErr);
@@ -90,6 +90,7 @@ var pubsubService = prime({
 		promises.all(promiseResolutions)
 		.then(function() {
 			if(callback) callback(null, true);
+			return null;
 		})
 		.catch(function(err) {
 			if(callback) callback(err);
@@ -116,6 +117,7 @@ var pubsubService = prime({
 		promises.all(promiseResolutions)
 		.then(function() {
 			if(callback) callback(null, true);
+			return null;
 		})
 		.catch(function(err) {
 			if(callback) callback(err);
@@ -133,6 +135,7 @@ var pubsubService = prime({
 		promises.all(promiseResolutions)
 		.then(function() {
 			if(callback) callback(null, true);
+			return null;
 		})
 		.catch(function(err) {
 			if(callback) callback(err);
@@ -141,7 +144,6 @@ var pubsubService = prime({
 
 	'stop': function(callback) {
 		var self = this;
-
 		pubsubService.parent.stop.call(self, function(err, status) {
 			if(err) {
 				if(callback) callback(err);
@@ -151,6 +153,7 @@ var pubsubService = prime({
 			self._teardownAscoltatoriAsync(self['$config'], self['$listeners'])
 			.then(function() {
 				if(callback) callback(null, status);
+				return null;
 			})
 			.catch(function(teardownErr) {
 				if(callback) callback(teardownErr);
@@ -165,6 +168,9 @@ var pubsubService = prime({
 		.then(function() {
 			self['$config'] = config;
 			return self._setupAscoltatoriAsync(self['$config'], self['$listeners']);
+		})
+		.then(function() {
+			return pubsubService.parent._reconfigure.call(self, config);
 		})
 		.catch(function(err) {
 			self.dependencies['logger-service'].error(self.name + '::_reconfigure:\n', err);

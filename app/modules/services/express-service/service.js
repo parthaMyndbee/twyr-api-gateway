@@ -36,14 +36,20 @@ var expressService = prime({
 
 	'start': function(dependencies, callback) {
 		var self = this;
+		expressService.parent.start.call(self, dependencies, function(err, status) {
+			if(err) {
+				if(callback) callback(err);
+				return;
+			}
 
-		self._setupExpressAsync(dependencies)
-		.catch(function(err) {
-			if(callback) callback(err);
-		})
-		.finally(function() {
-			expressService.parent.start.call(self, dependencies, callback);
-			return null;
+			self._setupExpressAsync(dependencies)
+			.then(function() {
+				if(callback) callback(null, status);
+				return null;
+			})
+			.catch(function(err) {
+				if(callback) callback(err);
+			});
 		});
 	},
 
@@ -53,23 +59,21 @@ var expressService = prime({
 
 	'stop': function(callback) {
 		var self = this;
+		expressService.parent.stop.call(self, function(err, status) {
+			if(err) {
+				if(callback) callback(err);
+				return;
+			}
 
-		self._teardownExpressAsync()
-		.then(function() {
-			expressService.parent.stop.call(self, function(err, status) {
-				if(err) {
-					if(callback) callback(err);
-					return;
-				}
-
+			self._teardownExpressAsync()
+			.then(function() {
 				if(callback) callback(null, status);
+				return null;
+			})
+			.catch(function(err) {
+				if(callback) callback(err);
 			});
-
-			return null;
-		})
-		.catch(function(err) {
-			if(callback) callback(err);
-		})
+		});
 	},
 
 	'_reconfigure': function(config) {
@@ -79,6 +83,9 @@ var expressService = prime({
 		.then(function() {
 			self['$config'] = config;
 			return self._setupExpressAsync(self.dependencies);
+		})
+		.then(function() {
+			return expressService.parent._reconfigure.call(self, config);
 		})
 		.catch(function(err) {
 			self.dependencies['logger-service'].error(self.name + '::_reconfigure:\n', err);

@@ -186,7 +186,7 @@ else {
 		})
 		.timeout(60000)
 		.catch(function(err) {
-			console.error('\n\n' + 'Twyr API Gateway #' + cluster.worker.id + '::Startup Error:\n', err, '\n\n');
+			console.error('\n\n' + 'Twyr API Gateway #' + cluster.worker.id + '::Startup Error:\n', JSON.stringify(err, null, '\t'), '\n\n');
 	        cluster.worker.disconnect();
 		})
 		.finally(function () {
@@ -228,7 +228,7 @@ else {
 			return null;
 		})
 		.catch(function (err) {
-			console.error('\n\n' + 'Twyr API Gateway #' + cluster.worker.id + '::Shutdown Error:\n', err, '\n\n');
+			console.error('\n\n' + 'Twyr API Gateway #' + cluster.worker.id + '::Shutdown Error:\n', JSON.stringify(err, null, '\t'), '\n\n');
 		})
 		.finally(function () {
 			console.log(allStatuses.join('\n'));
