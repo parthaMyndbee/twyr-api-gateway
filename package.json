@@ -68,7 +68,8 @@
 		"patrun": "*",
 		"pg": "*",
 		"prime":"*",
-		"primus": "*",
+		"primus": "^4.0.5",
+		"primus-rooms": "*",
 		"redis": "*",
 		"winston": "*",
 		"ws": "*"

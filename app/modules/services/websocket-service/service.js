@@ -106,7 +106,7 @@ var websocketService = prime({
 
 	'_setupPrimus': function(dependencies, callback) {
 		var PrimusServer = require('primus'),
-//			PrimusRooms = require('primus-rooms')
+			PrimusRooms = require('primus-rooms'),
 			self = this;
 
 		// Step 1: Setup the realtime streaming server
@@ -144,7 +144,7 @@ var websocketService = prime({
 				console.log(error);
 			}
 		});
-//		self.$websocketServer.use('rooms', PrimusRooms);
+		self.$websocketServer.use('rooms', PrimusRooms);
 
 		// Step 4: Attach the event handlers...
 		self.$websocketServer.on('initialised', self._websocketServerInitialised.bind(self));
@@ -197,8 +197,8 @@ var websocketService = prime({
 
 	'_websocketServerDisconnection': function(spark) {
 		this.emit('websocket-disconnect', spark);
-//		spark.leaveAll();
-//		spark.removeAllListeners();
+		spark.leaveAll();
+		spark.removeAllListeners();
 	},
 
 	'name': 'websocket-service',
