@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="34,0" last-zoom="1"
+<dbmodel pgmodeler-ver="0.8.1" last-position="0,0" last-zoom="0.6"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -14,7 +14,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <usertype name="module_type" configuration="enumeration">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<enumeration values="component,middleware,service,template"/>
+	<enumeration values="component,middleware,service"/>
 </usertype>
 
 <extension name="uuid-ossp">
@@ -24,7 +24,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="modules">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="273" y="19"/>
+	<position x="146" y="60.6667"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -52,12 +52,15 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	<column name="created_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
 	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
 	<constraint name="pk_modules" type="pk-constr" table="public.modules">
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
 </table>
 
-<index name="uidx_parent_name" table="public.modules"
+<index name="uidx_module_parent_name" table="public.modules"
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
@@ -316,7 +319,7 @@ BEGIN
 
 	IF is_module_in_tree > 0
 	THEN
-		RAISE SQLSTATE '2F003' USING MESSAGE = 'Component cannot be its own descendant';
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Module cannot be its own descendant';
 		RETURN NULL;
 	END IF;
 
@@ -372,9 +375,753 @@ END;]]></definition>
 		<function signature="public.fn_notify_config_change()"/>
 </trigger>
 
+<table name="permissions">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="237" y="430"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="module_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="display_name" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="description" not-null="true" default-value="'Another Random Permission'::text">
+		<type name="text"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_permissions" type="pk-constr" table="public.permissions">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<index name="uidx_permissions" table="public.permissions"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="module_id"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="name"/>
+		</idxelement>
+</index>
+
+<usertype name="tenant_type" configuration="enumeration">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<enumeration values="department,suborganization"/>
+</usertype>
+
+<table name="tenants">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="2010" y="70.6667"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="parent_id">
+		<type name="uuid"/>
+	</column>
+	<column name="type" not-null="true" default-value="'suborganization'::tenant_type">
+		<type name="public.tenant_type"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="enabled" not-null="true" default-value="true::boolean">
+		<type name="boolean"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_tenants" type="pk-constr" table="public.tenants">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<usertype name="gender" configuration="enumeration">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<enumeration values="female,male,other"/>
+</usertype>
+
+<table name="users">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="2664" y="857"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="email" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="password" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="first_name" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="middle_names">
+		<type name="text"/>
+	</column>
+	<column name="last_name" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="nickname">
+		<type name="text"/>
+	</column>
+	<column name="profile_image_id">
+		<type name="uuid"/>
+	</column>
+	<column name="gender" not-null="true" default-value="'male'::gender">
+		<type name="public.gender"/>
+	</column>
+	<column name="enabled" not-null="true" default-value="true::boolean">
+		<type name="boolean"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_users" type="pk-constr" table="public.users">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<index name="uidx_users" table="public.users"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="email"/>
+		</idxelement>
+</index>
+
+<index name="uidx_tenant_parent_name" table="public.tenants"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="parent_id"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="name"/>
+		</idxelement>
+</index>
+
+<table name="tenants_users">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="2090" y="893.667"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="tenant_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="user_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="job_title_id">
+		<type name="uuid"/>
+	</column>
+	<column name="location_id">
+		<type name="uuid"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_tenants_users" type="pk-constr" table="public.tenants_users">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<index name="uidx_tenants_users" table="public.tenants_users"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="tenant_id"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="user_id"/>
+		</idxelement>
+</index>
+
+<table name="locations">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1664.67" y="414.667"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="tenant_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="line1" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="line2">
+		<type name="text"/>
+	</column>
+	<column name="line3">
+		<type name="text"/>
+	</column>
+	<column name="area">
+		<type name="text"/>
+	</column>
+	<column name="city" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="state" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="country" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="postal_code" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="latitude" not-null="true">
+		<type name="double precision"/>
+	</column>
+	<column name="longitude" not-null="true">
+		<type name="double precision"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_locations" type="pk-constr" table="public.locations">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<index name="uidx_locations" table="public.locations"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="tenant_id"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="id"/>
+		</idxelement>
+</index>
+
+<table name="job_titles">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="2373.67" y="436.667"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="tenant_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="title" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="description">
+		<type name="text"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_job_titles" type="pk-constr" table="public.job_titles">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<index name="uidx_job_titles" table="public.job_titles"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="tenant_id"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="id"/>
+		</idxelement>
+</index>
+
+<table name="groups">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1040" y="416.667"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="parent_id">
+		<type name="uuid"/>
+	</column>
+	<column name="tenant_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="display_name" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="description">
+		<type name="text"/>
+	</column>
+	<column name="default_for_new_user" not-null="true" default-value="false::boolean">
+		<type name="boolean"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="fk_groups" type="pk-constr" table="public.groups">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<index name="uidx_group_parent_name" table="public.groups"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="parent_id"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="name"/>
+		</idxelement>
+</index>
+
+<index name="uidx_group_tenant" table="public.groups"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="tenant_id"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="id"/>
+		</idxelement>
+</index>
+
+<table name="tenant_user_groups">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1070" y="911.667"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="tenant_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="group_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="user_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_tenant_user_groups" type="pk-constr" table="public.tenant_user_groups">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="group_permissions">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="711.667" y="115"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="group_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="permission_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_group_permissions" type="pk-constr" table="public.group_permissions">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<function name="fn_get_tenant_ancestors"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<parameter name="level">
+		<type name="integer"/>
+	</parameter>
+	<parameter name="id">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="parent_id">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="name">
+		<type name="text"/>
+	</parameter>
+	<parameter name="type">
+		<type name="public.tenant_type"/>
+	</parameter>
+	</return-type>
+	<parameter name="tenantid" in="true">
+		<type name="uuid"/>
+	</parameter>
+	<definition><![CDATA[
+BEGIN
+	RETURN QUERY
+	WITH RECURSIVE q AS (
+		SELECT
+			1 AS level,
+			A.id,
+			A.parent_id,
+			A.name,
+			A.type
+		FROM
+			tenants A
+		WHERE
+			A.id = tenantid
+		UNION ALL
+		SELECT
+			q.level + 1,
+			B.id,
+			B.parent_id,
+			B.name,
+			B.type
+		FROM
+			q,
+			tenant B
+		WHERE
+			B.id = q.parent_id
+	)
+	SELECT DISTINCT
+		q.level,
+		q.id,
+		q.parent_id,
+		q.name,
+		q.type
+	FROM
+		q
+	ORDER BY
+		q.level,
+		q.parent_id;
+END;
+]]></definition>
+</function>
+
+<function name="fn_is_tenant_enabled"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="boolean"/>
+	</return-type>
+	<parameter name="tenantid" in="true">
+		<type name="uuid"/>
+	</parameter>
+	<definition><![CDATA[
+DECLARE
+	is_disabled	integer;
+BEGIN
+	SELECT
+		COUNT(*)
+	FROM
+		tenants
+	WHERE
+		id IN  (SELECT id FROM fn_get_tenant_ancestors(tenantid)) AND
+		enabled = false
+	INTO
+		is_disabled;
+
+	RETURN is_disabled <= 0;
+END;
+]]></definition>
+</function>
+
+<function name="fn_get_tenant_descendants"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<parameter name="level">
+		<type name="integer"/>
+	</parameter>
+	<parameter name="id">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="parent_id">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="name">
+		<type name="text"/>
+	</parameter>
+	<parameter name="type">
+		<type name="public.tenant_type"/>
+	</parameter>
+	<parameter name="enabled">
+		<type name="boolean"/>
+	</parameter>
+	</return-type>
+	<parameter name="tenantid" in="true">
+		<type name="uuid"/>
+	</parameter>
+	<definition><![CDATA[
+BEGIN
+	RETURN QUERY
+	WITH RECURSIVE q AS (
+		SELECT
+			1 AS level,
+			A.id,
+			A.parent_id,
+			A.name,
+			A.type,
+			fn_is_tenant_enabled(A.id) AS enabled
+		FROM
+			tenants A
+		WHERE
+			A.id = tenantid
+		UNION ALL
+		SELECT
+			q.level + 1,
+			B.id,
+			B.parent_id,
+			B.name,
+			B.type,
+			fn_is_tenant_enabled(B.id) AS enabled
+		FROM
+			q,
+			tenants B
+		WHERE
+			B.parent_id = q.id
+	)
+	SELECT DISTINCT
+		q.level,
+		q.id,
+		q.parent_id,
+		q.name,
+		q.type,
+		q.enabled
+	FROM
+		q
+	ORDER BY
+		q.level,
+		q.parent_id;
+END;
+]]></definition>
+</function>
+
+<function name="fn_check_tenant_upsert_is_valid"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[
+DECLARE
+	is_tenant_in_tree	INTEGER;
+BEGIN
+	IF NEW.parent_id IS NULL
+	THEN
+		RETURN NEW;
+	END IF;
+
+	IF NEW.id = NEW.parent_id
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Tenant cannot be its own parent';
+		RETURN NULL;
+	END IF;
+
+	/* Check if the tenant is its own ancestor */
+	is_tenant_in_tree := 0;
+	SELECT
+		COUNT(id)
+	FROM
+		fn_get_tenant_ancestors(NEW.parent_id)
+	WHERE
+		id = NEW.id
+	INTO
+		is_tenant_in_tree;
+
+	IF is_tenant_in_tree > 0
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Tenant cannot be its own ancestor';
+		RETURN NULL;
+	END IF;
+
+	/* Check if the tenant is its own descendant */
+	is_tenant_in_tree := 0;
+	SELECT
+		COUNT(id)
+	FROM
+		fn_get_tenant_descendants(NEW.id)
+	WHERE
+		id = NEW.id AND
+		level > 1
+	INTO
+		is_tenant_in_tree;
+
+	IF is_tenant_in_tree > 0
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Tenant cannot be its own descendant';
+		RETURN NULL;
+	END IF;
+
+	RETURN NEW;
+END;
+]]></definition>
+</function>
+
+<trigger name="trigger_check_tenant_upsert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.tenants">
+		<function signature="public.fn_check_tenant_upsert_is_valid()"/>
+</trigger>
+
 <constraint name="fk_modules_modules" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.modules" table="public.modules">
 	<columns names="parent_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_permissions_modules" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.modules" table="public.permissions">
+	<columns names="module_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_tenant_parent" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.tenants">
+	<columns names="parent_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_tenants_users_users" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.tenants_users">
+	<columns names="user_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_tenants_users_tenants" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.tenants" table="public.tenants_users">
+	<columns names="tenant_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_tenants_users_locations" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.locations" table="public.tenants_users">
+	<columns names="tenant_id,location_id" ref-type="src-columns"/>
+	<columns names="tenant_id,id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_tenants_users_job_titles" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.job_titles" table="public.tenants_users">
+	<columns names="tenant_id,job_title_id" ref-type="src-columns"/>
+	<columns names="tenant_id,id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_locations_tenants" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.locations">
+	<columns names="tenant_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_job_titles_tenants" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.job_titles">
+	<columns names="tenant_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_group_tenant" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.groups">
+	<columns names="tenant_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_groups_groups" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.groups" table="public.groups">
+	<columns names="parent_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_tenant_user_groups_groups" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.groups" table="public.tenant_user_groups">
+	<columns names="tenant_id,group_id" ref-type="src-columns"/>
+	<columns names="id,tenant_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_tenant_user_groups_tenant_users" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants_users" table="public.tenant_user_groups">
+	<columns names="tenant_id,user_id" ref-type="src-columns"/>
+	<columns names="tenant_id,user_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_group_permissions_groups" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.groups" table="public.group_permissions">
+	<columns names="group_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_group_permissions_permissions" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.permissions" table="public.group_permissions">
+	<columns names="permission_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
@@ -383,10 +1130,92 @@ END;]]></definition>
 	 dst-table="public.modules"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="717.828" y="102.28"/>
-	<position x="717.828" y="9"/>
-	<position x="562.885" y="9"/>
+		<position x="590.828" y="149.947"/>
+	<position x="590.828" y="50.6667"/>
+	<position x="435.885" y="50.6667"/>
 	</line>
 </relationship>
+
+<relationship name="rel_permissions_modules" type="relfk"
+	 src-table="public.permissions"
+	 dst-table="public.modules"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_tenants_tenants" type="relfk"
+	 src-table="public.tenants"
+	 dst-table="public.tenants"
+	 src-required="false" dst-required="false">
+	<line>
+		<position x="2443.89" y="135.947"/>
+	<position x="2443.89" y="60.6667"/>
+	<position x="2292.59" y="60.6667"/>
+	</line>
+</relationship>
+
+<relationship name="rel_tenants_users_users" type="relfk"
+	 src-table="public.tenants_users"
+	 dst-table="public.users"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_locations_tenants" type="relfk"
+	 src-table="public.locations"
+	 dst-table="public.tenants"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_job_titles_tenants" type="relfk"
+	 src-table="public.job_titles"
+	 dst-table="public.tenants"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_tenants_users_locations" type="relfk"
+	 src-table="public.tenants_users"
+	 dst-table="public.locations"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_tenants_users_job_titles" type="relfk"
+	 src-table="public.tenants_users"
+	 dst-table="public.job_titles"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_tenants_users_tenants" type="relfk"
+	 src-table="public.tenants_users"
+	 dst-table="public.tenants"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_groups_tenants" type="relfk"
+	 src-table="public.groups"
+	 dst-table="public.tenants"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_groups_groups" type="relfk"
+	 src-table="public.groups"
+	 dst-table="public.groups"
+	 src-required="false" dst-required="false">
+	<line>
+		<position x="1349.44" y="493.947"/>
+	<position x="1349.44" y="406.667"/>
+	<position x="1239.63" y="406.667"/>
+	</line>
+</relationship>
+
+<relationship name="rel_tenant_user_groups_groups" type="relfk"
+	 src-table="public.tenant_user_groups"
+	 dst-table="public.groups"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_tenant_user_groups_tenants_users" type="relfk"
+	 src-table="public.tenant_user_groups"
+	 dst-table="public.tenants_users"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_group_permissions_groups" type="relfk"
+	 src-table="public.group_permissions"
+	 dst-table="public.groups"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_group_permissions_permissions" type="relfk"
+	 src-table="public.group_permissions"
+	 dst-table="public.permissions"
+	 src-required="false" dst-required="false"/>
 
 </dbmodel>

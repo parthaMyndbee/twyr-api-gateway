@@ -2,7 +2,7 @@
 exports.up = function(knex, Promise) {
 	return Promise.all([
 		knex.schema.raw("SET check_function_bodies = true"),
-		knex.schema.raw("CREATE TYPE public.module_type AS ENUM ('component','middleware','service','template')"),
+		knex.schema.raw("CREATE TYPE public.module_type AS ENUM ('component','middleware','service')"),
 		knex.schema.raw('CREATE EXTENSION "uuid-ossp" WITH SCHEMA public'),
 		knex.schema.withSchema('public')
 		.createTableIfNotExists('modules', function(modTbl) {
@@ -14,7 +14,8 @@ exports.up = function(knex, Promise) {
 			modTbl.text('description').notNullable().defaultTo('Another Twyr Module');
 			modTbl.jsonb('configuration').notNullable().defaultTo('{}');
 			modTbl.boolean('enabled').notNullable().defaultTo(true);
-			modTbl.timestamps();
+			modTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
+			modTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
 			modTbl.index(['parent_id', 'name'], 'uidx_modules_parent_name', 'btree');
 		})
 	]);

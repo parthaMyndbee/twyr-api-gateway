@@ -1,8 +1,8 @@
 
 exports.seed = function(knex, Promise) {
 	return knex.raw('SELECT id FROM modules WHERE name = ? AND parent_id IS NULL', ['twyr-api-gateway'])
-	.then(function(portalId) {
-		if(portalId.rows.length)
+	.then(function(gatewayId) {
+		if(gatewayId.rows.length)
 			return null;
 
 		return Promise.all([
@@ -10,6 +10,7 @@ exports.seed = function(knex, Promise) {
 			.then(function(parentId) {
 				parentId = parentId[0];
 				return Promise.all([
+					parentId,
 					knex("modules").insert({ 'parent_id': parentId, 'type': 'service', 'name': 'logger-service', 'display_name': 'Logger Service', 'description': 'The Twy\'r API Gateway Logger Service' }),
 					knex("modules").insert({ 'parent_id': parentId, 'type': 'service', 'name': 'cache-service', 'display_name': 'Cache Service', 'description': 'The Twy\'r API Gateway Cache Service - based on Redis' }),
 					knex("modules").insert({ 'parent_id': parentId, 'type': 'service', 'name': 'pubsub-service', 'display_name': 'Publish/Subscribe Service', 'description': 'The Twy\'r API Gateway Publish/Subscribe Service - based on Ascoltatori' }),
@@ -25,7 +26,17 @@ exports.seed = function(knex, Promise) {
 							knex("modules").insert({ 'parent_id': configSrvcId, 'type': 'service', 'name': 'file-configuration-service', 'display_name': 'File Configuration Service', 'description': 'The Twy\'r API Gateway Filesystem-based Configuration Service' }),
 							knex("modules").insert({ 'parent_id': configSrvcId, 'type': 'service', 'name': 'database-configuration-service', 'display_name': 'Database Configuration Service', 'description': 'The Twy\'r API Gateway Database-based Configuration Service' })
 						]);
-					}),
+					})
+				]);
+			})
+			.then(function(parentId) {
+				parentId = parentId[0];
+
+				return Promise.all([
+					knex("permissions").insert({ 'module_id': parentId, 'name': 'public', 'display_name': 'Public User Permissions', 'description': 'The Twy\'r API Gateway Permissions for non-logged-in Users' }),
+					knex("permissions").insert({ 'module_id': parentId, 'name': 'registered', 'display_name': 'Registered User Permissions', 'description': 'The Twy\'r API Gateway Permissions for logged-in Users' }),
+					knex("permissions").insert({ 'module_id': parentId, 'name': 'administrator', 'display_name': 'Administrator Permissions', 'description': 'The Twy\'r API Gateway Permissions for Administrators' }),
+					knex("permissions").insert({ 'module_id': parentId, 'name': 'super-administrator', 'display_name': 'Super Administrator Permissions', 'description': 'The Twy\'r API Gateway Permissions for Super Administrators' })
 				]);
 			})
 		]);
