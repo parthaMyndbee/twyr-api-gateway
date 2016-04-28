@@ -31,34 +31,56 @@ CREATE EXTENSION "uuid-ossp"
       WITH SCHEMA public;
 -- ddl-end --
 
--- object: public.modules | type: TABLE --
--- DROP TABLE IF EXISTS public.modules CASCADE;
-CREATE TABLE public.modules(
-	id uuid NOT NULL DEFAULT uuid_generate_v4(),
-	parent_id uuid,
-	type public.module_type NOT NULL DEFAULT 'component',
-	name text NOT NULL,
-	display_name text NOT NULL,
-	description text NOT NULL DEFAULT 'Another Twyr Module',
-	configuration jsonb NOT NULL DEFAULT '{}'::json,
-	enabled boolean NOT NULL DEFAULT true::boolean,
-	created_at timestamptz NOT NULL DEFAULT now(),
-	updated_at timestamptz NOT NULL DEFAULT now(),
-	CONSTRAINT pk_modules PRIMARY KEY (id)
+-- object: public.fn_assign_module_to_tenant | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_assign_module_to_tenant() CASCADE;
+CREATE FUNCTION public.fn_assign_module_to_tenant ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
 
-);
--- ddl-end --
-ALTER TABLE public.modules OWNER TO postgres;
--- ddl-end --
+BEGIN
+	IF NEW.type <> 'component'
+	THEN
+		RETURN NEW;
+	END IF;
 
--- object: uidx_module_parent_name | type: INDEX --
--- DROP INDEX IF EXISTS public.uidx_module_parent_name CASCADE;
-CREATE UNIQUE INDEX uidx_module_parent_name ON public.modules
-	USING btree
-	(
-	  parent_id ASC NULLS LAST,
-	  name ASC NULLS LAST
-	);
+	IF NEW.admin_only = true
+	THEN
+		INSERT INTO tenant_modules (
+			tenant_id,
+			module_id
+		)
+		SELECT 
+			id,
+			NEW.id
+		FROM
+			tenants
+		WHERE
+			parent_id IS NULL;
+	END IF;
+
+	IF NEW.admin_only = false
+	THEN
+		INSERT INTO tenant_modules (
+			tenant_id,
+			module_id
+		)
+		SELECT 
+			id,
+			NEW.id
+		FROM
+			tenants;
+	END IF;
+
+	RETURN NEW;
+END;
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_assign_module_to_tenant() OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.fn_get_module_ancestors | type: FUNCTION --
@@ -220,6 +242,23 @@ CREATE FUNCTION public.fn_check_module_upsert_is_valid ()
 DECLARE
 	is_module_in_tree	INTEGER;
 BEGIN
+	IF OLD IS NOT NULL
+	THEN
+		IF OLD.name <> NEW.name
+		THEN
+			RAISE SQLSTATE '2F003' USING MESSAGE = 'Module name is NOT mutable';
+			RETURN NULL;
+		END IF;
+
+		IF OLD.type <> NEW.type
+		THEN
+			RAISE SQLSTATE '2F003' USING MESSAGE = 'Module type is NOT mutable';
+			RETURN NULL;
+		END IF;
+	END IF;
+
+
+
 	IF NEW.parent_id IS NULL
 	THEN
 		RETURN NEW;
@@ -274,15 +313,6 @@ $$;
 ALTER FUNCTION public.fn_check_module_upsert_is_valid() OWNER TO postgres;
 -- ddl-end --
 
--- object: trigger_check_module_upsert_is_valid | type: TRIGGER --
--- DROP TRIGGER IF EXISTS trigger_check_module_upsert_is_valid ON public.modules  ON public.modules CASCADE;
-CREATE TRIGGER trigger_check_module_upsert_is_valid
-	BEFORE INSERT OR UPDATE
-	ON public.modules
-	FOR EACH ROW
-	EXECUTE PROCEDURE public.fn_check_module_upsert_is_valid();
--- ddl-end --
-
 -- object: public.fn_notify_config_change | type: FUNCTION --
 -- DROP FUNCTION IF EXISTS public.fn_notify_config_change() CASCADE;
 CREATE FUNCTION public.fn_notify_config_change ()
@@ -317,40 +347,25 @@ $$;
 ALTER FUNCTION public.fn_notify_config_change() OWNER TO postgres;
 -- ddl-end --
 
--- object: trigger_notify_config_change | type: TRIGGER --
--- DROP TRIGGER IF EXISTS trigger_notify_config_change ON public.modules  ON public.modules CASCADE;
-CREATE TRIGGER trigger_notify_config_change
-	AFTER UPDATE
-	ON public.modules
-	FOR EACH ROW
-	EXECUTE PROCEDURE public.fn_notify_config_change();
--- ddl-end --
-
--- object: public.permissions | type: TABLE --
--- DROP TABLE IF EXISTS public.permissions CASCADE;
-CREATE TABLE public.permissions(
+-- object: public.modules | type: TABLE --
+-- DROP TABLE IF EXISTS public.modules CASCADE;
+CREATE TABLE public.modules(
 	id uuid NOT NULL DEFAULT uuid_generate_v4(),
-	module_id uuid NOT NULL,
+	parent_id uuid,
+	type public.module_type NOT NULL DEFAULT 'component',
 	name text NOT NULL,
 	display_name text NOT NULL,
-	description text NOT NULL DEFAULT 'Another Random Permission'::text,
+	description text NOT NULL DEFAULT 'Another Twyr Module',
+	admin_only boolean DEFAULT false::boolean,
+	configuration jsonb NOT NULL DEFAULT '{}'::json,
+	enabled boolean NOT NULL DEFAULT true::boolean,
 	created_at timestamptz NOT NULL DEFAULT now(),
 	updated_at timestamptz NOT NULL DEFAULT now(),
-	CONSTRAINT pk_permissions PRIMARY KEY (id)
+	CONSTRAINT pk_modules PRIMARY KEY (id)
 
 );
 -- ddl-end --
-ALTER TABLE public.permissions OWNER TO postgres;
--- ddl-end --
-
--- object: uidx_permissions | type: INDEX --
--- DROP INDEX IF EXISTS public.uidx_permissions CASCADE;
-CREATE UNIQUE INDEX uidx_permissions ON public.permissions
-	USING btree
-	(
-	  module_id ASC NULLS LAST,
-	  name ASC NULLS LAST
-	);
+ALTER TABLE public.modules OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.tenant_type | type: TYPE --
@@ -569,19 +584,21 @@ CREATE TABLE public.tenant_user_groups(
 ALTER TABLE public.tenant_user_groups OWNER TO postgres;
 -- ddl-end --
 
--- object: public.group_permissions | type: TABLE --
--- DROP TABLE IF EXISTS public.group_permissions CASCADE;
-CREATE TABLE public.group_permissions(
+-- object: public.permissions | type: TABLE --
+-- DROP TABLE IF EXISTS public.permissions CASCADE;
+CREATE TABLE public.permissions(
 	id uuid NOT NULL DEFAULT uuid_generate_v4(),
-	group_id uuid NOT NULL,
-	permission_id uuid NOT NULL,
+	module_id uuid NOT NULL,
+	name text NOT NULL,
+	display_name text NOT NULL,
+	description text NOT NULL DEFAULT 'Another Random Permission'::text,
 	created_at timestamptz NOT NULL DEFAULT now(),
 	updated_at timestamptz NOT NULL DEFAULT now(),
-	CONSTRAINT pk_group_permissions PRIMARY KEY (id)
+	CONSTRAINT pk_permissions PRIMARY KEY (id)
 
 );
 -- ddl-end --
-ALTER TABLE public.group_permissions OWNER TO postgres;
+ALTER TABLE public.permissions OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.fn_get_tenant_ancestors | type: FUNCTION --
@@ -617,7 +634,7 @@ BEGIN
 			B.type
 		FROM
 			q,
-			tenant B
+			tenants B
 		WHERE
 			B.id = q.parent_id
 	)
@@ -806,18 +823,908 @@ CREATE TRIGGER trigger_check_tenant_upsert_is_valid
 	EXECUTE PROCEDURE public.fn_check_tenant_upsert_is_valid();
 -- ddl-end --
 
+-- object: public.fn_get_group_ancestors | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_get_group_ancestors(IN uuid) CASCADE;
+CREATE FUNCTION public.fn_get_group_ancestors (IN groupid uuid)
+	RETURNS TABLE ( level integer,  id uuid,  parent_id uuid,  name text)
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+
+BEGIN
+	RETURN QUERY
+	WITH RECURSIVE q AS (
+		SELECT
+			1 AS level,
+			A.id,
+			A.parent_id,
+			A.name
+		FROM
+			groups A
+		WHERE
+			A.id = groupid
+		UNION ALL
+		SELECT
+			q.level + 1,
+			B.id,
+			B.parent_id,
+			B.name
+		FROM
+			q,
+			groups B
+		WHERE
+			B.id = q.parent_id
+	)
+	SELECT DISTINCT
+		q.level,
+		q.id,
+		q.parent_id,
+		q.name
+	FROM
+		q
+	ORDER BY
+		q.level,
+		q.parent_id;
+END;
+
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_get_group_ancestors(IN uuid) OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.fn_get_group_descendants | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_get_group_descendants(IN uuid) CASCADE;
+CREATE FUNCTION public.fn_get_group_descendants (IN groupid uuid)
+	RETURNS TABLE ( level integer,  id uuid,  parent_id uuid,  name text)
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+
+BEGIN
+	RETURN QUERY
+	WITH RECURSIVE q AS (
+		SELECT
+			1 AS level,
+			A.id,
+			A.parent_id,
+			A.name
+		FROM
+			groups A
+		WHERE
+			A.id = groupid
+		UNION ALL
+		SELECT
+			q.level + 1,
+			B.id,
+			B.parent_id,
+			B.name
+		FROM
+			q,
+			groups B
+		WHERE
+			B.parent_id = q.id
+	)
+	SELECT DISTINCT
+		q.level,
+		q.id,
+		q.parent_id,
+		q.name
+	FROM
+		q
+	ORDER BY
+		q.level,
+		q.parent_id;
+END;
+
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_get_group_descendants(IN uuid) OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.fn_check_group_update_is_valid | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_check_group_update_is_valid() CASCADE;
+CREATE FUNCTION public.fn_check_group_update_is_valid ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+
+BEGIN
+	IF OLD.parent_id <> NEW.parent_id
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Group cannot change parent';
+		RETURN NULL;
+	END IF;
+
+	RETURN NEW;
+END;
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_check_group_update_is_valid() OWNER TO postgres;
+-- ddl-end --
+
+-- object: trigger_check_group_update_is_valid | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_check_group_update_is_valid ON public.groups  ON public.groups CASCADE;
+CREATE TRIGGER trigger_check_group_update_is_valid
+	BEFORE UPDATE
+	ON public.groups
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_check_group_update_is_valid();
+-- ddl-end --
+
+-- object: public.fn_assign_default_group_to_tenant_user | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_assign_default_group_to_tenant_user() CASCADE;
+CREATE FUNCTION public.fn_assign_default_group_to_tenant_user ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+
+DECLARE
+	default_group_id	UUID;
+BEGIN
+	default_group_id := NULL;
+	SELECT
+		id
+	FROM
+		groups
+	WHERE
+		tenant_id = NEW.tenant_id AND
+		default_for_new_user = true
+	INTO
+		default_group_id;
+
+	IF default_group_id IS NULL
+	THEN
+		RETURN NEW;
+	END IF;
+
+	INSERT INTO tenant_user_groups (
+		tenant_id,
+		group_id,
+		user_id
+	)
+	VALUES (
+		NEW.tenant_id,
+		default_group_id,
+		NEW.user_id
+	);
+
+	RETURN NEW;
+END;
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_assign_default_group_to_tenant_user() OWNER TO postgres;
+-- ddl-end --
+
+-- object: trigger_assign_default_group_to_tenant_user | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_assign_default_group_to_tenant_user ON public.tenants_users  ON public.tenants_users CASCADE;
+CREATE TRIGGER trigger_assign_default_group_to_tenant_user
+	AFTER INSERT 
+	ON public.tenants_users
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_assign_default_group_to_tenant_user();
+-- ddl-end --
+
+-- object: public.fn_remove_group_permission_from_descendants | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_remove_group_permission_from_descendants() CASCADE;
+CREATE FUNCTION public.fn_remove_group_permission_from_descendants ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+
+BEGIN
+	DELETE FROM
+		group_permissions
+	WHERE
+		group_id IN (SELECT id FROM fn_get_group_descendants(OLD.group_id) WHERE level = 2) AND
+		permission_id = OLD.permission_id;
+
+	RETURN OLD;
+END;
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_remove_group_permission_from_descendants() OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.social_logins | type: TABLE --
+-- DROP TABLE IF EXISTS public.social_logins CASCADE;
+CREATE TABLE public.social_logins(
+	id uuid NOT NULL DEFAULT uuid_generate_v4(),
+	user_id uuid NOT NULL,
+	provider text NOT NULL,
+	provider_id text NOT NULL,
+	display_name text NOT NULL,
+	social_data jsonb NOT NULL,
+	created_at timestamptz NOT NULL DEFAULT now(),
+	updated_at timestamptz NOT NULL DEFAULT now(),
+	CONSTRAINT pk_social_logins PRIMARY KEY (id)
+
+);
+-- ddl-end --
+ALTER TABLE public.social_logins OWNER TO postgres;
+-- ddl-end --
+
+-- object: uidx_social_logins | type: INDEX --
+-- DROP INDEX IF EXISTS public.uidx_social_logins CASCADE;
+CREATE UNIQUE INDEX uidx_social_logins ON public.social_logins
+	USING btree
+	(
+	  provider ASC NULLS LAST,
+	  provider_id ASC NULLS LAST
+	);
+-- ddl-end --
+
+-- object: public.group_permissions | type: TABLE --
+-- DROP TABLE IF EXISTS public.group_permissions CASCADE;
+CREATE TABLE public.group_permissions(
+	id uuid NOT NULL DEFAULT uuid_generate_v4(),
+	tenant_id uuid NOT NULL,
+	group_id uuid NOT NULL,
+	module_id uuid NOT NULL,
+	permission_id uuid NOT NULL,
+	created_at timestamptz NOT NULL DEFAULT now(),
+	updated_at timestamptz NOT NULL DEFAULT now(),
+	CONSTRAINT pk_group_permissions PRIMARY KEY (id)
+
+);
+-- ddl-end --
+ALTER TABLE public.group_permissions OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.fn_assign_defaults_to_tenant | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_assign_defaults_to_tenant() CASCADE;
+CREATE FUNCTION public.fn_assign_defaults_to_tenant ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+
+BEGIN
+	INSERT INTO groups (
+		parent_id,
+		tenant_id,
+		name,
+		display_name,
+		description
+	)
+	VALUES (
+		NULL,
+		NEW.id,
+		'administrators'
+		NEW.name || 'Administrators',
+		'The Administrator Group for ' || NEW.name
+	);
+
+	IF NEW.parent_id IS NOT NULL
+	THEN
+		INSERT INTO tenant_modules (
+			tenant_id,
+			module_id
+		)
+		SELECT 
+			NEW.id,
+			id
+		FROM
+			modules
+		WHERE
+			admin_only = false AND
+			type = 'component';
+	END IF;
+
+	IF NEW.parent_id IS NULL
+	THEN
+		INSERT INTO tenant_modules (
+			tenant_id,
+			module_id
+		)
+		SELECT 
+			NEW.id,
+			id
+		FROM
+			modules
+		WHERE
+			type = 'component';
+	END IF;
+
+	RETURN NEW;
+END;
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_assign_defaults_to_tenant() OWNER TO postgres;
+-- ddl-end --
+
+-- object: trigger_assign_defaults_to_tenant | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_assign_defaults_to_tenant ON public.tenants  ON public.tenants CASCADE;
+CREATE TRIGGER trigger_assign_defaults_to_tenant
+	AFTER INSERT 
+	ON public.tenants
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_assign_defaults_to_tenant();
+-- ddl-end --
+
+-- object: public.fn_check_permission_insert_is_valid | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_check_permission_insert_is_valid() CASCADE;
+CREATE FUNCTION public.fn_check_permission_insert_is_valid ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+
+DECLARE
+	is_component	INTEGER;
+BEGIN
+	SELECT
+		count(id)
+	FROM
+		modules
+	WHERE
+		id = NEW.module_id AND
+		type = 'component'
+	INTO
+		is_component;
+
+	IF is_component <= 0
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Permissions can be defined only for components, and not for other types of modules';
+		RETURN NULL;
+	END IF;
+
+	RETURN NEW;
+END;
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_check_permission_insert_is_valid() OWNER TO postgres;
+-- ddl-end --
+
+-- object: trigger_check_permission_insert_is_valid | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_check_permission_insert_is_valid ON public.permissions  ON public.permissions CASCADE;
+CREATE TRIGGER trigger_check_permission_insert_is_valid
+	BEFORE INSERT 
+	ON public.permissions
+	FOR EACH STATEMENT
+	EXECUTE PROCEDURE public.fn_check_permission_insert_is_valid();
+-- ddl-end --
+
+-- object: public.fn_check_permission_update_is_valid | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_check_permission_update_is_valid() CASCADE;
+CREATE FUNCTION public.fn_check_permission_update_is_valid ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+
+BEGIN
+	IF OLD.module_id <> NEW.module_id
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Module assigned to a permission is NOT mutable';
+		RETURN NULL;
+	END IF;
+
+	IF OLD.name <> NEW.name
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Permission name is NOT mutable';
+		RETURN NULL;
+	END IF;
+
+	RETURN NEW;
+END;
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_check_permission_update_is_valid() OWNER TO postgres;
+-- ddl-end --
+
+-- object: trigger_check_permission_update_is_valid | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_check_permission_update_is_valid ON public.permissions  ON public.permissions CASCADE;
+CREATE TRIGGER trigger_check_permission_update_is_valid
+	BEFORE UPDATE
+	ON public.permissions
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_check_permission_update_is_valid();
+-- ddl-end --
+
+-- object: public.tenant_modules | type: TABLE --
+-- DROP TABLE IF EXISTS public.tenant_modules CASCADE;
+CREATE TABLE public.tenant_modules(
+	id uuid NOT NULL DEFAULT uuid_generate_v4(),
+	tenant_id uuid NOT NULL,
+	module_id uuid NOT NULL,
+	created_at timestamptz NOT NULL DEFAULT now(),
+	updated_at timestamptz NOT NULL DEFAULT now(),
+	CONSTRAINT pk_tenant_modules PRIMARY KEY (id)
+
+);
+-- ddl-end --
+ALTER TABLE public.tenant_modules OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.fn_check_tenant_module_upsert_is_valid | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_check_tenant_module_upsert_is_valid() CASCADE;
+CREATE FUNCTION public.fn_check_tenant_module_upsert_is_valid ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+
+DECLARE
+	is_component	INTEGER;
+	is_admin_only	BOOLEAN;
+	component_parent_id	UUID;
+	tenant_parent_id	UUID;
+BEGIN
+	is_component := 0;
+	SELECT
+		count(id)
+	FROM
+		modules
+	WHERE
+		id = NEW.module_id AND
+		type = 'component'
+	INTO
+		is_component;
+
+	IF is_component <= 0
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Only components can be mapped to tenants';
+		RETURN NULL;
+	END IF;
+
+	component_parent_id := NULL;
+	SELECT 
+		parent_id
+	FROM
+		modules
+	WHERE
+		id = NEW.module_id
+	INTO
+		component_parent_id;
+
+	IF component_parent_id IS NOT NULL
+	THEN
+		is_component := 0;
+		SELECT
+			count(id)
+		FROM
+			tenant_modules
+		WHERE
+			tenant_id = NEW.tenant_id AND
+			module_id = component_parent_id
+		INTO
+			is_component;
+
+		IF is_component = 0
+		THEN
+			RAISE SQLSTATE '2F003' USING MESSAGE = 'Parent component not mapped to this Tenant';
+			RETURN NULL;
+		END IF;
+	END IF;
+
+	is_admin_only := false;
+	SELECT
+		admin_only
+	FROM
+		modules
+	WHERE
+		id = NEW.module_id
+	INTO
+		is_admin_only;
+
+	IF is_admin_only = false
+	THEN
+		RETURN NEW;
+	END IF;
+
+	tenant_parent_id := NULL;
+	SELECT
+		parent_id
+	FROM
+		tenants
+	WHERE
+		id = NEW.tenant_id
+	INTO
+		tenant_parent_id;
+
+	IF tenant_parent_id IS NOT NULL
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Admin only components can be mapped only to root tenant';
+		RETURN NULL;
+	END IF;
+
+	RETURN NEW;
+END;
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_check_tenant_module_upsert_is_valid() OWNER TO postgres;
+-- ddl-end --
+
+-- object: trigger_check_tenant_module_upsert_is_valid | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_check_tenant_module_upsert_is_valid ON public.tenant_modules  ON public.tenant_modules CASCADE;
+CREATE TRIGGER trigger_check_tenant_module_upsert_is_valid
+	BEFORE INSERT OR UPDATE
+	ON public.tenant_modules
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_check_tenant_module_upsert_is_valid();
+-- ddl-end --
+
+-- object: trigger_notify_config_change | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_notify_config_change ON public.modules  ON public.modules CASCADE;
+CREATE TRIGGER trigger_notify_config_change
+	AFTER UPDATE
+	ON public.modules
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_notify_config_change();
+-- ddl-end --
+
+-- object: trigger_check_module_upsert_is_valid | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_check_module_upsert_is_valid ON public.modules  ON public.modules CASCADE;
+CREATE TRIGGER trigger_check_module_upsert_is_valid
+	BEFORE INSERT OR UPDATE
+	ON public.modules
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_check_module_upsert_is_valid();
+-- ddl-end --
+
+-- object: trigger_assign_module_to_tenant | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_assign_module_to_tenant ON public.modules  ON public.modules CASCADE;
+CREATE TRIGGER trigger_assign_module_to_tenant
+	AFTER INSERT 
+	ON public.modules
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_assign_module_to_tenant();
+-- ddl-end --
+
+-- object: uidx_module_parent_name | type: INDEX --
+-- DROP INDEX IF EXISTS public.uidx_module_parent_name CASCADE;
+CREATE UNIQUE INDEX uidx_module_parent_name ON public.modules
+	USING btree
+	(
+	  parent_id ASC NULLS LAST,
+	  name ASC NULLS LAST
+	);
+-- ddl-end --
+
+-- object: uidx_permissions | type: INDEX --
+-- DROP INDEX IF EXISTS public.uidx_permissions CASCADE;
+CREATE UNIQUE INDEX uidx_permissions ON public.permissions
+	USING btree
+	(
+	  module_id ASC NULLS LAST,
+	  name ASC NULLS LAST
+	);
+-- ddl-end --
+
+-- object: trigger_remove_group_permission_from_descendants | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_remove_group_permission_from_descendants ON public.group_permissions  ON public.group_permissions CASCADE;
+CREATE TRIGGER trigger_remove_group_permission_from_descendants
+	BEFORE DELETE 
+	ON public.group_permissions
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_remove_group_permission_from_descendants();
+-- ddl-end --
+
+-- object: uidx_tenant_modules | type: INDEX --
+-- DROP INDEX IF EXISTS public.uidx_tenant_modules CASCADE;
+CREATE UNIQUE INDEX uidx_tenant_modules ON public.tenant_modules
+	USING btree
+	(
+	  tenant_id ASC NULLS LAST,
+	  module_id ASC NULLS LAST
+	);
+-- ddl-end --
+
+-- object: uidx_permissions_modules | type: INDEX --
+-- DROP INDEX IF EXISTS public.uidx_permissions_modules CASCADE;
+CREATE UNIQUE INDEX uidx_permissions_modules ON public.permissions
+	USING btree
+	(
+	  module_id ASC NULLS LAST,
+	  id ASC NULLS LAST
+	);
+-- ddl-end --
+
+-- object: public.fn_assign_permission_to_tenant_group | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_assign_permission_to_tenant_group() CASCADE;
+CREATE FUNCTION public.fn_assign_permission_to_tenant_group ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+
+DECLARE
+	tenant_root_group_id	UUID;
+BEGIN
+	tenant_root_group_id := NULL;
+	SELECT
+		id
+	FROM
+		groups
+	WHERE
+		tenant_id = NEW.tenant_id AND
+		parent_id IS NULL
+	INTO
+		tenant_root_group_id;
+
+	IF tenant_root_group_id IS NULL
+	THEN
+		RETURN NEW;
+	END IF;
+
+	INSERT INTO group_permissions(
+		tenant_id,
+		group_id,
+		module_id,
+		permission_id
+	)
+	SELECT
+		NEW.tenant_id,
+		tenant_root_group_id,
+		module_id,
+		id
+	FROM
+		permissions
+	WHERE
+		module_id = NEW.module_id;
+
+	RETURN NEW;
+END;
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_assign_permission_to_tenant_group() OWNER TO postgres;
+-- ddl-end --
+
+-- object: trigger_assign_permission_to_tenant_group | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_assign_permission_to_tenant_group ON public.tenant_modules  ON public.tenant_modules CASCADE;
+CREATE TRIGGER trigger_assign_permission_to_tenant_group
+	AFTER INSERT OR UPDATE
+	ON public.tenant_modules
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_assign_permission_to_tenant_group();
+-- ddl-end --
+
+-- object: uidx_group_permissions | type: INDEX --
+-- DROP INDEX IF EXISTS public.uidx_group_permissions CASCADE;
+CREATE UNIQUE INDEX uidx_group_permissions ON public.group_permissions
+	USING btree
+	(
+	  group_id ASC NULLS LAST,
+	  permission_id ASC NULLS LAST
+	);
+-- ddl-end --
+
+-- object: public.fn_assign_permission_to_tenants | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_assign_permission_to_tenants() CASCADE;
+CREATE FUNCTION public.fn_assign_permission_to_tenants ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+BEGIN
+	INSERT INTO group_permissions (
+		tenant_id,
+		group_id,
+		module_id,
+		permission_id
+	)
+	SELECT
+		A.tenant_id,
+		B.id,
+		A.module_id,
+		NEW.id
+	FROM
+		tenant_modules A
+		INNER JOIN groups B ON (A.tenant_id = B.tenant_id AND B.parent_id IS NULL)
+	WHERE
+		module_id = NEW.module_id;
+
+	RETURN NEW;
+END;
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_assign_permission_to_tenants() OWNER TO postgres;
+-- ddl-end --
+
+-- object: trigger_assign_permission_to_tenants | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_assign_permission_to_tenants ON public.permissions  ON public.permissions CASCADE;
+CREATE TRIGGER trigger_assign_permission_to_tenants
+	AFTER INSERT 
+	ON public.permissions
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_assign_permission_to_tenants();
+-- ddl-end --
+
+-- object: uidx_tenant_user_groups | type: INDEX --
+-- DROP INDEX IF EXISTS public.uidx_tenant_user_groups CASCADE;
+CREATE UNIQUE INDEX uidx_tenant_user_groups ON public.tenant_user_groups
+	USING btree
+	(
+	  tenant_id ASC NULLS LAST,
+	  group_id ASC NULLS LAST,
+	  user_id ASC NULLS LAST
+	);
+-- ddl-end --
+
+-- object: public.fn_remove_descendant_group_from_tenant_user | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_remove_descendant_group_from_tenant_user() CASCADE;
+CREATE FUNCTION public.fn_remove_descendant_group_from_tenant_user ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+BEGIN
+	DELETE FROM 
+		tenant_user_groups
+	WHERE
+		tenant_id = NEW.tenant_id AND
+		group_id IN (SELECT id FROM fn_get_group_descendants(NEW.group_id) WHERE level > 1) AND
+		user_id = NEW.user_id;
+
+	RETURN NEW;
+END;
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_remove_descendant_group_from_tenant_user() OWNER TO postgres;
+-- ddl-end --
+
+-- object: trigger_remove_descendant_group_from_tenant_user | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_remove_descendant_group_from_tenant_user ON public.tenant_user_groups  ON public.tenant_user_groups CASCADE;
+CREATE TRIGGER trigger_remove_descendant_group_from_tenant_user
+	AFTER INSERT OR UPDATE
+	ON public.tenant_user_groups
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_remove_descendant_group_from_tenant_user();
+-- ddl-end --
+
+-- object: public.fn_check_group_permission_insert_is_valid | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_check_group_permission_insert_is_valid() CASCADE;
+CREATE FUNCTION public.fn_check_group_permission_insert_is_valid ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+DECLARE
+	parent_group_id			UUID;
+	does_parent_group_have_permission	INTEGER;
+BEGIN
+	parent_group_id := NULL;
+	SELECT
+		parent_id
+	FROM
+		groups
+	WHERE
+		id = NEW.group_id
+	INTO
+		parent_group_id;
+
+	IF parent_group_id IS NULL
+	THEN
+		RETURN NEW;
+	END IF;
+
+	does_parent_group_have_permission := 0;
+	SELECT
+		count(id)
+	FROM
+		group_permissions
+	WHERE
+		group_id = parent_group_id AND
+		permission_id = NEW.permission_id
+	INTO
+		does_parent_group_have_permission;
+
+	IF does_parent_group_have_permission > 0
+	THEN
+		RETURN NEW;
+	END IF;
+
+	RAISE SQLSTATE '2F003' USING MESSAGE = 'Parent Group does not have this permission';	
+	RETURN NULL;
+END;
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_check_group_permission_insert_is_valid() OWNER TO postgres;
+-- ddl-end --
+
+-- object: trigger_check_group_permission_insert_is_valid | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_check_group_permission_insert_is_valid ON public.group_permissions  ON public.group_permissions CASCADE;
+CREATE TRIGGER trigger_check_group_permission_insert_is_valid
+	BEFORE INSERT OR UPDATE
+	ON public.group_permissions
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_check_group_permission_insert_is_valid();
+-- ddl-end --
+
+-- object: public.fn_check_tenant_user_group_upsert_is_valid | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_check_tenant_user_group_upsert_is_valid() CASCADE;
+CREATE FUNCTION public.fn_check_tenant_user_group_upsert_is_valid ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+DECLARE
+	is_member_of_ancestor_group	INTEGER;
+BEGIN
+	is_member_of_ancestor_group := 0;
+	SELECT
+		count(id)
+	FROM
+		tenant_user_groups
+	WHERE
+		tenant_id = NEW.tenant_id AND
+		group_id IN (SELECT id FROM fn_get_group_ancestors(NEW.group_id) WHERE level > 1) AND
+		user_id = NEW.user_id
+	INTO
+		is_member_of_ancestor_group;
+
+	IF is_member_of_ancestor_group = 0
+	THEN
+		RETURN NEW;
+	END IF;
+
+	RAISE SQLSTATE '2F003' USING MESSAGE = 'User is already a member of a Parent Group';
+	RETURN NULL;
+END;
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_check_tenant_user_group_upsert_is_valid() OWNER TO postgres;
+-- ddl-end --
+
+-- object: trigger_check_tenant_user_group_upsert_is_valid | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_check_tenant_user_group_upsert_is_valid ON public.tenant_user_groups  ON public.tenant_user_groups CASCADE;
+CREATE TRIGGER trigger_check_tenant_user_group_upsert_is_valid
+	BEFORE INSERT OR UPDATE
+	ON public.tenant_user_groups
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_check_tenant_user_group_upsert_is_valid();
+-- ddl-end --
+
 -- object: fk_modules_modules | type: CONSTRAINT --
 -- ALTER TABLE public.modules DROP CONSTRAINT IF EXISTS fk_modules_modules CASCADE;
 ALTER TABLE public.modules ADD CONSTRAINT fk_modules_modules FOREIGN KEY (parent_id)
 REFERENCES public.modules (id) MATCH FULL
 ON DELETE NO ACTION ON UPDATE NO ACTION;
--- ddl-end --
-
--- object: fk_permissions_modules | type: CONSTRAINT --
--- ALTER TABLE public.permissions DROP CONSTRAINT IF EXISTS fk_permissions_modules CASCADE;
-ALTER TABLE public.permissions ADD CONSTRAINT fk_permissions_modules FOREIGN KEY (module_id)
-REFERENCES public.modules (id) MATCH FULL
-ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_tenant_parent | type: CONSTRAINT --
@@ -838,7 +1745,7 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 -- ALTER TABLE public.tenants_users DROP CONSTRAINT IF EXISTS fk_tenants_users_tenants CASCADE;
 ALTER TABLE public.tenants_users ADD CONSTRAINT fk_tenants_users_tenants FOREIGN KEY (tenant_id)
 REFERENCES public.tenants (id) MATCH FULL
-ON DELETE NO ACTION ON UPDATE NO ACTION;
+ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_tenants_users_locations | type: CONSTRAINT --
@@ -851,8 +1758,8 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 -- object: fk_tenants_users_job_titles | type: CONSTRAINT --
 -- ALTER TABLE public.tenants_users DROP CONSTRAINT IF EXISTS fk_tenants_users_job_titles CASCADE;
 ALTER TABLE public.tenants_users ADD CONSTRAINT fk_tenants_users_job_titles FOREIGN KEY (tenant_id,job_title_id)
-REFERENCES public.job_titles (tenant_id,id) MATCH FULL
-ON DELETE NO ACTION ON UPDATE NO ACTION;
+REFERENCES public.job_titles (id,tenant_id) MATCH FULL
+ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_locations_tenants | type: CONSTRAINT --
@@ -886,7 +1793,7 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 -- object: fk_tenant_user_groups_groups | type: CONSTRAINT --
 -- ALTER TABLE public.tenant_user_groups DROP CONSTRAINT IF EXISTS fk_tenant_user_groups_groups CASCADE;
 ALTER TABLE public.tenant_user_groups ADD CONSTRAINT fk_tenant_user_groups_groups FOREIGN KEY (tenant_id,group_id)
-REFERENCES public.groups (id,tenant_id) MATCH FULL
+REFERENCES public.groups (tenant_id,id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
@@ -897,17 +1804,52 @@ REFERENCES public.tenants_users (tenant_id,user_id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
+-- object: fk_permissions_modules | type: CONSTRAINT --
+-- ALTER TABLE public.permissions DROP CONSTRAINT IF EXISTS fk_permissions_modules CASCADE;
+ALTER TABLE public.permissions ADD CONSTRAINT fk_permissions_modules FOREIGN KEY (module_id)
+REFERENCES public.modules (id) MATCH FULL
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: fk_social_logins_users | type: CONSTRAINT --
+-- ALTER TABLE public.social_logins DROP CONSTRAINT IF EXISTS fk_social_logins_users CASCADE;
+ALTER TABLE public.social_logins ADD CONSTRAINT fk_social_logins_users FOREIGN KEY (user_id)
+REFERENCES public.users (id) MATCH FULL
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
 -- object: fk_group_permissions_groups | type: CONSTRAINT --
 -- ALTER TABLE public.group_permissions DROP CONSTRAINT IF EXISTS fk_group_permissions_groups CASCADE;
-ALTER TABLE public.group_permissions ADD CONSTRAINT fk_group_permissions_groups FOREIGN KEY (group_id)
-REFERENCES public.groups (id) MATCH FULL
+ALTER TABLE public.group_permissions ADD CONSTRAINT fk_group_permissions_groups FOREIGN KEY (tenant_id,group_id)
+REFERENCES public.groups (tenant_id,id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_group_permissions_permissions | type: CONSTRAINT --
 -- ALTER TABLE public.group_permissions DROP CONSTRAINT IF EXISTS fk_group_permissions_permissions CASCADE;
-ALTER TABLE public.group_permissions ADD CONSTRAINT fk_group_permissions_permissions FOREIGN KEY (permission_id)
-REFERENCES public.permissions (id) MATCH FULL
+ALTER TABLE public.group_permissions ADD CONSTRAINT fk_group_permissions_permissions FOREIGN KEY (module_id,permission_id)
+REFERENCES public.permissions (module_id,id) MATCH FULL
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: fk_group_permissions_tenant_modules | type: CONSTRAINT --
+-- ALTER TABLE public.group_permissions DROP CONSTRAINT IF EXISTS fk_group_permissions_tenant_modules CASCADE;
+ALTER TABLE public.group_permissions ADD CONSTRAINT fk_group_permissions_tenant_modules FOREIGN KEY (tenant_id,module_id)
+REFERENCES public.tenant_modules (tenant_id,module_id) MATCH FULL
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: fk_tenant_modules_tenants | type: CONSTRAINT --
+-- ALTER TABLE public.tenant_modules DROP CONSTRAINT IF EXISTS fk_tenant_modules_tenants CASCADE;
+ALTER TABLE public.tenant_modules ADD CONSTRAINT fk_tenant_modules_tenants FOREIGN KEY (tenant_id)
+REFERENCES public.tenants (id) MATCH FULL
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: fk_tenant_modules_modules | type: CONSTRAINT --
+-- ALTER TABLE public.tenant_modules DROP CONSTRAINT IF EXISTS fk_tenant_modules_modules CASCADE;
+ALTER TABLE public.tenant_modules ADD CONSTRAINT fk_tenant_modules_modules FOREIGN KEY (module_id)
+REFERENCES public.modules (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 

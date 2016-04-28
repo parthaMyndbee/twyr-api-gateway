@@ -45,7 +45,7 @@ var twyrModuleBase = prime({
 	},
 
 	'load': function(configSrvc, callback) {
-		//console.log(this.name + ' Load');
+		// console.log(this.name + ' Load');
 
 		var self = this,
 			promiseResolutions = [];

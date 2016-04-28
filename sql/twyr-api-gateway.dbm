@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="0,0" last-zoom="0.6"
+<dbmodel pgmodeler-ver="0.8.1" last-position="921,0" last-zoom="0.8"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -21,55 +21,58 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	<schema name="public"/>
 </extension>
 
-<table name="modules">
+<function name="fn_assign_module_to_tenant"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="146" y="60.6667"/>
-	<column name="id" not-null="true" default-value="uuid_generate_v4()">
-		<type name="uuid"/>
-	</column>
-	<column name="parent_id">
-		<type name="uuid"/>
-	</column>
-	<column name="type" not-null="true" default-value="'component'">
-		<type name="public.module_type"/>
-	</column>
-	<column name="name" not-null="true">
-		<type name="text"/>
-	</column>
-	<column name="display_name" not-null="true">
-		<type name="text"/>
-	</column>
-	<column name="description" not-null="true" default-value="'Another Twyr Module'">
-		<type name="text"/>
-	</column>
-	<column name="configuration" not-null="true" default-value="'{}'::json">
-		<type name="jsonb"/>
-	</column>
-	<column name="enabled" not-null="true" default-value="true::boolean">
-		<type name="boolean"/>
-	</column>
-	<column name="created_at" not-null="true" default-value="now()">
-		<type name="timestamptz"/>
-	</column>
-	<column name="updated_at" not-null="true" default-value="now()">
-		<type name="timestamptz"/>
-	</column>
-	<constraint name="pk_modules" type="pk-constr" table="public.modules">
-		<columns names="id" ref-type="src-columns"/>
-	</constraint>
-</table>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[
+BEGIN
+	IF NEW.type <> 'component'
+	THEN
+		RETURN NEW;
+	END IF;
 
-<index name="uidx_module_parent_name" table="public.modules"
-	 concurrent="false" unique="true" fast-update="false" buffering="false"
-	 index-type="btree" factor="0">
-		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="parent_id"/>
-		</idxelement>
-		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="name"/>
-		</idxelement>
-</index>
+	IF NEW.admin_only = true
+	THEN
+		INSERT INTO tenant_modules (
+			tenant_id,
+			module_id
+		)
+		SELECT 
+			id,
+			NEW.id
+		FROM
+			tenants
+		WHERE
+			parent_id IS NULL;
+	END IF;
+
+	IF NEW.admin_only = false
+	THEN
+		INSERT INTO tenant_modules (
+			tenant_id,
+			module_id
+		)
+		SELECT 
+			id,
+			NEW.id
+		FROM
+			tenants;
+	END IF;
+
+	RETURN NEW;
+END;]]></definition>
+</function>
 
 <function name="fn_get_module_ancestors"
 		window-func="false"
@@ -277,6 +280,23 @@ END;
 DECLARE
 	is_module_in_tree	INTEGER;
 BEGIN
+	IF OLD IS NOT NULL
+	THEN
+		IF OLD.name <> NEW.name
+		THEN
+			RAISE SQLSTATE '2F003' USING MESSAGE = 'Module name is NOT mutable';
+			RETURN NULL;
+		END IF;
+
+		IF OLD.type <> NEW.type
+		THEN
+			RAISE SQLSTATE '2F003' USING MESSAGE = 'Module type is NOT mutable';
+			RETURN NULL;
+		END IF;
+	END IF;
+
+
+
 	IF NEW.parent_id IS NULL
 	THEN
 		RETURN NEW;
@@ -328,12 +348,6 @@ END;
 ]]></definition>
 </function>
 
-<trigger name="trigger_check_module_upsert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
-	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
-	 table="public.modules">
-		<function signature="public.fn_check_module_upsert_is_valid()"/>
-</trigger>
-
 <function name="fn_notify_config_change"
 		window-func="false"
 		returns-setof="false"
@@ -369,21 +383,18 @@ BEGIN
 END;]]></definition>
 </function>
 
-<trigger name="trigger_notify_config_change" firing-type="AFTER" per-line="true" constraint="false"
-	 ins-event="false" del-event="false" upd-event="true" trunc-event="false"
-	 table="public.modules">
-		<function signature="public.fn_notify_config_change()"/>
-</trigger>
-
-<table name="permissions">
+<table name="modules">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="237" y="430"/>
+	<position x="24.3333" y="37.3334"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="module_id" not-null="true">
+	<column name="parent_id">
 		<type name="uuid"/>
+	</column>
+	<column name="type" not-null="true" default-value="'component'">
+		<type name="public.module_type"/>
 	</column>
 	<column name="name" not-null="true">
 		<type name="text"/>
@@ -391,8 +402,17 @@ END;]]></definition>
 	<column name="display_name" not-null="true">
 		<type name="text"/>
 	</column>
-	<column name="description" not-null="true" default-value="'Another Random Permission'::text">
+	<column name="description" not-null="true" default-value="'Another Twyr Module'">
 		<type name="text"/>
+	</column>
+	<column name="admin_only" default-value="false::boolean">
+		<type name="boolean"/>
+	</column>
+	<column name="configuration" not-null="true" default-value="'{}'::json">
+		<type name="jsonb"/>
+	</column>
+	<column name="enabled" not-null="true" default-value="true::boolean">
+		<type name="boolean"/>
 	</column>
 	<column name="created_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
@@ -400,21 +420,10 @@ END;]]></definition>
 	<column name="updated_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
 	</column>
-	<constraint name="pk_permissions" type="pk-constr" table="public.permissions">
+	<constraint name="pk_modules" type="pk-constr" table="public.modules">
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
 </table>
-
-<index name="uidx_permissions" table="public.permissions"
-	 concurrent="false" unique="true" fast-update="false" buffering="false"
-	 index-type="btree" factor="0">
-		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="module_id"/>
-		</idxelement>
-		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="name"/>
-		</idxelement>
-</index>
 
 <usertype name="tenant_type" configuration="enumeration">
 	<schema name="public"/>
@@ -425,7 +434,7 @@ END;]]></definition>
 <table name="tenants">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="2010" y="70.6667"/>
+	<position x="2050" y="61.9167"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -461,7 +470,7 @@ END;]]></definition>
 <table name="users">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="2664" y="857"/>
+	<position x="2790.67" y="868.667"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -525,7 +534,7 @@ END;]]></definition>
 <table name="tenants_users">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="2090" y="893.667"/>
+	<position x="2047.09" y="900.334"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -566,7 +575,7 @@ END;]]></definition>
 <table name="locations">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1664.67" y="414.667"/>
+	<position x="1843" y="418.001"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -628,7 +637,7 @@ END;]]></definition>
 <table name="job_titles">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="2373.67" y="436.667"/>
+	<position x="2367" y="483.333"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -666,7 +675,7 @@ END;]]></definition>
 <table name="groups">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1040" y="416.667"/>
+	<position x="1221.66" y="418.334"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -724,7 +733,7 @@ END;]]></definition>
 <table name="tenant_user_groups">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1070" y="911.667"/>
+	<position x="1377.08" y="910.833"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -748,18 +757,24 @@ END;]]></definition>
 	</constraint>
 </table>
 
-<table name="group_permissions">
+<table name="permissions">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="711.667" y="115"/>
+	<position x="35.3337" y="476.667"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="group_id" not-null="true">
+	<column name="module_id" not-null="true">
 		<type name="uuid"/>
 	</column>
-	<column name="permission_id" not-null="true">
-		<type name="uuid"/>
+	<column name="name" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="display_name" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="description" not-null="true" default-value="'Another Random Permission'::text">
+		<type name="text"/>
 	</column>
 	<column name="created_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
@@ -767,7 +782,7 @@ END;]]></definition>
 	<column name="updated_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
 	</column>
-	<constraint name="pk_group_permissions" type="pk-constr" table="public.group_permissions">
+	<constraint name="pk_permissions" type="pk-constr" table="public.permissions">
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
 </table>
@@ -797,7 +812,7 @@ END;]]></definition>
 		<type name="text"/>
 	</parameter>
 	<parameter name="type">
-		<type name="public.tenant_type"/>
+		<type name="public.tenant_type" precision="0"/>
 	</parameter>
 	</return-type>
 	<parameter name="tenantid" in="true">
@@ -826,7 +841,7 @@ BEGIN
 			B.type
 		FROM
 			q,
-			tenant B
+			tenants B
 		WHERE
 			B.id = q.parent_id
 	)
@@ -906,7 +921,7 @@ END;
 		<type name="text"/>
 	</parameter>
 	<parameter name="type">
-		<type name="public.tenant_type"/>
+		<type name="public.tenant_type" precision="0"/>
 	</parameter>
 	<parameter name="enabled">
 		<type name="boolean"/>
@@ -1035,15 +1050,949 @@ END;
 		<function signature="public.fn_check_tenant_upsert_is_valid()"/>
 </trigger>
 
+<function name="fn_get_group_ancestors"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<parameter name="level">
+		<type name="integer"/>
+	</parameter>
+	<parameter name="id">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="parent_id">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="name">
+		<type name="text"/>
+	</parameter>
+	</return-type>
+	<parameter name="groupid" in="true">
+		<type name="uuid"/>
+	</parameter>
+	<definition><![CDATA[
+BEGIN
+	RETURN QUERY
+	WITH RECURSIVE q AS (
+		SELECT
+			1 AS level,
+			A.id,
+			A.parent_id,
+			A.name
+		FROM
+			groups A
+		WHERE
+			A.id = groupid
+		UNION ALL
+		SELECT
+			q.level + 1,
+			B.id,
+			B.parent_id,
+			B.name
+		FROM
+			q,
+			groups B
+		WHERE
+			B.id = q.parent_id
+	)
+	SELECT DISTINCT
+		q.level,
+		q.id,
+		q.parent_id,
+		q.name
+	FROM
+		q
+	ORDER BY
+		q.level,
+		q.parent_id;
+END;
+]]></definition>
+</function>
+
+<function name="fn_get_group_descendants"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<parameter name="level">
+		<type name="integer"/>
+	</parameter>
+	<parameter name="id">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="parent_id">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="name">
+		<type name="text"/>
+	</parameter>
+	</return-type>
+	<parameter name="groupid" in="true">
+		<type name="uuid"/>
+	</parameter>
+	<definition><![CDATA[
+BEGIN
+	RETURN QUERY
+	WITH RECURSIVE q AS (
+		SELECT
+			1 AS level,
+			A.id,
+			A.parent_id,
+			A.name
+		FROM
+			groups A
+		WHERE
+			A.id = groupid
+		UNION ALL
+		SELECT
+			q.level + 1,
+			B.id,
+			B.parent_id,
+			B.name
+		FROM
+			q,
+			groups B
+		WHERE
+			B.parent_id = q.id
+	)
+	SELECT DISTINCT
+		q.level,
+		q.id,
+		q.parent_id,
+		q.name
+	FROM
+		q
+	ORDER BY
+		q.level,
+		q.parent_id;
+END;
+]]></definition>
+</function>
+
+<function name="fn_check_group_update_is_valid"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[
+BEGIN
+	IF OLD.parent_id <> NEW.parent_id
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Group cannot change parent';
+		RETURN NULL;
+	END IF;
+
+	RETURN NEW;
+END;]]></definition>
+</function>
+
+<trigger name="trigger_check_group_update_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
+	 ins-event="false" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.groups">
+		<function signature="public.fn_check_group_update_is_valid()"/>
+</trigger>
+
+<function name="fn_assign_default_group_to_tenant_user"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[
+DECLARE
+	default_group_id	UUID;
+BEGIN
+	default_group_id := NULL;
+	SELECT
+		id
+	FROM
+		groups
+	WHERE
+		tenant_id = NEW.tenant_id AND
+		default_for_new_user = true
+	INTO
+		default_group_id;
+
+	IF default_group_id IS NULL
+	THEN
+		RETURN NEW;
+	END IF;
+
+	INSERT INTO tenant_user_groups (
+		tenant_id,
+		group_id,
+		user_id
+	)
+	VALUES (
+		NEW.tenant_id,
+		default_group_id,
+		NEW.user_id
+	);
+
+	RETURN NEW;
+END;]]></definition>
+</function>
+
+<trigger name="trigger_assign_default_group_to_tenant_user" firing-type="AFTER" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="false" trunc-event="false"
+	 table="public.tenants_users">
+		<function signature="public.fn_assign_default_group_to_tenant_user()"/>
+</trigger>
+
+<function name="fn_remove_group_permission_from_descendants"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[
+BEGIN
+	DELETE FROM
+		group_permissions
+	WHERE
+		group_id IN (SELECT id FROM fn_get_group_descendants(OLD.group_id) WHERE level = 2) AND
+		permission_id = OLD.permission_id;
+
+	RETURN OLD;
+END;]]></definition>
+</function>
+
+<table name="social_logins">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="2790" y="548.333"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="user_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="provider" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="provider_id" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="display_name" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="social_data" not-null="true">
+		<type name="jsonb"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_social_logins" type="pk-constr" table="public.social_logins">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<index name="uidx_social_logins" table="public.social_logins"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="provider"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="provider_id"/>
+		</idxelement>
+</index>
+
+<table name="group_permissions">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="740" y="900.417"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="tenant_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="group_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="module_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="permission_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_group_permissions" type="pk-constr" table="public.group_permissions">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<function name="fn_assign_defaults_to_tenant"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[
+BEGIN
+	INSERT INTO groups (
+		parent_id,
+		tenant_id,
+		name,
+		display_name,
+		description
+	)
+	VALUES (
+		NULL,
+		NEW.id,
+		'administrators'
+		NEW.name || 'Administrators',
+		'The Administrator Group for ' || NEW.name
+	);
+
+	IF NEW.parent_id IS NOT NULL
+	THEN
+		INSERT INTO tenant_modules (
+			tenant_id,
+			module_id
+		)
+		SELECT 
+			NEW.id,
+			id
+		FROM
+			modules
+		WHERE
+			admin_only = false AND
+			type = 'component';
+	END IF;
+
+	IF NEW.parent_id IS NULL
+	THEN
+		INSERT INTO tenant_modules (
+			tenant_id,
+			module_id
+		)
+		SELECT 
+			NEW.id,
+			id
+		FROM
+			modules
+		WHERE
+			type = 'component';
+	END IF;
+
+	RETURN NEW;
+END;]]></definition>
+</function>
+
+<trigger name="trigger_assign_defaults_to_tenant" firing-type="AFTER" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="false" trunc-event="false"
+	 table="public.tenants">
+		<function signature="public.fn_assign_defaults_to_tenant()"/>
+</trigger>
+
+<function name="fn_check_permission_insert_is_valid"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[
+DECLARE
+	is_component	INTEGER;
+BEGIN
+	SELECT
+		count(id)
+	FROM
+		modules
+	WHERE
+		id = NEW.module_id AND
+		type = 'component'
+	INTO
+		is_component;
+
+	IF is_component <= 0
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Permissions can be defined only for components, and not for other types of modules';
+		RETURN NULL;
+	END IF;
+
+	RETURN NEW;
+END;]]></definition>
+</function>
+
+<trigger name="trigger_check_permission_insert_is_valid" firing-type="BEFORE" per-line="false" constraint="false"
+	 ins-event="true" del-event="false" upd-event="false" trunc-event="false"
+	 table="public.permissions">
+		<function signature="public.fn_check_permission_insert_is_valid()"/>
+</trigger>
+
+<function name="fn_check_permission_update_is_valid"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[
+BEGIN
+	IF OLD.module_id <> NEW.module_id
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Module assigned to a permission is NOT mutable';
+		RETURN NULL;
+	END IF;
+
+	IF OLD.name <> NEW.name
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Permission name is NOT mutable';
+		RETURN NULL;
+	END IF;
+
+	RETURN NEW;
+END;]]></definition>
+</function>
+
+<trigger name="trigger_check_permission_update_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
+	 ins-event="false" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.permissions">
+		<function signature="public.fn_check_permission_update_is_valid()"/>
+</trigger>
+
+<table name="tenant_modules">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="761.667" y="91.25"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="tenant_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="module_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_tenant_modules" type="pk-constr" table="public.tenant_modules">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<function name="fn_check_tenant_module_upsert_is_valid"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[
+DECLARE
+	is_component	INTEGER;
+	is_admin_only	BOOLEAN;
+	component_parent_id	UUID;
+	tenant_parent_id	UUID;
+BEGIN
+	is_component := 0;
+	SELECT
+		count(id)
+	FROM
+		modules
+	WHERE
+		id = NEW.module_id AND
+		type = 'component'
+	INTO
+		is_component;
+
+	IF is_component <= 0
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Only components can be mapped to tenants';
+		RETURN NULL;
+	END IF;
+
+	component_parent_id := NULL;
+	SELECT 
+		parent_id
+	FROM
+		modules
+	WHERE
+		id = NEW.module_id
+	INTO
+		component_parent_id;
+
+	IF component_parent_id IS NOT NULL
+	THEN
+		is_component := 0;
+		SELECT
+			count(id)
+		FROM
+			tenant_modules
+		WHERE
+			tenant_id = NEW.tenant_id AND
+			module_id = component_parent_id
+		INTO
+			is_component;
+
+		IF is_component = 0
+		THEN
+			RAISE SQLSTATE '2F003' USING MESSAGE = 'Parent component not mapped to this Tenant';
+			RETURN NULL;
+		END IF;
+	END IF;
+
+	is_admin_only := false;
+	SELECT
+		admin_only
+	FROM
+		modules
+	WHERE
+		id = NEW.module_id
+	INTO
+		is_admin_only;
+
+	IF is_admin_only = false
+	THEN
+		RETURN NEW;
+	END IF;
+
+	tenant_parent_id := NULL;
+	SELECT
+		parent_id
+	FROM
+		tenants
+	WHERE
+		id = NEW.tenant_id
+	INTO
+		tenant_parent_id;
+
+	IF tenant_parent_id IS NOT NULL
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Admin only components can be mapped only to root tenant';
+		RETURN NULL;
+	END IF;
+
+	RETURN NEW;
+END;]]></definition>
+</function>
+
+<trigger name="trigger_check_tenant_module_upsert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.tenant_modules">
+		<function signature="public.fn_check_tenant_module_upsert_is_valid()"/>
+</trigger>
+
+<trigger name="trigger_notify_config_change" firing-type="AFTER" per-line="true" constraint="false"
+	 ins-event="false" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.modules">
+		<function signature="public.fn_notify_config_change()"/>
+</trigger>
+
+<trigger name="trigger_check_module_upsert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.modules">
+		<function signature="public.fn_check_module_upsert_is_valid()"/>
+</trigger>
+
+<trigger name="trigger_assign_module_to_tenant" firing-type="AFTER" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="false" trunc-event="false"
+	 table="public.modules">
+		<function signature="public.fn_assign_module_to_tenant()"/>
+</trigger>
+
+<index name="uidx_module_parent_name" table="public.modules"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="parent_id"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="name"/>
+		</idxelement>
+</index>
+
+<index name="uidx_permissions" table="public.permissions"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="module_id"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="name"/>
+		</idxelement>
+</index>
+
+<trigger name="trigger_remove_group_permission_from_descendants" firing-type="BEFORE" per-line="true" constraint="false"
+	 ins-event="false" del-event="true" upd-event="false" trunc-event="false"
+	 table="public.group_permissions">
+		<function signature="public.fn_remove_group_permission_from_descendants()"/>
+</trigger>
+
+<index name="uidx_tenant_modules" table="public.tenant_modules"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="tenant_id"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="module_id"/>
+		</idxelement>
+</index>
+
+<index name="uidx_permissions_modules" table="public.permissions"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="module_id"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="id"/>
+		</idxelement>
+</index>
+
+<function name="fn_assign_permission_to_tenant_group"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[
+DECLARE
+	tenant_root_group_id	UUID;
+BEGIN
+	tenant_root_group_id := NULL;
+	SELECT
+		id
+	FROM
+		groups
+	WHERE
+		tenant_id = NEW.tenant_id AND
+		parent_id IS NULL
+	INTO
+		tenant_root_group_id;
+
+	IF tenant_root_group_id IS NULL
+	THEN
+		RETURN NEW;
+	END IF;
+
+	INSERT INTO group_permissions(
+		tenant_id,
+		group_id,
+		module_id,
+		permission_id
+	)
+	SELECT
+		NEW.tenant_id,
+		tenant_root_group_id,
+		module_id,
+		id
+	FROM
+		permissions
+	WHERE
+		module_id = NEW.module_id;
+
+	RETURN NEW;
+END;]]></definition>
+</function>
+
+<trigger name="trigger_assign_permission_to_tenant_group" firing-type="AFTER" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.tenant_modules">
+		<function signature="public.fn_assign_permission_to_tenant_group()"/>
+</trigger>
+
+<index name="uidx_group_permissions" table="public.group_permissions"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="group_id"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="permission_id"/>
+		</idxelement>
+</index>
+
+<function name="fn_assign_permission_to_tenants"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[BEGIN
+	INSERT INTO group_permissions (
+		tenant_id,
+		group_id,
+		module_id,
+		permission_id
+	)
+	SELECT
+		A.tenant_id,
+		B.id,
+		A.module_id,
+		NEW.id
+	FROM
+		tenant_modules A
+		INNER JOIN groups B ON (A.tenant_id = B.tenant_id AND B.parent_id IS NULL)
+	WHERE
+		module_id = NEW.module_id;
+
+	RETURN NEW;
+END;]]></definition>
+</function>
+
+<trigger name="trigger_assign_permission_to_tenants" firing-type="AFTER" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="false" trunc-event="false"
+	 table="public.permissions">
+		<function signature="public.fn_assign_permission_to_tenants()"/>
+</trigger>
+
+<index name="uidx_tenant_user_groups" table="public.tenant_user_groups"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="tenant_id"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="group_id"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="user_id"/>
+		</idxelement>
+</index>
+
+<function name="fn_remove_descendant_group_from_tenant_user"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[BEGIN
+	DELETE FROM 
+		tenant_user_groups
+	WHERE
+		tenant_id = NEW.tenant_id AND
+		group_id IN (SELECT id FROM fn_get_group_descendants(NEW.group_id) WHERE level > 1) AND
+		user_id = NEW.user_id;
+
+	RETURN NEW;
+END;]]></definition>
+</function>
+
+<trigger name="trigger_remove_descendant_group_from_tenant_user" firing-type="AFTER" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.tenant_user_groups">
+		<function signature="public.fn_remove_descendant_group_from_tenant_user()"/>
+</trigger>
+
+<function name="fn_check_group_permission_insert_is_valid"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[DECLARE
+	parent_group_id			UUID;
+	does_parent_group_have_permission	INTEGER;
+BEGIN
+	parent_group_id := NULL;
+	SELECT
+		parent_id
+	FROM
+		groups
+	WHERE
+		id = NEW.group_id
+	INTO
+		parent_group_id;
+
+	IF parent_group_id IS NULL
+	THEN
+		RETURN NEW;
+	END IF;
+
+	does_parent_group_have_permission := 0;
+	SELECT
+		count(id)
+	FROM
+		group_permissions
+	WHERE
+		group_id = parent_group_id AND
+		permission_id = NEW.permission_id
+	INTO
+		does_parent_group_have_permission;
+
+	IF does_parent_group_have_permission > 0
+	THEN
+		RETURN NEW;
+	END IF;
+
+	RAISE SQLSTATE '2F003' USING MESSAGE = 'Parent Group does not have this permission';	
+	RETURN NULL;
+END;]]></definition>
+</function>
+
+<trigger name="trigger_check_group_permission_insert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.group_permissions">
+		<function signature="public.fn_check_group_permission_insert_is_valid()"/>
+</trigger>
+
+<function name="fn_check_tenant_user_group_upsert_is_valid"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[DECLARE
+	is_member_of_ancestor_group	INTEGER;
+BEGIN
+	is_member_of_ancestor_group := 0;
+	SELECT
+		count(id)
+	FROM
+		tenant_user_groups
+	WHERE
+		tenant_id = NEW.tenant_id AND
+		group_id IN (SELECT id FROM fn_get_group_ancestors(NEW.group_id) WHERE level > 1) AND
+		user_id = NEW.user_id
+	INTO
+		is_member_of_ancestor_group;
+
+	IF is_member_of_ancestor_group = 0
+	THEN
+		RETURN NEW;
+	END IF;
+
+	RAISE SQLSTATE '2F003' USING MESSAGE = 'User is already a member of a Parent Group';
+	RETURN NULL;
+END;]]></definition>
+</function>
+
+<trigger name="trigger_check_tenant_user_group_upsert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.tenant_user_groups">
+		<function signature="public.fn_check_tenant_user_group_upsert_is_valid()"/>
+</trigger>
+
 <constraint name="fk_modules_modules" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.modules" table="public.modules">
 	<columns names="parent_id" ref-type="src-columns"/>
-	<columns names="id" ref-type="dst-columns"/>
-</constraint>
-
-<constraint name="fk_permissions_modules" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.modules" table="public.permissions">
-	<columns names="module_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
@@ -1060,7 +2009,7 @@ END;
 </constraint>
 
 <constraint name="fk_tenants_users_tenants" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.tenants" table="public.tenants_users">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.tenants_users">
 	<columns names="tenant_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
@@ -1072,9 +2021,9 @@ END;
 </constraint>
 
 <constraint name="fk_tenants_users_job_titles" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.job_titles" table="public.tenants_users">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.job_titles" table="public.tenants_users">
 	<columns names="tenant_id,job_title_id" ref-type="src-columns"/>
-	<columns names="tenant_id,id" ref-type="dst-columns"/>
+	<columns names="id,tenant_id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_locations_tenants" type="fk-constr" comparison-type="MATCH FULL"
@@ -1104,7 +2053,7 @@ END;
 <constraint name="fk_tenant_user_groups_groups" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.groups" table="public.tenant_user_groups">
 	<columns names="tenant_id,group_id" ref-type="src-columns"/>
-	<columns names="id,tenant_id" ref-type="dst-columns"/>
+	<columns names="tenant_id,id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_tenant_user_groups_tenant_users" type="fk-constr" comparison-type="MATCH FULL"
@@ -1113,15 +2062,45 @@ END;
 	<columns names="tenant_id,user_id" ref-type="dst-columns"/>
 </constraint>
 
+<constraint name="fk_permissions_modules" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.modules" table="public.permissions">
+	<columns names="module_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_social_logins_users" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.social_logins">
+	<columns names="user_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
 <constraint name="fk_group_permissions_groups" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.groups" table="public.group_permissions">
-	<columns names="group_id" ref-type="src-columns"/>
-	<columns names="id" ref-type="dst-columns"/>
+	<columns names="tenant_id,group_id" ref-type="src-columns"/>
+	<columns names="tenant_id,id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_group_permissions_permissions" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.permissions" table="public.group_permissions">
-	<columns names="permission_id" ref-type="src-columns"/>
+	<columns names="module_id,permission_id" ref-type="src-columns"/>
+	<columns names="module_id,id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_group_permissions_tenant_modules" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenant_modules" table="public.group_permissions">
+	<columns names="tenant_id,module_id" ref-type="src-columns"/>
+	<columns names="tenant_id,module_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_tenant_modules_tenants" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.tenant_modules">
+	<columns names="tenant_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_tenant_modules_modules" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.modules" table="public.tenant_modules">
+	<columns names="module_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
@@ -1130,9 +2109,9 @@ END;
 	 dst-table="public.modules"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="590.828" y="149.947"/>
-	<position x="590.828" y="50.6667"/>
-	<position x="435.885" y="50.6667"/>
+		<position x="469.161" y="138.613"/>
+	<position x="469.161" y="27.3334"/>
+	<position x="314.219" y="27.3334"/>
 	</line>
 </relationship>
 
@@ -1146,9 +2125,9 @@ END;
 	 dst-table="public.tenants"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="2443.89" y="135.947"/>
-	<position x="2443.89" y="60.6667"/>
-	<position x="2292.59" y="60.6667"/>
+		<position x="2483.89" y="133.197"/>
+	<position x="2483.89" y="51.9167"/>
+	<position x="2332.59" y="51.9167"/>
 	</line>
 </relationship>
 
@@ -1192,9 +2171,9 @@ END;
 	 dst-table="public.groups"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="1349.44" y="493.947"/>
-	<position x="1349.44" y="406.667"/>
-	<position x="1239.63" y="406.667"/>
+		<position x="1611.43" y="501.614"/>
+	<position x="1611.43" y="408.334"/>
+	<position x="1474.84" y="408.334"/>
 	</line>
 </relationship>
 
@@ -1216,6 +2195,26 @@ END;
 <relationship name="rel_group_permissions_permissions" type="relfk"
 	 src-table="public.group_permissions"
 	 dst-table="public.permissions"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_social_logins_users" type="relfk"
+	 src-table="public.social_logins"
+	 dst-table="public.users"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_tenant_modules_tenants" type="relfk"
+	 src-table="public.tenant_modules"
+	 dst-table="public.tenants"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_tenant_modules_modules" type="relfk"
+	 src-table="public.tenant_modules"
+	 dst-table="public.modules"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_group_permissions_tenant_modules" type="relfk"
+	 src-table="public.group_permissions"
+	 dst-table="public.tenant_modules"
 	 src-required="false" dst-required="false"/>
 
 </dbmodel>
