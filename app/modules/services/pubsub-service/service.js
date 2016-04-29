@@ -163,6 +163,10 @@ var pubsubService = prime({
 
 	'_reconfigure': function(config) {
 		var self = this;
+		if(!self['$enabled']) {
+			self['$config'] = config;
+			return;
+		}
 
 		self._teardownAscoltatoriAsync(self['$config'], self['$listeners'])
 		.then(function() {

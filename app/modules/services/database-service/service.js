@@ -78,6 +78,10 @@ var databaseService = prime({
 
 	'_reconfigure': function(config) {
 		var self = this;
+		if(!self['$enabled']) {
+			self['$config'] = config;
+			return;
+		}
 
 		self._teardownBookshelfAsync()
 		.then(function() {

@@ -15,7 +15,7 @@ exports.config = ({
 	},
 	"Console": {
 		"json": false,
-		"level": "silly",
+		"level": "debug",
 		"colorize": true,
 		"timestamp": true,
 		"prettyPrint": true,

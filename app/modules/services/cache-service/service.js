@@ -80,6 +80,10 @@ var cacheService = prime({
 
 	'_reconfigure': function(config) {
 		var self = this;
+		if(!self['$enabled']) {
+			self['$config'] = config;
+			return;
+		}
 
 		self._teardownCacheAsync()
 		.then(function() {

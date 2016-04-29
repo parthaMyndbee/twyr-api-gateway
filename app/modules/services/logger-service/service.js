@@ -77,13 +77,19 @@ var loggerService = prime({
 	},
 
 	'_reconfigure': function(config) {
+		var self = this;
+		if(!self['$enabled']) {
+			self['$config'] = config;
+			return;
+		}
+
 		try {
-			this['$config'] = config;
-			this._setupWinston(this['$config'], this['$winston']);
-			loggerService.parent._reconfigure.call(this, config);
+			self['$config'] = config;
+			self._setupWinston(self['$config'], self['$winston']);
+			loggerService.parent._reconfigure.call(self, config);
 		}
 		catch(err) {
-			console.error(this.name + '::_reconfigure error: ', err);
+			console.error(self.name + '::_reconfigure error: ', err);
 		}
 	},
 

@@ -287,19 +287,19 @@ var twyrModuleBase = prime({
 	},
 
 	'_parentReconfigure': function() {
-		console.log(this.name + '::_parentReconfigure');
+		if((process.env.NODE_ENV || 'development') == 'development') console.log(this.name + '::_parentReconfigure');
 	},
 
 	'_dependencyReconfigure': function(dependency) {
-		console.log(this.name + '::_dependencyReconfigure: ' + dependency);
+		if((process.env.NODE_ENV || 'development') == 'development') console.log(this.name + '::_dependencyReconfigure: ' + dependency);
 	},
 
 	'_parentStateChange': function(state) {
-		console.log(this.name + '::_parentStateChange: ' + self.$module.name + ' is now ' + (state ? 'enabled' : 'disabled'));
+		if((process.env.NODE_ENV || 'development') == 'development') console.log(this.name + '::_parentStateChange: ' + self.$module.name + ' is now ' + (state ? 'enabled' : 'disabled'));
 	},
 
 	'_dependencyStateChange': function(dependency, state) {
-		console.log(this.name + '::_dependencyStateChange: ' + dependency + ' is now ' + (state ? 'enabled' : 'disabled'));
+		if((process.env.NODE_ENV || 'development') == 'development') console.log(this.name + '::_dependencyStateChange: ' + dependency + ' is now ' + (state ? 'enabled' : 'disabled'));
 	},
 
 	'_exists': function (path, mode, callback) {

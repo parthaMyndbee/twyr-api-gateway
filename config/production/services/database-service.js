@@ -10,6 +10,6 @@ exports.config = ({
 	},
 	"pool": {
 		"min": 0,
-		"max": 6
+		"max": 9
 	}
 });
