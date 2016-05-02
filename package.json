@@ -30,6 +30,7 @@
 		"bcrypt-nodejs": "*",
 		"body-parser": "*",
 		"bookshelf": "*",
+		"bookshelf-camelcase": "*",
 		"bluebird": "*",
 		"chokidar": "*",
 		"consolidate": "*",
