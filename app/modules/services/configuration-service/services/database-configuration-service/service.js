@@ -90,6 +90,8 @@ var databaseConfigurationService = prime({
 
 				if(callback) callback(null, true);
 			});
+
+			return null;
 		})
 		.catch(function(err) {
 			if(callback) callback(err);
@@ -112,6 +114,7 @@ var databaseConfigurationService = prime({
 				delete self['$database'];
 
 				if(callback) callback(null, status);
+				return null;
 			})
 			.catch(function(unlistenErr) {
 				if(callback) callback(unlistenErr);
@@ -159,6 +162,7 @@ var databaseConfigurationService = prime({
 		self.$database.queryAsync('UPDATE modules SET configuration = $1 WHERE id = $2;', [config, cachedModule.id])
 		.then(function() {
 			if(callback) callback(null, cachedModule.configuration);
+			return null;
 		})
 		.catch(function(err) {
 			console.error('Error saving configuration for ' + module.name + ':\n', err);
@@ -196,6 +200,7 @@ var databaseConfigurationService = prime({
 		self.$database.queryAsync('UPDATE modules SET enabled = $1 WHERE id = $2', [enabled, cachedModule.id])
 		.then(function() {
 			if(callback) callback(null, enabled);
+			return null;
 		})
 		.catch(function(err) {
 			if(callback) callback(err);

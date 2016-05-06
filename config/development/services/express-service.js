@@ -22,6 +22,9 @@ exports.config = ({
 		"secure": false,
 		"httpOnly": false
 	},
+	'corsAllowedDomains': [
+		'http://local-portal.twyrframework.com:9090'
+	],
 	"maxRequestSize": 1000000,
 	"requestTimeout": 25,
 	"templateEngine": "ejs",

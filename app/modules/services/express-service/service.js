@@ -256,6 +256,8 @@ var expressService = prime({
 		var self = this;
 
 		this.$server.once('close', function() {
+			self['$express']['_router']['stack']['length'] = 0;
+
 			delete self['$express']['$server'];
 			delete self['$express']['$session'];
 			delete self['$express']['$sessionStore'];

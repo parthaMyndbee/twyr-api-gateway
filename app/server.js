@@ -31,11 +31,56 @@ var app = prime({
 		this._loadConfig();
 	},
 
+	'start': function(dependencies, callback) {
+		var self = this;
+		app.parent.start.call(self, dependencies, function(err, status) {
+			if(err) {
+				if(callback) callback(err);
+				return;
+			}
+
+			self._setupRoutes();
+			if(callback) callback(null, status);
+		});
+	},
+
 	'_loadConfig': function() {
 		var rootPath = path.dirname(require.main.filename),
 			env = (process.env.NODE_ENV || 'development').toLowerCase();
 
 		this['$config'] = require(path.join(rootPath, 'config', env, this.name)).config;
+	},
+
+	'_subModuleReconfigure': function(subModule) {
+		if(subModule != 'express-service') return;
+		this._setupRoutes();
+	},
+
+	'_subModuleStateChange': function(subModule, state) {
+		if(subModule != 'express-service') return;
+		if(!state) return;
+
+		this._setupRoutes();
+	},
+
+	'_setupRoutes': function() {
+		var self = this;
+
+		var expressApp = (self.$services['express-service']).getInterface();
+		Object.keys(self.$components).forEach(function(componentName) {
+			var subRouter = (self.$components[componentName]).getRouter(),
+				mountPath = self.$config ? (self.$config.componentMountPath || '/') : '/';
+
+			expressApp.use(path.join(mountPath, componentName), subRouter);
+		});
+
+		expressApp.use('*', function(request, response, next) {
+			response.sendStatus(404);
+		});
+
+		expressApp.use(function(error, request, response, next) {
+			response.status(500).json({ 'error': error.message });
+		});
 	},
 
 	'name': 'twyr-api-gateway',

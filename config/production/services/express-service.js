@@ -22,6 +22,9 @@ exports.config = ({
 		"cert": "./ssl/portal.crt",
 		"rejectUnauthorized": false
 	},
+	'corsAllowedDomains': [
+		'https://portal.twyrframework.com'
+	],
 	"templateEngine": "ejs",
 	"maxRequestSize": 1000000,
 	"requestTimeout": 25,

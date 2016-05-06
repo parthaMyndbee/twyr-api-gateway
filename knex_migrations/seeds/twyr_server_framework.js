@@ -36,7 +36,7 @@ exports.seed = function(knex, Promise) {
 
 			return Promise.all([
 				knex("permissions").insert({ 'module_id': parentId, 'name': 'public', 'display_name': 'Public User Permissions', 'description': 'The Twy\'r API Gateway Permissions for non-logged-in Users' }),
-				knex("permissions").insert({ 'module_id': parentId, 'name': 'registered', 'display_name': 'Registered User Permissions', 'description': 'The Twy\'r API Gateway Permissions for logged-in Users' }),
+				knex("permissions").insert({ 'module_id': parentId, 'name': 'registered', 'display_name': 'Registered User Permissions', 'description': 'The Twy\'r API Gateway Permissions for logged-in Users', 'default_for_new_user': true }),
 				knex("permissions").insert({ 'module_id': parentId, 'name': 'administrator', 'display_name': 'Administrator Permissions', 'description': 'The Twy\'r API Gateway Permissions for Administrators' }),
 				knex("permissions").insert({ 'module_id': parentId, 'name': 'super-administrator', 'display_name': 'Super Administrator Permissions', 'description': 'The Twy\'r API Gateway Permissions for Super Administrators' })
 			]);
