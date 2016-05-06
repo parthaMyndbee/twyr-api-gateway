@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="3,0" last-zoom="0.35"
+<dbmodel pgmodeler-ver="0.8.1" last-position="747,378" last-zoom="0.5"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -681,7 +681,7 @@ END;]]></definition>
 <table name="groups">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="3404.66" y="729.263"/>
+	<position x="3407.33" y="739.93"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -1305,7 +1305,7 @@ END;]]></definition>
 <table name="social_logins">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="4997.29" y="776.976"/>
+	<position x="5029.29" y="768.976"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -1349,7 +1349,7 @@ END;]]></definition>
 <table name="group_permissions">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="2389.79" y="750.917"/>
+	<position x="2388.46" y="756.25"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2174,7 +2174,7 @@ END;]]></definition>
 <table name="module_widgets">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="861.667" y="1191.33"/>
+	<position x="853.667" y="1179.33"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2192,6 +2192,9 @@ END;]]></definition>
 	</column>
 	<column name="description">
 		<type name="text"/>
+	</column>
+	<column name="metadata" not-null="true" default-value="'{}'::jsonb">
+		<type name="jsonb"/>
 	</column>
 	<column name="created_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
@@ -2417,7 +2420,7 @@ END;
 <table name="module_templates">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="171.004" y="312.437"/>
+	<position x="95.0041" y="303.104"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2640,6 +2643,7 @@ BEGIN
 
 	IF is_child_component <= 0
 	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Only widgets belonging to the same component or one of its children can be assigned to a components template';
 		RETURN NULL;
 	END IF;
 
@@ -2662,6 +2666,62 @@ END;]]></definition>
 	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
 	 table="public.widget_template_position">
 		<function signature="public.fn_check_widget_template_position_upsert_is_valid()"/>
+</trigger>
+
+<trigger name="trigger_check_module_widget_upsert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.module_widgets">
+		<function signature="public.fn_check_module_widget_upsert_is_valid()"/>
+</trigger>
+
+<trigger name="trigger_check_user_upsert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.users">
+		<function signature="public.fn_check_user_upsert_is_valid()"/>
+</trigger>
+
+<function name="fn_check_module_template_upsert_is_valid"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[DECLARE
+	is_component	INTEGER;
+BEGIN
+	is_component := 0;
+	SELECT
+		count(id)
+	FROM
+		modules
+	WHERE
+		id = NEW.module_id AND
+		type = 'component'
+	INTO
+		is_component;
+
+	IF is_component <= 0
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Templates can be assigned only to Components';
+		RETURN NULL;
+	END IF;
+
+	RETURN NEW;
+END;]]></definition>
+</function>
+
+<trigger name="trigger_check_module_template_upsert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.module_templates">
+		<function signature="public.fn_check_module_template_upsert_is_valid()"/>
 </trigger>
 
 <constraint name="fk_modules_modules" type="fk-constr" comparison-type="MATCH FULL"
@@ -2862,7 +2922,11 @@ END;]]></definition>
 <relationship name="rel_tenants_users_users" type="relfk"
 	 src-table="public.tenants_users"
 	 dst-table="public.users"
-	 src-required="false" dst-required="false"/>
+	 src-required="false" dst-required="false">
+	<label ref-type="dst-label">
+		<position x="-20.0695" y="-16.3167"/>
+	</label>
+</relationship>
 
 <relationship name="rel_locations_tenants" type="relfk"
 	 src-table="public.locations"
@@ -2899,9 +2963,9 @@ END;]]></definition>
 	 dst-table="public.groups"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="3794.43" y="812.543"/>
-	<position x="3794.43" y="719.263"/>
-	<position x="3657.84" y="719.263"/>
+		<position x="3797.09" y="823.21"/>
+	<position x="3797.09" y="729.93"/>
+	<position x="3660.5" y="729.93"/>
 	</line>
 </relationship>
 

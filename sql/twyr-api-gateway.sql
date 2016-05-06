@@ -1883,6 +1883,7 @@ CREATE TABLE public.module_widgets(
 	ember_component text NOT NULL,
 	display_name text NOT NULL,
 	description text,
+	metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
 	created_at timestamptz NOT NULL DEFAULT now(),
 	updated_at timestamptz NOT NULL DEFAULT now(),
 	CONSTRAINT pk_module_widgets PRIMARY KEY (id)
@@ -2251,6 +2252,7 @@ BEGIN
 
 	IF is_child_component <= 0
 	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Only widgets belonging to the same component or one of its children can be assigned to a components template';
 		RETURN NULL;
 	END IF;
 
@@ -2278,6 +2280,70 @@ CREATE TRIGGER trigger_check_widget_template_position_upsert_is_valid
 	ON public.widget_template_position
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_check_widget_template_position_upsert_is_valid();
+-- ddl-end --
+
+-- object: trigger_check_module_widget_upsert_is_valid | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_check_module_widget_upsert_is_valid ON public.module_widgets  ON public.module_widgets CASCADE;
+CREATE TRIGGER trigger_check_module_widget_upsert_is_valid
+	BEFORE INSERT OR UPDATE
+	ON public.module_widgets
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_check_module_widget_upsert_is_valid();
+-- ddl-end --
+
+-- object: trigger_check_user_upsert_is_valid | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_check_user_upsert_is_valid ON public.users  ON public.users CASCADE;
+CREATE TRIGGER trigger_check_user_upsert_is_valid
+	BEFORE INSERT OR UPDATE
+	ON public.users
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_check_user_upsert_is_valid();
+-- ddl-end --
+
+-- object: public.fn_check_module_template_upsert_is_valid | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_check_module_template_upsert_is_valid() CASCADE;
+CREATE FUNCTION public.fn_check_module_template_upsert_is_valid ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+DECLARE
+	is_component	INTEGER;
+BEGIN
+	is_component := 0;
+	SELECT
+		count(id)
+	FROM
+		modules
+	WHERE
+		id = NEW.module_id AND
+		type = 'component'
+	INTO
+		is_component;
+
+	IF is_component <= 0
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Templates can be assigned only to Components';
+		RETURN NULL;
+	END IF;
+
+	RETURN NEW;
+END;
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_check_module_template_upsert_is_valid() OWNER TO postgres;
+-- ddl-end --
+
+-- object: trigger_check_module_template_upsert_is_valid | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_check_module_template_upsert_is_valid ON public.module_templates  ON public.module_templates CASCADE;
+CREATE TRIGGER trigger_check_module_template_upsert_is_valid
+	BEFORE INSERT OR UPDATE
+	ON public.module_templates
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_check_module_template_upsert_is_valid();
 -- ddl-end --
 
 -- object: fk_modules_modules | type: CONSTRAINT --
