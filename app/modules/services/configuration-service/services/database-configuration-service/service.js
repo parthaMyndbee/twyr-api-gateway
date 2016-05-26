@@ -207,6 +207,18 @@ var databaseConfigurationService = prime({
 		});
 	},
 
+	'getModuleId': function(module, callback) {
+		var self = this,
+			cachedModule = self._getCachedModule(module);
+
+		if(!cachedModule) {
+			if(callback) callback(null, null);
+			return;
+		}
+
+		if(callback) callback(null, cachedModule['id']);
+	},
+
 	'_processConfigChange': function(configUpdateModule, config) {
 		var currentModule = this;
 		while(currentModule.$module)

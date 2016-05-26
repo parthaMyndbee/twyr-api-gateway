@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="747,378" last-zoom="0.5"
+<dbmodel pgmodeler-ver="0.8.1" last-position="0,0" last-zoom="0.9"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -2044,9 +2044,6 @@ END;]]></definition>
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="module_id"/>
-		</idxelement>
-		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
 			<column name="ember_route"/>
 		</idxelement>
 </index>
@@ -2210,9 +2207,6 @@ END;]]></definition>
 <index name="uidx_module_widgets" table="public.module_widgets"
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
-		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="module_id"/>
-		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
 			<column name="ember_component"/>
 		</idxelement>
@@ -2414,13 +2408,13 @@ END;
 <usertype name="template_user_type" configuration="enumeration">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<enumeration values="all,public,registered,other"/>
+	<enumeration values="all,public,registered,administrator,other"/>
 </usertype>
 
 <table name="module_templates">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="95.0041" y="303.104"/>
+	<position x="90.5597" y="298.66"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2441,6 +2435,9 @@ END;
 	</column>
 	<column name="is_default" not-null="true" default-value="false::boolean">
 		<type name="boolean"/>
+	</column>
+	<column name="configuration" not-null="true" default-value="'{}'::jsonb">
+		<type name="jsonb"/>
 	</column>
 	<column name="metadata" not-null="true" default-value="'{}'::jsonb">
 		<type name="jsonb"/>
@@ -2490,13 +2487,14 @@ END;
 		<type name="uuid"/>
 	</parameter>
 	<definition><![CDATA[BEGIN
+	RETURN QUERY
 	SELECT DISTINCT
-		tenant_id,
-		permission_id
+		A.tenant_id,
+		A.permission_id
 	FROM
-		group_permissions
+		group_permissions A
 	WHERE
-		group_id IN (SELECT group_id FROM tenant_user_groups WHERE user_id = userid);
+		A.group_id IN (SELECT group_id FROM tenant_user_groups WHERE user_id = userid);
 END;]]></definition>
 </function>
 
@@ -2570,15 +2568,18 @@ END;]]></definition>
 <table name="widget_template_position">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="120.214" y="1208.71"/>
+	<position x="122.436" y="1199.82"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="template_position_id" not-null="true">
 		<type name="uuid"/>
 	</column>
 	<column name="module_widget_id" not-null="true">
 		<type name="uuid"/>
 	</column>
-	<column name="template_position_id" not-null="true">
-		<type name="uuid"/>
+	<column name="display_order" not-null="true" default-value="1">
+		<type name="integer"/>
 	</column>
 	<column name="created_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
@@ -2655,10 +2656,10 @@ END;]]></definition>
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="module_widget_id"/>
+			<column name="template_position_id"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="template_position_id"/>
+			<column name="module_widget_id"/>
 		</idxelement>
 </index>
 
@@ -2963,9 +2964,9 @@ END;]]></definition>
 	 dst-table="public.groups"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="3797.09" y="823.21"/>
-	<position x="3797.09" y="729.93"/>
-	<position x="3660.5" y="729.93"/>
+		<position x="3797.1" y="823.21"/>
+	<position x="3797.1" y="729.93"/>
+	<position x="3660.51" y="729.93"/>
 	</line>
 </relationship>
 

@@ -514,7 +514,7 @@ var moduleLoader = prime({
 
 		// Start each component
 		Object.keys(this.$module.$components).forEach(function(thisComponentName) {
-			var thisComponent = this.$module.$components[thisComponentName],
+			var thisComponent = self.$module.$components[thisComponentName],
 				thisComponentDependencies = {};
 
 			if(!thisComponent.dependencies) {

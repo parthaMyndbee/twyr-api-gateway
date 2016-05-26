@@ -1748,7 +1748,6 @@ ALTER TABLE public.module_menus OWNER TO postgres;
 CREATE UNIQUE INDEX uidx_module_menus_module_route ON public.module_menus
 	USING btree
 	(
-	  module_id ASC NULLS LAST,
 	  ember_route ASC NULLS LAST
 	);
 -- ddl-end --
@@ -1898,7 +1897,6 @@ ALTER TABLE public.module_widgets OWNER TO postgres;
 CREATE UNIQUE INDEX uidx_module_widgets ON public.module_widgets
 	USING btree
 	(
-	  module_id ASC NULLS LAST,
 	  ember_component ASC NULLS LAST
 	);
 -- ddl-end --
@@ -2073,7 +2071,7 @@ ALTER TYPE public.template_media_type OWNER TO postgres;
 -- object: public.template_user_type | type: TYPE --
 -- DROP TYPE IF EXISTS public.template_user_type CASCADE;
 CREATE TYPE public.template_user_type AS
- ENUM ('all','public','registered','other');
+ ENUM ('all','public','registered','administrator','other');
 -- ddl-end --
 ALTER TYPE public.template_user_type OWNER TO postgres;
 -- ddl-end --
@@ -2088,6 +2086,7 @@ CREATE TABLE public.module_templates(
 	media_type public.template_media_type NOT NULL DEFAULT 'all'::template_media_type,
 	user_type public.template_user_type NOT NULL DEFAULT 'all'::template_user_type,
 	is_default boolean NOT NULL DEFAULT false::boolean,
+	configuration jsonb NOT NULL DEFAULT '{}'::jsonb,
 	metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
 	created_at timestamptz NOT NULL DEFAULT now(),
 	updated_at timestamptz NOT NULL DEFAULT now(),
@@ -2119,13 +2118,14 @@ CREATE FUNCTION public.fn_get_user_permissions (IN userid uuid)
 	COST 1
 	AS $$
 BEGIN
+	RETURN QUERY
 	SELECT DISTINCT
-		tenant_id,
-		permission_id
+		A.tenant_id,
+		A.permission_id
 	FROM
-		group_permissions
+		group_permissions A
 	WHERE
-		group_id IN (SELECT group_id FROM tenant_user_groups WHERE user_id = userid);
+		A.group_id IN (SELECT group_id FROM tenant_user_groups WHERE user_id = userid);
 END;
 $$;
 -- ddl-end --
@@ -2193,8 +2193,9 @@ ALTER TABLE public.template_positions OWNER TO postgres;
 -- DROP TABLE IF EXISTS public.widget_template_position CASCADE;
 CREATE TABLE public.widget_template_position(
 	id uuid NOT NULL DEFAULT uuid_generate_v4(),
-	module_widget_id uuid NOT NULL,
 	template_position_id uuid NOT NULL,
+	module_widget_id uuid NOT NULL,
+	display_order integer NOT NULL DEFAULT 1,
 	created_at timestamptz NOT NULL DEFAULT now(),
 	updated_at timestamptz NOT NULL DEFAULT now(),
 	CONSTRAINT pk_widget_template_position PRIMARY KEY (id)
@@ -2268,8 +2269,8 @@ ALTER FUNCTION public.fn_check_widget_template_position_upsert_is_valid() OWNER 
 CREATE UNIQUE INDEX uidx_widget_template_position ON public.widget_template_position
 	USING btree
 	(
-	  module_widget_id ASC NULLS LAST,
-	  template_position_id ASC NULLS LAST
+	  template_position_id ASC NULLS LAST,
+	  module_widget_id ASC NULLS LAST
 	);
 -- ddl-end --
 

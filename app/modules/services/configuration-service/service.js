@@ -168,6 +168,30 @@ var configurationService = prime({
 		});
 	},
 
+	'getModuleId': function(module, callback) {
+		var self = this,
+			promiseResolutions = [];
+
+		Object.keys(self.$services).forEach(function(subService) {
+			promiseResolutions.push(self.$services[subService].getModuleIdAsync(module));
+		});
+
+		promises.all(promiseResolutions)
+		.then(function(moduleIds) {
+			var moduleId = null;
+			moduleIds.forEach(function(id) {
+				if(!id) return;
+				moduleId = id;
+			});
+
+			if(callback) callback(null, moduleId);
+			return null;
+		})
+		.catch(function(err) {
+			if(callback) callback(err);
+		});
+	},
+
 	'_processConfigChange': function(eventFirerModule, configUpdateModule, config) {
 		var self = this;
 		Object.keys(self.$services).forEach(function(subService) {

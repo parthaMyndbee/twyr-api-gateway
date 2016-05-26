@@ -12,7 +12,7 @@ exports.up = function(knex, Promise) {
 			knex.schema.raw("CREATE TYPE public.module_type AS ENUM ('component','middleware','service')"),
 			knex.schema.raw("CREATE TYPE public.tenant_type AS ENUM ('department','organization')"),
 			knex.schema.raw("CREATE TYPE public.template_media_type AS ENUM ('all','desktop', 'tablet', 'mobile', 'other')"),
-			knex.schema.raw("CREATE TYPE public.template_user_type AS ENUM ('all','public', 'registered', 'other')")
+			knex.schema.raw("CREATE TYPE public.template_user_type AS ENUM ('all','public', 'registered', 'administrator', 'other')")
 		]);
 	})
 	// Step 3: Setup primary tables  - those that aren't dependent on other tables (i.e. no foreign keys to other tables)
@@ -101,6 +101,7 @@ exports.up = function(knex, Promise) {
 				modTmplTbl.specificType('media_type', 'public.template_media_type').notNullable().defaultTo('all');
 				modTmplTbl.specificType('user_type', 'public.template_user_type').notNullable().defaultTo('all');
 				modTmplTbl.boolean('is_default').notNullable().defaultTo(false);
+				modTmplTbl.jsonb('configuration').notNullable().defaultTo('{}');
 				modTmplTbl.jsonb('metadata').notNullable().defaultTo('{}');
 				modTmplTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				modTmplTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
@@ -180,7 +181,7 @@ exports.up = function(knex, Promise) {
 				modWidgetsTbl.jsonb('metadata').notNullable().defaultTo('{}');
 				modWidgetsTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				modWidgetsTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				modWidgetsTbl.unique(['module_id', 'ember_component']);
+				modWidgetsTbl.unique(['ember_component']);
 			}),
 
 			knex.schema.withSchema('public')
@@ -197,7 +198,7 @@ exports.up = function(knex, Promise) {
 				modMenusTbl.boolean('is_default_home').notNullable().defaultTo(false);
 				modMenusTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				modMenusTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				modMenusTbl.unique(['module_id', 'ember_route']);
+				modMenusTbl.unique(['ember_route']);
 				modMenusTbl.unique(['module_id', 'display_name']);
 			}),
 
@@ -259,11 +260,12 @@ exports.up = function(knex, Promise) {
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('widget_template_position', function(widgetTmplPositionTbl) {
 				widgetTmplPositionTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				widgetTmplPositionTbl.uuid('module_widget_id').notNullable().references('id').inTable('module_widgets').onDelete('CASCADE').onUpdate('CASCADE');
 				widgetTmplPositionTbl.uuid('template_position_id').notNullable().references('id').inTable('template_positions').onDelete('CASCADE').onUpdate('CASCADE');
+				widgetTmplPositionTbl.uuid('module_widget_id').notNullable().references('id').inTable('module_widgets').onDelete('CASCADE').onUpdate('CASCADE');
+				widgetTmplPositionTbl.integer('display_order').notNullable().defaultTo(1);
 				widgetTmplPositionTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				widgetTmplPositionTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				widgetTmplPositionTbl.unique(['module_widget_id', 'template_position_id']);
+				widgetTmplPositionTbl.unique(['template_position_id', 'module_widget_id']);
 			})
 		]);
 	})
@@ -831,13 +833,14 @@ exports.up = function(knex, Promise) {
 					'COST 1 ' +
 					'AS $$ ' +
 				'BEGIN ' +
+					'RETURN QUERY ' +
 					'SELECT DISTINCT ' +
-						'tenant_id, ' +
-						'permission_id ' +
+						'A.tenant_id AS tenant_id, ' +
+						'A.permission_id AS permission_id ' +
 					'FROM ' +
-						'group_permissions ' +
+						'group_permissions A ' +
 					'WHERE ' +
-						'group_id IN (SELECT group_id FROM tenant_user_groups WHERE user_id = userid); ' +
+						'A.group_id IN (SELECT group_id FROM tenant_user_groups WHERE user_id = userid); ' +
 				'END; ' +
 				'$$;'
 			),
