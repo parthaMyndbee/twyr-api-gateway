@@ -41,14 +41,6 @@ exports.seed = function(knex, Promise) {
 				knex("permissions").insert({ 'module_id': parentId, 'name': 'administrator', 'display_name': 'Administrator Permissions', 'description': 'The Twy\'r Portal Permissions for Administrators' }),
 				knex("permissions").insert({ 'module_id': parentId, 'name': 'super-administrator', 'display_name': 'Super Administrator Permissions', 'description': 'The Twy\'r Portal Permissions for Super Administrators' })
 			]);
-		})
-		.then(function(parentId) {
-			parentId = parentId[0];
-
-			return Promise.all([
-				parentId,
-				knex("module_templates").insert({ 'module_id': parentId, 'name': 'bhairavi', 'description': 'The Twy\'r Portal default template', 'media_type': 'all', 'user_type': 'all', 'is_default': true, 'configuration': { 'title': 'Twy\'r Portal: Bhairavi Template' } }),
-			]);
 		});
 	})
 	.then(function() {
@@ -70,7 +62,7 @@ exports.seed = function(knex, Promise) {
 			return [ userId.rows[0]['id'] ];
 		}
 
-		return knex("users").insert({ 'email': 'root@twyr.com', 'password': '', 'first_name': 'Root', 'last_name': 'Twyr', 'nickname': 'root' }).returning('id');
+		return knex("users").insert({ 'email': 'root@twyr.com', 'password': '$2a$10$vXn2EzX54o06fl0VTOxJk..4XNqCGxW6KQjIn4ZJIkblFrz7ohQ9S', 'first_name': 'Root', 'last_name': 'Twyr', 'nickname': 'root' }).returning('id');
 	})
 	.then(function(userId) {
 		rootUserId = userId[0];
