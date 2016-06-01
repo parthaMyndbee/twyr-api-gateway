@@ -36,6 +36,7 @@ var authService = prime({
 
 	'start': function(dependencies, callback) {
 		var self = this;
+		console.log(self.name + ': ' + JSON.stringify(Object.keys(self)));
 		authService.parent.start.call(self, dependencies, function(err, status) {
 			if(err) {
 				if(callback) callback(err);

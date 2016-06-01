@@ -4,7 +4,7 @@ exports.config = ({
 		"cert": "./ssl/portal.crt",
 		"rejectUnauthorized": false
 	},
-	"port": 8100,
+	"port": 9090,
 	"session": {
 		"key": "twyr-portal",
 		"ttl": 86400,
@@ -27,6 +27,6 @@ exports.config = ({
 	"templateEngine": "ejs",
 	"connectionTimeout": 30,
 	"corsAllowedDomains": [
-		"http://local-portal.twyrframework.com:9090"
+		"http://local-portal.twyrframework.com:8080"
 	]
 });

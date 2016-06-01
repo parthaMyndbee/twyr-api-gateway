@@ -55,11 +55,6 @@ exports.strategy = (function() {
 		})
 		.then(function(userRecord) {
 			done(null, userRecord.toJSON());
-
-			var lastLogin = (new Date()).toISOString();
-			userRecord.set('last_login', lastLogin);
-			userRecord.save();
-
 			return null;
 		})
 		.catch(function(err) {

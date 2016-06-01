@@ -17,17 +17,12 @@
 var promises = require('bluebird');
 
 var retrieveUserFromDatabase = function(userId, callback) {
-	var databaseSrvc = this.$services['database-service'].getInterface(),
-		loggerSrvc = this.$services['logger-service'].getInterface();
-
-	if(userId == 'public') {
-		callback(null, { 'id': 'public', 'default_home': 'home', 'social': {} });
-		return;
-	}
+	var databaseSrvc = this.dependencies['database-service'],
+		loggerSrvc = this.dependencies['logger-service'];
 
 	// Setup the models...
 	var UserSocialLogins = databaseSrvc.Model.extend({
-		'tableName': 'user_social_logins',
+		'tableName': 'social_logins',
 		'idAttribute': 'id',
 
 		'user': function() {
@@ -55,14 +50,7 @@ var retrieveUserFromDatabase = function(userId, callback) {
 		var databaseUser = user.toJSON();
 		delete databaseUser.password;
 
-		return promises.all([user.save({ 'last_login': (new Date()).toISOString() }, { 'method': 'update', 'patch': true }), databaseSrvc.knex.raw('SELECT ember_route FROM component_menus WHERE id = \'' + databaseUser.default_home + '\''), databaseUser]);
-	})
-	.then(function(results) {
-		var user = results.pop(),
-			emberRoute = results.pop();
-
-		user.default_home = emberRoute.rows[0].ember_route;
-		return promises.all([UserSocialLogins.where({ 'user_id': userId }).fetchAll(), user]);
+		return promises.all([UserSocialLogins.where({ 'user_id': userId }).fetchAll(), databaseUser]);
 	})
 	.then(function(results) {
 		var user = results.pop(),
@@ -71,8 +59,8 @@ var retrieveUserFromDatabase = function(userId, callback) {
 		for(var idx in socialLogins) {
 			var thisSocial = socialLogins[idx];
 			user.social[thisSocial.provider] = {
-				'id': thisSocial.profile_id,
-				'displayName': thisSocial.profile_displayname
+				'id': thisSocial.profileId,
+				'displayName': thisSocial.displayName
 			};
 		}
 
@@ -86,24 +74,13 @@ var retrieveUserFromDatabase = function(userId, callback) {
 };
 
 var getUserPermissionsByTenant = function(deserializedUser, callback) {
-	var databaseSrvc = this.$services['database-service'].getInterface(),
-		loggerSrvc = this.$services['logger-service'].getInterface();
+	var databaseSrvc = this.dependencies['database-service'],
+		loggerSrvc = this.dependencies['logger-service'];
 
 	if(deserializedUser['tenants'] == undefined)
 		deserializedUser['tenants'] = {};
 
-	if(deserializedUser.id == 'public') {
-		deserializedUser.tenants['public'] = {};
-		(deserializedUser.tenants['public']).id = 'public';
-		(deserializedUser.tenants['public']).permissions = ['ffffffff-ffff-ffff-ffff-ffffffffffff'];
-		(deserializedUser.tenants['public']).menus = [];
-		(deserializedUser.tenants['public']).widgets = [];
-
-		callback(null, deserializedUser);
-		return;
-	}
-
-	databaseSrvc.knex.raw('SELECT A.tenant_id AS tenant, B.component_permission_id AS permission FROM groups A INNER JOIN group_component_permissions B ON (A.id = B.group_id) WHERE A.id IN (SELECT group_id FROM users_groups WHERE user_id = ?) AND B.component_permission_id != \'ffffffff-ffff-ffff-ffff-ffffffffffff\'', [deserializedUser.id])
+	databaseSrvc.knex.raw('SELECT A.tenant_id AS tenant, B.permission_id AS permission FROM groups A INNER JOIN group_permissions B ON (A.id = B.group_id) WHERE A.id IN (SELECT group_id FROM tenant_user_groups WHERE user_id = ?)', [deserializedUser.id])
 	.then(function(tenantPermissions) {
 		tenantPermissions = tenantPermissions.rows;
 		for(var idx in tenantPermissions) {
@@ -131,163 +108,11 @@ var getUserPermissionsByTenant = function(deserializedUser, callback) {
 	});
 };
 
-var getUserMenus = function(deserializedUser, callback) {
-	var databaseSrvc = this.$services['database-service'].getInterface(),
-		loggerSrvc = this.$services['logger-service'].getInterface();
-
-	var promiseResolutions = [],
-		usedPermissions = [];
-
-	for(var idx in deserializedUser.tenants) {
-		var thisTenant = deserializedUser.tenants[idx];
-		thisTenant.permissions.forEach(function(permissionId) {
-			if(usedPermissions.indexOf(permissionId) >= 0) return;
-
-			usedPermissions.push(permissionId);
-			promiseResolutions.push(databaseSrvc.knex.raw('SELECT * FROM fn_get_component_menus(\'' + permissionId + '\', 10);'));
-		});
-	}
-
-	promises.all(promiseResolutions)
-	.then(function(menusByPermission) {
-		usedPermissions.forEach(function(permissionId ,idx) {
-			var thisPermissionMenus = menusByPermission[idx].rows;
-
-			Object.keys(deserializedUser.tenants).forEach(function(thisTenantId) {
-				var thisUserTenant = deserializedUser.tenants[thisTenantId];
-				if(!thisUserTenant.menus) thisUserTenant.menus = [];
-
-				if(thisUserTenant.permissions.indexOf(permissionId) >= 0) {
-					thisUserTenant.menus = thisUserTenant.menus.concat(thisPermissionMenus);
-				}
-			});
-		});
-
-		callback(null, deserializedUser);
-		return null;
-	})
-	.catch(function(err) {
-		loggerSrvc.error('userSessionCache::getUserMenus Error:\nUser Id: ', deserializedUser.id, 'Error: ', err);
-		callback(err);
-	});
-};
-
-var reorgUserMenus = function(deserializedUser, callback) {
-	// Re-organize menus according to Tenant, and parent/child menu hierarchy
-	Object.keys(deserializedUser.tenants).forEach(function(thisTenantId) {
-		var thisUserTenantMenus = (deserializedUser.tenants[thisTenantId]).menus,
-			reorgedMenus = [];
-
-		var reorgFn = function(menuArray, parentId) {
-			thisUserTenantMenus.forEach(function(thisMenu) {
-				if(thisMenu.parent_id != parentId) return;
-
-				menuArray.push({
-					'id': thisMenu.id,
-					'icon_class': thisMenu.icon_class,
-					'display_name': thisMenu.display_name,
-					'tooltip': thisMenu.tooltip,
-					'ember_route': thisMenu.ember_route,
-					'subRoutes': []
-				});
-			});
-
-			menuArray.forEach(function(menuItem) {
-				reorgFn(menuItem.subRoutes, menuItem.id);
-			});
-		};
-
-		reorgFn(reorgedMenus, null);
-		(deserializedUser.tenants[thisTenantId]).menus = reorgedMenus;
-	});
-
-	callback(null, deserializedUser);
-};
-
-var getUserWidgets = function(deserializedUser, callback) {
-	var databaseSrvc = this.$services['database-service'].getInterface(),
-		loggerSrvc = this.$services['logger-service'].getInterface();
-
-	var promiseResolutions = [],
-		usedPermissions = [];
-
-	for(var idx in deserializedUser.tenants) {
-		var thisTenant = deserializedUser.tenants[idx];
-		thisTenant.permissions.forEach(function(permissionId) {
-			if(usedPermissions.indexOf(permissionId) >= 0) return;
-
-			usedPermissions.push(permissionId);
-			promiseResolutions.push(databaseSrvc.knex.raw('SELECT * FROM fn_get_component_widgets(\'' + permissionId + '\');'));
-		});
-	}
-
-	promises.all(promiseResolutions)
-	.then(function(widgetsByPermission) {
-		usedPermissions.forEach(function(permissionId, idx) {
-			var thisPermissionWidgets = widgetsByPermission[idx].rows;
-
-			Object.keys(deserializedUser.tenants).forEach(function(thisTenantId) {
-				var thisUserTenant = deserializedUser.tenants[thisTenantId];
-				if(!thisUserTenant.widgets) thisUserTenant.widgets = [];
-
-				if(thisUserTenant.permissions.indexOf(permissionId) >= 0) {
-					thisUserTenant.widgets = thisUserTenant.widgets.concat(thisPermissionWidgets);
-				}
-			});
-		});
-
-		callback(null, deserializedUser);
-		return null;
-	})
-	.catch(function(err) {
-		loggerSrvc.error('userSessionCache::getUserWidgets Error:\nUser Id: ', deserializedUser.id, 'Error: ', err);
-		callback(err);
-	});
-};
-
-var reorgUserWidgets = function(deserializedUser, callback) {
-	// Re-organize widgets according to Tenant, display position, and order of display within that position
-	Object.keys(deserializedUser.tenants).forEach(function(thisTenantId) {
-		var thisUserTenantWidgets = (deserializedUser.tenants[thisTenantId]).widgets,
-			reorgedWidgets = {};
-
-		thisUserTenantWidgets.forEach(function(thisWidget) {
-			if(!thisWidget.position_name) return;
-
-			if(!reorgedWidgets[thisWidget.position_name])
-				reorgedWidgets[thisWidget.position_name] = [];
-
-			if((reorgedWidgets[thisWidget.position_name]).length) {
-				var existingWidgets = (reorgedWidgets[thisWidget.position_name]).filter(function(item) {
-					return item.id == thisWidget.id;
-				});
-
-				if(existingWidgets.length)
-					return;
-			}
-
-			(reorgedWidgets[thisWidget.position_name]).push(thisWidget);
-		});
-
-		Object.keys(reorgedWidgets).forEach(function(position) {
-			var widgetsInThisPosition = reorgedWidgets[position];
-
-			widgetsInThisPosition.sort(function(left, right) {
-				return (left.display_order - right.display_order);
-			});
-		});
-
-		(deserializedUser.tenants[thisTenantId]).widgets = reorgedWidgets;
-	});
-
-	callback(null, deserializedUser);
-};
-
 exports.utility = {
 	'name' : 'userSessionCache',
 	'method' : function(userId, callback) {
-		var cacheSrvc = this.$services['cache-service'].getInterface(),
-			loggerSrvc = this.$services['logger-service'].getInterface(),
+		var cacheSrvc = this.dependencies['cache-service'],
+			loggerSrvc = this.dependencies['logger-service'],
 			self = this;
 
 		// Sanity change...
@@ -296,10 +121,6 @@ exports.utility = {
 		// Promisify the other methods we need
 		retrieveUserFromDatabase = promises.promisify(retrieveUserFromDatabase.bind(this));
 		getUserPermissionsByTenant = promises.promisify(getUserPermissionsByTenant.bind(this));
-		getUserMenus = promises.promisify(getUserMenus.bind(this));
-		reorgUserMenus = promises.promisify(reorgUserMenus.bind(this));
-		getUserWidgets = promises.promisify(getUserWidgets.bind(this));
-		reorgUserWidgets = promises.promisify(reorgUserWidgets.bind(this));
 
 		// Check if the cache already has the data...
 		cacheSrvc.getAsync('twyr!portal!user!' + userId)
@@ -319,32 +140,16 @@ exports.utility = {
 			.then(function(databaseUser) {
 				return getUserPermissionsByTenant(databaseUser);
 			})
-			// Step 4: Get User's menus
-			.then(function(databaseUser) {
-				return getUserMenus(databaseUser);
-			})
-			// Step 5: Re-org menus according to parent-child rel, display order, etc.
-			.then(function(databaseUser) {
-				return reorgUserMenus(databaseUser);
-			})
-			// Step 6: Get User's widgets
-			.then(function(databaseUser) {
-				return getUserWidgets(databaseUser);
-			})
-			// Step 7: Re-org widgets according to position, display order, etc.
-			.then(function(databaseUser) {
-				return reorgUserWidgets(databaseUser);
-			})
-			// Step 8: Store this data in the database for future use
+			// Step 4: Store this data in the cache for future use
 			.then(function(databaseUser) {
 				var cacheMulti = promises.promisifyAll(cacheSrvc.multi());
 
 				cacheMulti.setAsync('twyr!portal!user!' + databaseUser.id, JSON.stringify(databaseUser));
-				cacheMulti.expireAsync('twyr!portal!user!' + databaseUser.id, self.$config.session.ttl);
+				cacheMulti.expireAsync('twyr!portal!user!' + databaseUser.id, 86400);
 
 				return promises.all([cacheMulti.execAsync(), databaseUser]);
 			})
-			// Step 9: Finally, return
+			// Finally, return
 			.then(function(results) {
 				var databaseUser = results.pop();
 				callback(null, databaseUser);

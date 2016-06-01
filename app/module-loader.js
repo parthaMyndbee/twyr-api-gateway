@@ -171,13 +171,13 @@ var moduleLoader = prime({
 
 	'_loadUtilities': function(configSrvc, callback) {
 		try {
+			if(!this.$module.$utilities) {
+				this.$module['$utilities'] = {};
+			}
+
 			if(!(this.$module.$config && this.$module.$config.utilities && this.$module.$config.utilities.path)) {
 				if(callback) callback(null, { 'self': this.$module.name, 'type': 'utilities', 'status': null });
 				return;
-			}
-
-			if(!this.$module.$utilities) {
-				this.$module['$utilities'] = {};
 			}
 
 			var definedUtilities = this._findFiles(path.join(this.$basePath, this.$module.$config.utilities.path), 'utility.js'),
@@ -208,13 +208,13 @@ var moduleLoader = prime({
 			self = this;
 
 		try {
+			if(!this.$module.$services) {
+				this.$module['$services'] = {};
+			}
+
 			if(!(this.$module.$config && this.$module.$config.services && this.$module.$config.services.path)) {
 				if(callback) callback(null, { 'self': this.$module.name, 'type': 'services', 'status': null });
 				return;
-			}
-
-			if(!this.$module.$services) {
-				this.$module['$services'] = {};
 			}
 
 			var definedServices = this._findFiles(path.join(this.$basePath, this.$module.$config.services.path), 'service.js'),
@@ -301,13 +301,13 @@ var moduleLoader = prime({
 			self = this;
 
 		try {
+			if(!this.$module.$components) {
+				this.$module['$components'] = {};
+			}
+
 			if(!(this.$module.$config && this.$module.$config.components && this.$module.$config.components.path)) {
 				if(callback) callback(null, { 'self': this.$module.name, 'type': 'components', 'status': null });
 				return;
-			}
-
-			if(!this.$module.$components) {
-				this.$module['$components'] = {};
 			}
 
 			var definedComponents = this._findFiles(path.join(this.$basePath, this.$module.$config.components.path), 'component.js');
