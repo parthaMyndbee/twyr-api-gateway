@@ -41,45 +41,61 @@ var moduleLoader = prime({
 	},
 
 	'load': function(configSrvc, basePath, callback) {
-		var promiseResolutions = [],
-			self = this;
+		var self = this,
+			finalStatus = [];
 
 		Object.defineProperty(this, '$basePath', {
 			'__proto__': null,
 			'value': path.resolve(basePath)
 		});
 
-		promiseResolutions.push(self._loadUtilitiesAsync(configSrvc));
-		promiseResolutions.push(self._loadServicesAsync(configSrvc));
-		promiseResolutions.push(self._loadComponentsAsync(configSrvc));
-
-		promises.all(promiseResolutions)
+		self._loadUtilitiesAsync(configSrvc)
 		.then(function(status) {
 			if(!status) throw status;
-			if(callback) callback(null, self._filterStatus(status));
+			finalStatus.push(status);
 
+			return self._loadServicesAsync(configSrvc);
+		})
+		.then(function(status) {
+			if(!status) throw status;
+			finalStatus.push(status);
+
+			if(!configSrvc) configSrvc = self.$module.$services['configuration-service'].getInterface();
+			return self._loadComponentsAsync(configSrvc);
+		})
+		.then(function(status) {
+			if(!status) throw status;
+			finalStatus.push(status);
+
+			if(callback) callback(null, self._filterStatus(finalStatus));
 			return null;
 		})
 		.catch(function(err) {
+			console.error(self.$module.name + '::load error: ' + JSON.stringify(err, null, '\t'));
 			if(callback) callback(err);
 		});
 	},
 
 	'initialize': function(callback) {
-		var promiseResolutions = [],
-			self = this;
+		var self = this,
+			finalStatus = [];
 
-		promiseResolutions.push(self._initializeServicesAsync());
-		promiseResolutions.push(self._initializeComponentsAsync());
-
-		promises.all(promiseResolutions)
+		self._initializeServicesAsync()
 		.then(function(status) {
 			if(!status) throw status;
-			if(callback) callback(null, self._filterStatus(status));
+			finalStatus.push(status);
 
+			return self._initializeComponentsAsync();
+		})
+		.then(function(status) {
+			if(!status) throw status;
+			finalStatus.push(status);
+
+			if(callback) callback(null, self._filterStatus(finalStatus));
 			return null;
 		})
 		.catch(function(err) {
+			console.error(self.$module.name + '::initialize error: ' + JSON.stringify(err, null, '\t'));
 			if(callback) callback(err);
 		});
 	},

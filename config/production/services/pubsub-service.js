@@ -6,7 +6,6 @@ exports.config = ({
 		"host": "127.0.0.1",
 		"db": 12,
 		"options": {
-			"parser": "hiredis",
 			"detect_buffers": true
 		}
 	},
