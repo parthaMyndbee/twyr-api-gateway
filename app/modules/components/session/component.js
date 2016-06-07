@@ -75,7 +75,7 @@ var sessionComponent = prime({
 				}
 
 				// Tell the rest of the portal that a new login has happened
-				loggerSrvc.debug('Logged in: ', request.user.firstName + ' ' + request.user.lastName);
+				loggerSrvc.debug('Logged in: ', request.user.first_name + ' ' + request.user.last_name);
 				self.$module.emit('login', request.user.id);
 
 				// Acknowledge the request back to the requester
@@ -98,7 +98,9 @@ var sessionComponent = prime({
 		self.$module.emit('logout', request.user.id);
 		cacheSrvc.delAsync('twyr!portal!user!' + request.user.id)
 		.then(function() {
+			loggerSrvc.debug('Logout: ', request.user.first_name + ' ' + request.user.last_name);
 			request.logout();
+
 			response.status(200).json({ 'status': !request.isAuthenticated() });
 			return null;
 		})

@@ -103,7 +103,7 @@ var databaseService = prime({
 			knexInstance.on('query-error', this._databaseQueryError.bind(this));
 
 			this['$database'] = bookshelf(knexInstance);
-			this['$database'].plugin('bookshelf-camelcase');
+//			this['$database'].plugin('bookshelf-camelcase');
 
 			if(callback) callback(null);
 		}

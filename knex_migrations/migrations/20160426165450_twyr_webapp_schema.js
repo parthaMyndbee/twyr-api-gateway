@@ -46,6 +46,7 @@ exports.up = function(knex, Promise) {
 				userTbl.text('nickname');
 				userTbl.uuid('profile_image_id');
 				userTbl.specificType('gender', 'public.gender').notNullable().defaultTo('other');
+				userTbl.date('dob');
 				userTbl.uuid('home_module_menu_id');
 				userTbl.boolean('enabled').notNullable().defaultTo(true);
 				userTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());

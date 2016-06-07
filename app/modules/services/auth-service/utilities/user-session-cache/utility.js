@@ -60,7 +60,7 @@ var retrieveUserFromDatabase = function(userId, callback) {
 			var thisSocial = socialLogins[idx];
 			user.social[thisSocial.provider] = {
 				'id': thisSocial.profileId,
-				'displayName': thisSocial.displayName
+				'display_name': thisSocial.display_name
 			};
 		}
 
@@ -112,8 +112,7 @@ exports.utility = {
 	'name' : 'userSessionCache',
 	'method' : function(userId, callback) {
 		var cacheSrvc = this.dependencies['cache-service'],
-			loggerSrvc = this.dependencies['logger-service'],
-			self = this;
+			loggerSrvc = this.dependencies['logger-service'];
 
 		// Sanity change...
 		if(!userId) userId = 'public';

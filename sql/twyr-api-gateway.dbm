@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="0,0" last-zoom="0.9"
+<dbmodel pgmodeler-ver="0.8.1" last-position="1917,284" last-zoom="0.7"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -473,7 +473,7 @@ END;]]></definition>
 <table name="users">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="4972.24" y="1172.45"/>
+	<position x="4974.46" y="1159.12"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -500,6 +500,9 @@ END;]]></definition>
 	</column>
 	<column name="gender" not-null="true" default-value="'male'::gender">
 		<type name="public.gender"/>
+	</column>
+	<column name="dob">
+		<type name="date"/>
 	</column>
 	<column name="home_module_menu_id">
 		<type name="uuid"/>
@@ -1305,7 +1308,7 @@ END;]]></definition>
 <table name="social_logins">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="5029.29" y="768.976"/>
+	<position x="5037.86" y="768.976"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
