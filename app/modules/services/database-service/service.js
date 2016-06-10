@@ -21,6 +21,7 @@ var base = require('./../service-base').baseService,
  * Module dependencies, required for this module
  */
 var bookshelf = require('bookshelf'),
+	jsonApiParams = require('bookshelf-jsonapi-params'),
 	knex = require('knex'),
 	path = require('path');
 
@@ -103,7 +104,11 @@ var databaseService = prime({
 			knexInstance.on('query-error', this._databaseQueryError.bind(this));
 
 			this['$database'] = bookshelf(knexInstance);
-//			this['$database'].plugin('bookshelf-camelcase');
+			this['$database'].plugin(jsonApiParams, {
+				'pagination': {
+					'limit': 25
+				}
+			});
 
 			if(callback) callback(null);
 		}
@@ -132,15 +137,15 @@ var databaseService = prime({
 	},
 
 	'_databaseQueryError': function(err, queryData) {
-		this.dependencies['logger-service'].error(this.name + '::_databaseQueryError: ', { 'query': queryData, 'error': err });
+		this.dependencies['logger-service'].error(this.name + '::_databaseQueryError: ' + JSON.stringify(arguments, null, '\t'));
 	},
 
 	'_databaseNotice': function() {
-		this.dependencies['logger-service'].info(this.name + '::_databaseNotice: ', arguments);
+		this.dependencies['logger-service'].info(this.name + '::_databaseNotice: ' + JSON.stringify(arguments, null, '\t'));
 	},
 
 	'_databaseError': function() {
-		this.dependencies['logger-service'].error(this.name + '::_databaseError: ', arguments);
+		this.dependencies['logger-service'].error(this.name + '::_databaseError: ' + JSON.stringify(arguments, null, '\t'));
 	},
 
 	'name': 'database-service',

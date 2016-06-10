@@ -22,11 +22,11 @@ var retrieveUserFromDatabase = function(userId, callback) {
 
 	// Setup the models...
 	var UserSocialLogins = databaseSrvc.Model.extend({
-		'tableName': 'social_logins',
+		'tableName': 'user_social_logins',
 		'idAttribute': 'id',
 
 		'user': function() {
-			return this.hasMany(User, 'user_id');
+			return this.belongsTo(User, 'user_id');
 		}
 	});
 
@@ -80,7 +80,7 @@ var getUserPermissionsByTenant = function(deserializedUser, callback) {
 	if(deserializedUser['tenants'] == undefined)
 		deserializedUser['tenants'] = {};
 
-	databaseSrvc.knex.raw('SELECT A.tenant_id AS tenant, B.permission_id AS permission FROM groups A INNER JOIN group_permissions B ON (A.id = B.group_id) WHERE A.id IN (SELECT group_id FROM tenant_user_groups WHERE user_id = ?)', [deserializedUser.id])
+	databaseSrvc.knex.raw('SELECT A.tenant_id AS tenant, B.permission_id AS permission FROM tenant_groups A INNER JOIN tenant_group_permissions B ON (A.id = B.group_id) WHERE A.id IN (SELECT group_id FROM tenants_users_groups WHERE user_id = ?)', [deserializedUser.id])
 	.then(function(tenantPermissions) {
 		tenantPermissions = tenantPermissions.rows;
 		for(var idx in tenantPermissions) {

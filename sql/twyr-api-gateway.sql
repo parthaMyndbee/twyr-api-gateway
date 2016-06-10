@@ -50,7 +50,7 @@ BEGIN
 
 	IF NEW.admin_only = true
 	THEN
-		INSERT INTO tenant_modules (
+		INSERT INTO tenants_modules (
 			tenant_id,
 			module_id
 		)
@@ -65,7 +65,7 @@ BEGIN
 
 	IF NEW.admin_only = false
 	THEN
-		INSERT INTO tenant_modules (
+		INSERT INTO tenants_modules (
 			tenant_id,
 			module_id
 		)
@@ -472,9 +472,9 @@ CREATE UNIQUE INDEX uidx_tenants_users ON public.tenants_users
 	);
 -- ddl-end --
 
--- object: public.locations | type: TABLE --
--- DROP TABLE IF EXISTS public.locations CASCADE;
-CREATE TABLE public.locations(
+-- object: public.tenant_locations | type: TABLE --
+-- DROP TABLE IF EXISTS public.tenant_locations CASCADE;
+CREATE TABLE public.tenant_locations(
 	id uuid NOT NULL DEFAULT uuid_generate_v4(),
 	tenant_id uuid NOT NULL,
 	line1 text NOT NULL,
@@ -493,12 +493,12 @@ CREATE TABLE public.locations(
 
 );
 -- ddl-end --
-ALTER TABLE public.locations OWNER TO postgres;
+ALTER TABLE public.tenant_locations OWNER TO postgres;
 -- ddl-end --
 
 -- object: uidx_locations | type: INDEX --
 -- DROP INDEX IF EXISTS public.uidx_locations CASCADE;
-CREATE UNIQUE INDEX uidx_locations ON public.locations
+CREATE UNIQUE INDEX uidx_locations ON public.tenant_locations
 	USING btree
 	(
 	  tenant_id ASC NULLS LAST,
@@ -506,9 +506,9 @@ CREATE UNIQUE INDEX uidx_locations ON public.locations
 	);
 -- ddl-end --
 
--- object: public.job_titles | type: TABLE --
--- DROP TABLE IF EXISTS public.job_titles CASCADE;
-CREATE TABLE public.job_titles(
+-- object: public.tenant_job_titles | type: TABLE --
+-- DROP TABLE IF EXISTS public.tenant_job_titles CASCADE;
+CREATE TABLE public.tenant_job_titles(
 	id uuid NOT NULL DEFAULT uuid_generate_v4(),
 	tenant_id uuid NOT NULL,
 	title text NOT NULL,
@@ -519,12 +519,12 @@ CREATE TABLE public.job_titles(
 
 );
 -- ddl-end --
-ALTER TABLE public.job_titles OWNER TO postgres;
+ALTER TABLE public.tenant_job_titles OWNER TO postgres;
 -- ddl-end --
 
 -- object: uidx_job_titles | type: INDEX --
 -- DROP INDEX IF EXISTS public.uidx_job_titles CASCADE;
-CREATE UNIQUE INDEX uidx_job_titles ON public.job_titles
+CREATE UNIQUE INDEX uidx_job_titles ON public.tenant_job_titles
 	USING btree
 	(
 	  tenant_id ASC NULLS LAST,
@@ -532,9 +532,9 @@ CREATE UNIQUE INDEX uidx_job_titles ON public.job_titles
 	);
 -- ddl-end --
 
--- object: public.groups | type: TABLE --
--- DROP TABLE IF EXISTS public.groups CASCADE;
-CREATE TABLE public.groups(
+-- object: public.tenant_groups | type: TABLE --
+-- DROP TABLE IF EXISTS public.tenant_groups CASCADE;
+CREATE TABLE public.tenant_groups(
 	id uuid NOT NULL DEFAULT uuid_generate_v4(),
 	parent_id uuid,
 	tenant_id uuid NOT NULL,
@@ -548,12 +548,12 @@ CREATE TABLE public.groups(
 
 );
 -- ddl-end --
-ALTER TABLE public.groups OWNER TO postgres;
+ALTER TABLE public.tenant_groups OWNER TO postgres;
 -- ddl-end --
 
 -- object: uidx_group_parent_name | type: INDEX --
 -- DROP INDEX IF EXISTS public.uidx_group_parent_name CASCADE;
-CREATE UNIQUE INDEX uidx_group_parent_name ON public.groups
+CREATE UNIQUE INDEX uidx_group_parent_name ON public.tenant_groups
 	USING btree
 	(
 	  parent_id ASC NULLS LAST,
@@ -563,7 +563,7 @@ CREATE UNIQUE INDEX uidx_group_parent_name ON public.groups
 
 -- object: uidx_group_tenant | type: INDEX --
 -- DROP INDEX IF EXISTS public.uidx_group_tenant CASCADE;
-CREATE UNIQUE INDEX uidx_group_tenant ON public.groups
+CREATE UNIQUE INDEX uidx_group_tenant ON public.tenant_groups
 	USING btree
 	(
 	  tenant_id ASC NULLS LAST,
@@ -571,9 +571,9 @@ CREATE UNIQUE INDEX uidx_group_tenant ON public.groups
 	);
 -- ddl-end --
 
--- object: public.tenant_user_groups | type: TABLE --
--- DROP TABLE IF EXISTS public.tenant_user_groups CASCADE;
-CREATE TABLE public.tenant_user_groups(
+-- object: public.tenants_users_groups | type: TABLE --
+-- DROP TABLE IF EXISTS public.tenants_users_groups CASCADE;
+CREATE TABLE public.tenants_users_groups(
 	id uuid NOT NULL DEFAULT uuid_generate_v4(),
 	tenant_id uuid NOT NULL,
 	group_id uuid NOT NULL,
@@ -584,12 +584,12 @@ CREATE TABLE public.tenant_user_groups(
 
 );
 -- ddl-end --
-ALTER TABLE public.tenant_user_groups OWNER TO postgres;
+ALTER TABLE public.tenants_users_groups OWNER TO postgres;
 -- ddl-end --
 
--- object: public.permissions | type: TABLE --
--- DROP TABLE IF EXISTS public.permissions CASCADE;
-CREATE TABLE public.permissions(
+-- object: public.module_permissions | type: TABLE --
+-- DROP TABLE IF EXISTS public.module_permissions CASCADE;
+CREATE TABLE public.module_permissions(
 	id uuid NOT NULL DEFAULT uuid_generate_v4(),
 	module_id uuid NOT NULL,
 	name text NOT NULL,
@@ -601,7 +601,7 @@ CREATE TABLE public.permissions(
 
 );
 -- ddl-end --
-ALTER TABLE public.permissions OWNER TO postgres;
+ALTER TABLE public.module_permissions OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.fn_get_tenant_ancestors | type: FUNCTION --
@@ -846,7 +846,7 @@ BEGIN
 			A.parent_id,
 			A.name
 		FROM
-			groups A
+			tenant_groups A
 		WHERE
 			A.id = groupid
 		UNION ALL
@@ -857,7 +857,7 @@ BEGIN
 			B.name
 		FROM
 			q,
-			groups B
+			tenant_groups B
 		WHERE
 			B.id = q.parent_id
 	)
@@ -898,7 +898,7 @@ BEGIN
 			A.parent_id,
 			A.name
 		FROM
-			groups A
+			tenant_groups A
 		WHERE
 			A.id = groupid
 		UNION ALL
@@ -909,7 +909,7 @@ BEGIN
 			B.name
 		FROM
 			q,
-			groups B
+			tenant_groups B
 		WHERE
 			B.parent_id = q.id
 	)
@@ -955,10 +955,10 @@ ALTER FUNCTION public.fn_check_group_update_is_valid() OWNER TO postgres;
 -- ddl-end --
 
 -- object: trigger_check_group_update_is_valid | type: TRIGGER --
--- DROP TRIGGER IF EXISTS trigger_check_group_update_is_valid ON public.groups  ON public.groups CASCADE;
+-- DROP TRIGGER IF EXISTS trigger_check_group_update_is_valid ON public.tenant_groups  ON public.tenant_groups CASCADE;
 CREATE TRIGGER trigger_check_group_update_is_valid
 	BEFORE UPDATE
-	ON public.groups
+	ON public.tenant_groups
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_check_group_update_is_valid();
 -- ddl-end --
@@ -981,7 +981,7 @@ BEGIN
 	SELECT
 		id
 	FROM
-		groups
+		tenant_groups
 	WHERE
 		tenant_id = NEW.tenant_id AND
 		default_for_new_user = true
@@ -993,7 +993,7 @@ BEGIN
 		RETURN NEW;
 	END IF;
 
-	INSERT INTO tenant_user_groups (
+	INSERT INTO tenants_users_groups (
 		tenant_id,
 		group_id,
 		user_id
@@ -1033,7 +1033,7 @@ CREATE FUNCTION public.fn_remove_group_permission_from_descendants ()
 
 BEGIN
 	DELETE FROM
-		group_permissions
+		tenant_group_permissions
 	WHERE
 		group_id IN (SELECT id FROM fn_get_group_descendants(OLD.group_id) WHERE level = 2) AND
 		permission_id = OLD.permission_id;
@@ -1045,9 +1045,9 @@ $$;
 ALTER FUNCTION public.fn_remove_group_permission_from_descendants() OWNER TO postgres;
 -- ddl-end --
 
--- object: public.social_logins | type: TABLE --
--- DROP TABLE IF EXISTS public.social_logins CASCADE;
-CREATE TABLE public.social_logins(
+-- object: public.user_social_logins | type: TABLE --
+-- DROP TABLE IF EXISTS public.user_social_logins CASCADE;
+CREATE TABLE public.user_social_logins(
 	id uuid NOT NULL DEFAULT uuid_generate_v4(),
 	user_id uuid NOT NULL,
 	provider text NOT NULL,
@@ -1060,12 +1060,12 @@ CREATE TABLE public.social_logins(
 
 );
 -- ddl-end --
-ALTER TABLE public.social_logins OWNER TO postgres;
+ALTER TABLE public.user_social_logins OWNER TO postgres;
 -- ddl-end --
 
 -- object: uidx_social_logins | type: INDEX --
 -- DROP INDEX IF EXISTS public.uidx_social_logins CASCADE;
-CREATE UNIQUE INDEX uidx_social_logins ON public.social_logins
+CREATE UNIQUE INDEX uidx_social_logins ON public.user_social_logins
 	USING btree
 	(
 	  provider ASC NULLS LAST,
@@ -1073,9 +1073,9 @@ CREATE UNIQUE INDEX uidx_social_logins ON public.social_logins
 	);
 -- ddl-end --
 
--- object: public.group_permissions | type: TABLE --
--- DROP TABLE IF EXISTS public.group_permissions CASCADE;
-CREATE TABLE public.group_permissions(
+-- object: public.tenant_group_permissions | type: TABLE --
+-- DROP TABLE IF EXISTS public.tenant_group_permissions CASCADE;
+CREATE TABLE public.tenant_group_permissions(
 	id uuid NOT NULL DEFAULT uuid_generate_v4(),
 	tenant_id uuid NOT NULL,
 	group_id uuid NOT NULL,
@@ -1087,7 +1087,7 @@ CREATE TABLE public.group_permissions(
 
 );
 -- ddl-end --
-ALTER TABLE public.group_permissions OWNER TO postgres;
+ALTER TABLE public.tenant_group_permissions OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.fn_assign_defaults_to_tenant | type: FUNCTION --
@@ -1102,7 +1102,7 @@ CREATE FUNCTION public.fn_assign_defaults_to_tenant ()
 	AS $$
 
 BEGIN
-	INSERT INTO groups (
+	INSERT INTO tenant_groups (
 		parent_id,
 		tenant_id,
 		name,
@@ -1119,7 +1119,7 @@ BEGIN
 
 	IF NEW.parent_id IS NOT NULL
 	THEN
-		INSERT INTO tenant_modules (
+		INSERT INTO tenants_modules (
 			tenant_id,
 			module_id
 		)
@@ -1135,7 +1135,7 @@ BEGIN
 
 	IF NEW.parent_id IS NULL
 	THEN
-		INSERT INTO tenant_modules (
+		INSERT INTO tenants_modules (
 			tenant_id,
 			module_id
 		)
@@ -1202,10 +1202,10 @@ ALTER FUNCTION public.fn_check_permission_insert_is_valid() OWNER TO postgres;
 -- ddl-end --
 
 -- object: trigger_check_permission_insert_is_valid | type: TRIGGER --
--- DROP TRIGGER IF EXISTS trigger_check_permission_insert_is_valid ON public.permissions  ON public.permissions CASCADE;
+-- DROP TRIGGER IF EXISTS trigger_check_permission_insert_is_valid ON public.module_permissions  ON public.module_permissions CASCADE;
 CREATE TRIGGER trigger_check_permission_insert_is_valid
 	BEFORE INSERT 
-	ON public.permissions
+	ON public.module_permissions
 	FOR EACH STATEMENT
 	EXECUTE PROCEDURE public.fn_check_permission_insert_is_valid();
 -- ddl-end --
@@ -1242,17 +1242,17 @@ ALTER FUNCTION public.fn_check_permission_update_is_valid() OWNER TO postgres;
 -- ddl-end --
 
 -- object: trigger_check_permission_update_is_valid | type: TRIGGER --
--- DROP TRIGGER IF EXISTS trigger_check_permission_update_is_valid ON public.permissions  ON public.permissions CASCADE;
+-- DROP TRIGGER IF EXISTS trigger_check_permission_update_is_valid ON public.module_permissions  ON public.module_permissions CASCADE;
 CREATE TRIGGER trigger_check_permission_update_is_valid
 	BEFORE UPDATE
-	ON public.permissions
+	ON public.module_permissions
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_check_permission_update_is_valid();
 -- ddl-end --
 
--- object: public.tenant_modules | type: TABLE --
--- DROP TABLE IF EXISTS public.tenant_modules CASCADE;
-CREATE TABLE public.tenant_modules(
+-- object: public.tenants_modules | type: TABLE --
+-- DROP TABLE IF EXISTS public.tenants_modules CASCADE;
+CREATE TABLE public.tenants_modules(
 	id uuid NOT NULL DEFAULT uuid_generate_v4(),
 	tenant_id uuid NOT NULL,
 	module_id uuid NOT NULL,
@@ -1262,7 +1262,7 @@ CREATE TABLE public.tenant_modules(
 
 );
 -- ddl-end --
-ALTER TABLE public.tenant_modules OWNER TO postgres;
+ALTER TABLE public.tenants_modules OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.fn_check_tenant_module_upsert_is_valid | type: FUNCTION --
@@ -1315,7 +1315,7 @@ BEGIN
 		SELECT
 			count(id)
 		FROM
-			tenant_modules
+			tenants_modules
 		WHERE
 			tenant_id = NEW.tenant_id AND
 			module_id = component_parent_id
@@ -1368,10 +1368,10 @@ ALTER FUNCTION public.fn_check_tenant_module_upsert_is_valid() OWNER TO postgres
 -- ddl-end --
 
 -- object: trigger_check_tenant_module_upsert_is_valid | type: TRIGGER --
--- DROP TRIGGER IF EXISTS trigger_check_tenant_module_upsert_is_valid ON public.tenant_modules  ON public.tenant_modules CASCADE;
+-- DROP TRIGGER IF EXISTS trigger_check_tenant_module_upsert_is_valid ON public.tenants_modules  ON public.tenants_modules CASCADE;
 CREATE TRIGGER trigger_check_tenant_module_upsert_is_valid
 	BEFORE INSERT OR UPDATE
-	ON public.tenant_modules
+	ON public.tenants_modules
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_check_tenant_module_upsert_is_valid();
 -- ddl-end --
@@ -1415,7 +1415,7 @@ CREATE UNIQUE INDEX uidx_module_parent_name ON public.modules
 
 -- object: uidx_permissions | type: INDEX --
 -- DROP INDEX IF EXISTS public.uidx_permissions CASCADE;
-CREATE UNIQUE INDEX uidx_permissions ON public.permissions
+CREATE UNIQUE INDEX uidx_permissions ON public.module_permissions
 	USING btree
 	(
 	  module_id ASC NULLS LAST,
@@ -1424,17 +1424,17 @@ CREATE UNIQUE INDEX uidx_permissions ON public.permissions
 -- ddl-end --
 
 -- object: trigger_remove_group_permission_from_descendants | type: TRIGGER --
--- DROP TRIGGER IF EXISTS trigger_remove_group_permission_from_descendants ON public.group_permissions  ON public.group_permissions CASCADE;
+-- DROP TRIGGER IF EXISTS trigger_remove_group_permission_from_descendants ON public.tenant_group_permissions  ON public.tenant_group_permissions CASCADE;
 CREATE TRIGGER trigger_remove_group_permission_from_descendants
 	BEFORE DELETE 
-	ON public.group_permissions
+	ON public.tenant_group_permissions
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_remove_group_permission_from_descendants();
 -- ddl-end --
 
 -- object: uidx_tenant_modules | type: INDEX --
 -- DROP INDEX IF EXISTS public.uidx_tenant_modules CASCADE;
-CREATE UNIQUE INDEX uidx_tenant_modules ON public.tenant_modules
+CREATE UNIQUE INDEX uidx_tenant_modules ON public.tenants_modules
 	USING btree
 	(
 	  tenant_id ASC NULLS LAST,
@@ -1444,7 +1444,7 @@ CREATE UNIQUE INDEX uidx_tenant_modules ON public.tenant_modules
 
 -- object: uidx_permissions_modules | type: INDEX --
 -- DROP INDEX IF EXISTS public.uidx_permissions_modules CASCADE;
-CREATE UNIQUE INDEX uidx_permissions_modules ON public.permissions
+CREATE UNIQUE INDEX uidx_permissions_modules ON public.module_permissions
 	USING btree
 	(
 	  module_id ASC NULLS LAST,
@@ -1470,7 +1470,7 @@ BEGIN
 	SELECT
 		id
 	FROM
-		groups
+		tenant_groups
 	WHERE
 		tenant_id = NEW.tenant_id AND
 		parent_id IS NULL
@@ -1482,7 +1482,7 @@ BEGIN
 		RETURN NEW;
 	END IF;
 
-	INSERT INTO group_permissions(
+	INSERT INTO tenant_group_permissions(
 		tenant_id,
 		group_id,
 		module_id,
@@ -1506,17 +1506,17 @@ ALTER FUNCTION public.fn_assign_permission_to_tenant_group() OWNER TO postgres;
 -- ddl-end --
 
 -- object: trigger_assign_permission_to_tenant_group | type: TRIGGER --
--- DROP TRIGGER IF EXISTS trigger_assign_permission_to_tenant_group ON public.tenant_modules  ON public.tenant_modules CASCADE;
+-- DROP TRIGGER IF EXISTS trigger_assign_permission_to_tenant_group ON public.tenants_modules  ON public.tenants_modules CASCADE;
 CREATE TRIGGER trigger_assign_permission_to_tenant_group
 	AFTER INSERT OR UPDATE
-	ON public.tenant_modules
+	ON public.tenants_modules
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_assign_permission_to_tenant_group();
 -- ddl-end --
 
 -- object: uidx_group_permissions | type: INDEX --
 -- DROP INDEX IF EXISTS public.uidx_group_permissions CASCADE;
-CREATE UNIQUE INDEX uidx_group_permissions ON public.group_permissions
+CREATE UNIQUE INDEX uidx_group_permissions ON public.tenant_group_permissions
 	USING btree
 	(
 	  group_id ASC NULLS LAST,
@@ -1535,7 +1535,7 @@ CREATE FUNCTION public.fn_assign_permission_to_tenants ()
 	COST 1
 	AS $$
 BEGIN
-	INSERT INTO group_permissions (
+	INSERT INTO tenant_group_permissions (
 		tenant_id,
 		group_id,
 		module_id,
@@ -1547,8 +1547,8 @@ BEGIN
 		A.module_id,
 		NEW.id
 	FROM
-		tenant_modules A
-		INNER JOIN groups B ON (A.tenant_id = B.tenant_id AND B.parent_id IS NULL)
+		tenants_modules A
+		INNER JOIN tenant_groups B ON (A.tenant_id = B.tenant_id AND B.parent_id IS NULL)
 	WHERE
 		module_id = NEW.module_id;
 
@@ -1560,17 +1560,17 @@ ALTER FUNCTION public.fn_assign_permission_to_tenants() OWNER TO postgres;
 -- ddl-end --
 
 -- object: trigger_assign_permission_to_tenants | type: TRIGGER --
--- DROP TRIGGER IF EXISTS trigger_assign_permission_to_tenants ON public.permissions  ON public.permissions CASCADE;
+-- DROP TRIGGER IF EXISTS trigger_assign_permission_to_tenants ON public.module_permissions  ON public.module_permissions CASCADE;
 CREATE TRIGGER trigger_assign_permission_to_tenants
 	AFTER INSERT 
-	ON public.permissions
+	ON public.module_permissions
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_assign_permission_to_tenants();
 -- ddl-end --
 
 -- object: uidx_tenant_user_groups | type: INDEX --
 -- DROP INDEX IF EXISTS public.uidx_tenant_user_groups CASCADE;
-CREATE UNIQUE INDEX uidx_tenant_user_groups ON public.tenant_user_groups
+CREATE UNIQUE INDEX uidx_tenant_user_groups ON public.tenants_users_groups
 	USING btree
 	(
 	  tenant_id ASC NULLS LAST,
@@ -1591,7 +1591,7 @@ CREATE FUNCTION public.fn_remove_descendant_group_from_tenant_user ()
 	AS $$
 BEGIN
 	DELETE FROM 
-		tenant_user_groups
+		tenants_users_groups
 	WHERE
 		tenant_id = NEW.tenant_id AND
 		group_id IN (SELECT id FROM fn_get_group_descendants(NEW.group_id) WHERE level > 1) AND
@@ -1605,10 +1605,10 @@ ALTER FUNCTION public.fn_remove_descendant_group_from_tenant_user() OWNER TO pos
 -- ddl-end --
 
 -- object: trigger_remove_descendant_group_from_tenant_user | type: TRIGGER --
--- DROP TRIGGER IF EXISTS trigger_remove_descendant_group_from_tenant_user ON public.tenant_user_groups  ON public.tenant_user_groups CASCADE;
+-- DROP TRIGGER IF EXISTS trigger_remove_descendant_group_from_tenant_user ON public.tenants_users_groups  ON public.tenants_users_groups CASCADE;
 CREATE TRIGGER trigger_remove_descendant_group_from_tenant_user
 	AFTER INSERT OR UPDATE
-	ON public.tenant_user_groups
+	ON public.tenants_users_groups
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_remove_descendant_group_from_tenant_user();
 -- ddl-end --
@@ -1631,7 +1631,7 @@ BEGIN
 	SELECT
 		parent_id
 	FROM
-		groups
+		tenant_groups
 	WHERE
 		id = NEW.group_id
 	INTO
@@ -1646,7 +1646,7 @@ BEGIN
 	SELECT
 		count(id)
 	FROM
-		group_permissions
+		tenant_group_permissions
 	WHERE
 		group_id = parent_group_id AND
 		permission_id = NEW.permission_id
@@ -1667,10 +1667,10 @@ ALTER FUNCTION public.fn_check_group_permission_insert_is_valid() OWNER TO postg
 -- ddl-end --
 
 -- object: trigger_check_group_permission_insert_is_valid | type: TRIGGER --
--- DROP TRIGGER IF EXISTS trigger_check_group_permission_insert_is_valid ON public.group_permissions  ON public.group_permissions CASCADE;
+-- DROP TRIGGER IF EXISTS trigger_check_group_permission_insert_is_valid ON public.tenant_group_permissions  ON public.tenant_group_permissions CASCADE;
 CREATE TRIGGER trigger_check_group_permission_insert_is_valid
 	BEFORE INSERT OR UPDATE
-	ON public.group_permissions
+	ON public.tenant_group_permissions
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_check_group_permission_insert_is_valid();
 -- ddl-end --
@@ -1692,7 +1692,7 @@ BEGIN
 	SELECT
 		count(id)
 	FROM
-		tenant_user_groups
+		tenants_users_groups
 	WHERE
 		tenant_id = NEW.tenant_id AND
 		group_id IN (SELECT id FROM fn_get_group_ancestors(NEW.group_id) WHERE level > 1) AND
@@ -1714,10 +1714,10 @@ ALTER FUNCTION public.fn_check_tenant_user_group_upsert_is_valid() OWNER TO post
 -- ddl-end --
 
 -- object: trigger_check_tenant_user_group_upsert_is_valid | type: TRIGGER --
--- DROP TRIGGER IF EXISTS trigger_check_tenant_user_group_upsert_is_valid ON public.tenant_user_groups  ON public.tenant_user_groups CASCADE;
+-- DROP TRIGGER IF EXISTS trigger_check_tenant_user_group_upsert_is_valid ON public.tenants_users_groups  ON public.tenants_users_groups CASCADE;
 CREATE TRIGGER trigger_check_tenant_user_group_upsert_is_valid
 	BEFORE INSERT OR UPDATE
-	ON public.tenant_user_groups
+	ON public.tenants_users_groups
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_check_tenant_user_group_upsert_is_valid();
 -- ddl-end --
@@ -1799,7 +1799,7 @@ BEGIN
 	SELECT
 		count(id)
 	FROM
-		permissions
+		module_permissions
 	WHERE
 		module_id IN (SELECT id FROM fn_get_module_ancestors(NEW.module_id)) AND
 		id = NEW.permission_id
@@ -1937,7 +1937,7 @@ BEGIN
 	SELECT
 		count(id)
 	FROM
-		permissions
+		module_permissions
 	WHERE
 		module_id IN (SELECT id FROM fn_get_module_ancestors(NEW.module_id)) AND
 		id = NEW.permission_id
@@ -2124,9 +2124,9 @@ BEGIN
 		A.tenant_id,
 		A.permission_id
 	FROM
-		group_permissions A
+		tenant_group_permissions A
 	WHERE
-		A.group_id IN (SELECT group_id FROM tenant_user_groups WHERE user_id = userid);
+		A.group_id IN (SELECT group_id FROM tenants_users_groups WHERE user_id = userid);
 END;
 $$;
 -- ddl-end --
@@ -2175,9 +2175,9 @@ $$;
 ALTER FUNCTION public.fn_check_user_upsert_is_valid() OWNER TO postgres;
 -- ddl-end --
 
--- object: public.template_positions | type: TABLE --
--- DROP TABLE IF EXISTS public.template_positions CASCADE;
-CREATE TABLE public.template_positions(
+-- object: public.module_template_positions | type: TABLE --
+-- DROP TABLE IF EXISTS public.module_template_positions CASCADE;
+CREATE TABLE public.module_template_positions(
 	id uuid NOT NULL DEFAULT uuid_generate_v4(),
 	template_id uuid NOT NULL,
 	name text NOT NULL,
@@ -2187,12 +2187,12 @@ CREATE TABLE public.template_positions(
 
 );
 -- ddl-end --
-ALTER TABLE public.template_positions OWNER TO postgres;
+ALTER TABLE public.module_template_positions OWNER TO postgres;
 -- ddl-end --
 
--- object: public.widget_template_position | type: TABLE --
--- DROP TABLE IF EXISTS public.widget_template_position CASCADE;
-CREATE TABLE public.widget_template_position(
+-- object: public.module_widgets_module_template_positions | type: TABLE --
+-- DROP TABLE IF EXISTS public.module_widgets_module_template_positions CASCADE;
+CREATE TABLE public.module_widgets_module_template_positions(
 	id uuid NOT NULL DEFAULT uuid_generate_v4(),
 	template_position_id uuid NOT NULL,
 	module_widget_id uuid NOT NULL,
@@ -2203,7 +2203,7 @@ CREATE TABLE public.widget_template_position(
 
 );
 -- ddl-end --
-ALTER TABLE public.widget_template_position OWNER TO postgres;
+ALTER TABLE public.module_widgets_module_template_positions OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.fn_check_widget_template_position_upsert_is_valid | type: FUNCTION --
@@ -2230,7 +2230,7 @@ BEGIN
 	FROM
 		module_templates
 	WHERE
-		id = (SELECT template_id FROM template_positions WHERE id = NEW.template_position_id)
+		id = (SELECT template_id FROM module_template_positions WHERE id = NEW.template_position_id)
 	INTO
 		template_module_id;
 
@@ -2267,7 +2267,7 @@ ALTER FUNCTION public.fn_check_widget_template_position_upsert_is_valid() OWNER 
 
 -- object: uidx_widget_template_position | type: INDEX --
 -- DROP INDEX IF EXISTS public.uidx_widget_template_position CASCADE;
-CREATE UNIQUE INDEX uidx_widget_template_position ON public.widget_template_position
+CREATE UNIQUE INDEX uidx_widget_template_position ON public.module_widgets_module_template_positions
 	USING btree
 	(
 	  template_position_id ASC NULLS LAST,
@@ -2276,10 +2276,10 @@ CREATE UNIQUE INDEX uidx_widget_template_position ON public.widget_template_posi
 -- ddl-end --
 
 -- object: trigger_check_widget_template_position_upsert_is_valid | type: TRIGGER --
--- DROP TRIGGER IF EXISTS trigger_check_widget_template_position_upsert_is_valid ON public.widget_template_position  ON public.widget_template_position CASCADE;
+-- DROP TRIGGER IF EXISTS trigger_check_widget_template_position_upsert_is_valid ON public.module_widgets_module_template_positions  ON public.module_widgets_module_template_positions CASCADE;
 CREATE TRIGGER trigger_check_widget_template_position_upsert_is_valid
 	BEFORE INSERT OR UPDATE
-	ON public.widget_template_position
+	ON public.module_widgets_module_template_positions
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_check_widget_template_position_upsert_is_valid();
 -- ddl-end --
@@ -2348,6 +2348,30 @@ CREATE TRIGGER trigger_check_module_template_upsert_is_valid
 	EXECUTE PROCEDURE public.fn_check_module_template_upsert_is_valid();
 -- ddl-end --
 
+-- object: public.contact_type | type: TYPE --
+-- DROP TYPE IF EXISTS public.contact_type CASCADE;
+CREATE TYPE public.contact_type AS
+ ENUM ('email','landline','mobile','other');
+-- ddl-end --
+ALTER TYPE public.contact_type OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.user_contacts | type: TABLE --
+-- DROP TABLE IF EXISTS public.user_contacts CASCADE;
+CREATE TABLE public.user_contacts(
+	id uuid NOT NULL DEFAULT uuid_generate_v4(),
+	user_id uuid NOT NULL,
+	contact text NOT NULL,
+	type public.contact_type NOT NULL DEFAULT 'other'::contact_type,
+	created_at timestamptz NOT NULL DEFAULT now(),
+	updated_at timestamptz NOT NULL DEFAULT now(),
+	CONSTRAINT pk_contacts PRIMARY KEY (id)
+
+);
+-- ddl-end --
+ALTER TABLE public.user_contacts OWNER TO postgres;
+-- ddl-end --
+
 -- object: fk_modules_modules | type: CONSTRAINT --
 -- ALTER TABLE public.modules DROP CONSTRAINT IF EXISTS fk_modules_modules CASCADE;
 ALTER TABLE public.modules ADD CONSTRAINT fk_modules_modules FOREIGN KEY (parent_id)
@@ -2379,104 +2403,104 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 -- object: fk_tenants_users_locations | type: CONSTRAINT --
 -- ALTER TABLE public.tenants_users DROP CONSTRAINT IF EXISTS fk_tenants_users_locations CASCADE;
 ALTER TABLE public.tenants_users ADD CONSTRAINT fk_tenants_users_locations FOREIGN KEY (tenant_id,location_id)
-REFERENCES public.locations (tenant_id,id) MATCH FULL
+REFERENCES public.tenant_locations (tenant_id,id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_tenants_users_job_titles | type: CONSTRAINT --
 -- ALTER TABLE public.tenants_users DROP CONSTRAINT IF EXISTS fk_tenants_users_job_titles CASCADE;
 ALTER TABLE public.tenants_users ADD CONSTRAINT fk_tenants_users_job_titles FOREIGN KEY (tenant_id,job_title_id)
-REFERENCES public.job_titles (id,tenant_id) MATCH FULL
+REFERENCES public.tenant_job_titles (id,tenant_id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_locations_tenants | type: CONSTRAINT --
--- ALTER TABLE public.locations DROP CONSTRAINT IF EXISTS fk_locations_tenants CASCADE;
-ALTER TABLE public.locations ADD CONSTRAINT fk_locations_tenants FOREIGN KEY (tenant_id)
+-- ALTER TABLE public.tenant_locations DROP CONSTRAINT IF EXISTS fk_locations_tenants CASCADE;
+ALTER TABLE public.tenant_locations ADD CONSTRAINT fk_locations_tenants FOREIGN KEY (tenant_id)
 REFERENCES public.tenants (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_job_titles_tenants | type: CONSTRAINT --
--- ALTER TABLE public.job_titles DROP CONSTRAINT IF EXISTS fk_job_titles_tenants CASCADE;
-ALTER TABLE public.job_titles ADD CONSTRAINT fk_job_titles_tenants FOREIGN KEY (tenant_id)
+-- ALTER TABLE public.tenant_job_titles DROP CONSTRAINT IF EXISTS fk_job_titles_tenants CASCADE;
+ALTER TABLE public.tenant_job_titles ADD CONSTRAINT fk_job_titles_tenants FOREIGN KEY (tenant_id)
 REFERENCES public.tenants (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_group_tenant | type: CONSTRAINT --
--- ALTER TABLE public.groups DROP CONSTRAINT IF EXISTS fk_group_tenant CASCADE;
-ALTER TABLE public.groups ADD CONSTRAINT fk_group_tenant FOREIGN KEY (tenant_id)
+-- ALTER TABLE public.tenant_groups DROP CONSTRAINT IF EXISTS fk_group_tenant CASCADE;
+ALTER TABLE public.tenant_groups ADD CONSTRAINT fk_group_tenant FOREIGN KEY (tenant_id)
 REFERENCES public.tenants (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_groups_groups | type: CONSTRAINT --
--- ALTER TABLE public.groups DROP CONSTRAINT IF EXISTS fk_groups_groups CASCADE;
-ALTER TABLE public.groups ADD CONSTRAINT fk_groups_groups FOREIGN KEY (parent_id)
-REFERENCES public.groups (id) MATCH FULL
+-- ALTER TABLE public.tenant_groups DROP CONSTRAINT IF EXISTS fk_groups_groups CASCADE;
+ALTER TABLE public.tenant_groups ADD CONSTRAINT fk_groups_groups FOREIGN KEY (parent_id)
+REFERENCES public.tenant_groups (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_tenant_user_groups_groups | type: CONSTRAINT --
--- ALTER TABLE public.tenant_user_groups DROP CONSTRAINT IF EXISTS fk_tenant_user_groups_groups CASCADE;
-ALTER TABLE public.tenant_user_groups ADD CONSTRAINT fk_tenant_user_groups_groups FOREIGN KEY (tenant_id,group_id)
-REFERENCES public.groups (tenant_id,id) MATCH FULL
+-- ALTER TABLE public.tenants_users_groups DROP CONSTRAINT IF EXISTS fk_tenant_user_groups_groups CASCADE;
+ALTER TABLE public.tenants_users_groups ADD CONSTRAINT fk_tenant_user_groups_groups FOREIGN KEY (tenant_id,group_id)
+REFERENCES public.tenant_groups (tenant_id,id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_tenant_user_groups_tenant_users | type: CONSTRAINT --
--- ALTER TABLE public.tenant_user_groups DROP CONSTRAINT IF EXISTS fk_tenant_user_groups_tenant_users CASCADE;
-ALTER TABLE public.tenant_user_groups ADD CONSTRAINT fk_tenant_user_groups_tenant_users FOREIGN KEY (tenant_id,user_id)
+-- ALTER TABLE public.tenants_users_groups DROP CONSTRAINT IF EXISTS fk_tenant_user_groups_tenant_users CASCADE;
+ALTER TABLE public.tenants_users_groups ADD CONSTRAINT fk_tenant_user_groups_tenant_users FOREIGN KEY (tenant_id,user_id)
 REFERENCES public.tenants_users (tenant_id,user_id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_permissions_modules | type: CONSTRAINT --
--- ALTER TABLE public.permissions DROP CONSTRAINT IF EXISTS fk_permissions_modules CASCADE;
-ALTER TABLE public.permissions ADD CONSTRAINT fk_permissions_modules FOREIGN KEY (module_id)
+-- ALTER TABLE public.module_permissions DROP CONSTRAINT IF EXISTS fk_permissions_modules CASCADE;
+ALTER TABLE public.module_permissions ADD CONSTRAINT fk_permissions_modules FOREIGN KEY (module_id)
 REFERENCES public.modules (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_social_logins_users | type: CONSTRAINT --
--- ALTER TABLE public.social_logins DROP CONSTRAINT IF EXISTS fk_social_logins_users CASCADE;
-ALTER TABLE public.social_logins ADD CONSTRAINT fk_social_logins_users FOREIGN KEY (user_id)
+-- ALTER TABLE public.user_social_logins DROP CONSTRAINT IF EXISTS fk_social_logins_users CASCADE;
+ALTER TABLE public.user_social_logins ADD CONSTRAINT fk_social_logins_users FOREIGN KEY (user_id)
 REFERENCES public.users (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_group_permissions_groups | type: CONSTRAINT --
--- ALTER TABLE public.group_permissions DROP CONSTRAINT IF EXISTS fk_group_permissions_groups CASCADE;
-ALTER TABLE public.group_permissions ADD CONSTRAINT fk_group_permissions_groups FOREIGN KEY (tenant_id,group_id)
-REFERENCES public.groups (tenant_id,id) MATCH FULL
+-- ALTER TABLE public.tenant_group_permissions DROP CONSTRAINT IF EXISTS fk_group_permissions_groups CASCADE;
+ALTER TABLE public.tenant_group_permissions ADD CONSTRAINT fk_group_permissions_groups FOREIGN KEY (tenant_id,group_id)
+REFERENCES public.tenant_groups (tenant_id,id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_group_permissions_permissions | type: CONSTRAINT --
--- ALTER TABLE public.group_permissions DROP CONSTRAINT IF EXISTS fk_group_permissions_permissions CASCADE;
-ALTER TABLE public.group_permissions ADD CONSTRAINT fk_group_permissions_permissions FOREIGN KEY (module_id,permission_id)
-REFERENCES public.permissions (module_id,id) MATCH FULL
+-- ALTER TABLE public.tenant_group_permissions DROP CONSTRAINT IF EXISTS fk_group_permissions_permissions CASCADE;
+ALTER TABLE public.tenant_group_permissions ADD CONSTRAINT fk_group_permissions_permissions FOREIGN KEY (module_id,permission_id)
+REFERENCES public.module_permissions (module_id,id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_group_permissions_tenant_modules | type: CONSTRAINT --
--- ALTER TABLE public.group_permissions DROP CONSTRAINT IF EXISTS fk_group_permissions_tenant_modules CASCADE;
-ALTER TABLE public.group_permissions ADD CONSTRAINT fk_group_permissions_tenant_modules FOREIGN KEY (tenant_id,module_id)
-REFERENCES public.tenant_modules (tenant_id,module_id) MATCH FULL
+-- ALTER TABLE public.tenant_group_permissions DROP CONSTRAINT IF EXISTS fk_group_permissions_tenant_modules CASCADE;
+ALTER TABLE public.tenant_group_permissions ADD CONSTRAINT fk_group_permissions_tenant_modules FOREIGN KEY (tenant_id,module_id)
+REFERENCES public.tenants_modules (tenant_id,module_id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_tenant_modules_tenants | type: CONSTRAINT --
--- ALTER TABLE public.tenant_modules DROP CONSTRAINT IF EXISTS fk_tenant_modules_tenants CASCADE;
-ALTER TABLE public.tenant_modules ADD CONSTRAINT fk_tenant_modules_tenants FOREIGN KEY (tenant_id)
+-- ALTER TABLE public.tenants_modules DROP CONSTRAINT IF EXISTS fk_tenant_modules_tenants CASCADE;
+ALTER TABLE public.tenants_modules ADD CONSTRAINT fk_tenant_modules_tenants FOREIGN KEY (tenant_id)
 REFERENCES public.tenants (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_tenant_modules_modules | type: CONSTRAINT --
--- ALTER TABLE public.tenant_modules DROP CONSTRAINT IF EXISTS fk_tenant_modules_modules CASCADE;
-ALTER TABLE public.tenant_modules ADD CONSTRAINT fk_tenant_modules_modules FOREIGN KEY (module_id)
+-- ALTER TABLE public.tenants_modules DROP CONSTRAINT IF EXISTS fk_tenant_modules_modules CASCADE;
+ALTER TABLE public.tenants_modules ADD CONSTRAINT fk_tenant_modules_modules FOREIGN KEY (module_id)
 REFERENCES public.modules (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
@@ -2498,7 +2522,7 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 -- object: fk_module_menus_permissions | type: CONSTRAINT --
 -- ALTER TABLE public.module_menus DROP CONSTRAINT IF EXISTS fk_module_menus_permissions CASCADE;
 ALTER TABLE public.module_menus ADD CONSTRAINT fk_module_menus_permissions FOREIGN KEY (permission_id)
-REFERENCES public.permissions (id) MATCH FULL
+REFERENCES public.module_permissions (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
@@ -2512,7 +2536,7 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 -- object: fk_module_widgets_permissions | type: CONSTRAINT --
 -- ALTER TABLE public.module_widgets DROP CONSTRAINT IF EXISTS fk_module_widgets_permissions CASCADE;
 ALTER TABLE public.module_widgets ADD CONSTRAINT fk_module_widgets_permissions FOREIGN KEY (permission_id)
-REFERENCES public.permissions (id) MATCH FULL
+REFERENCES public.module_permissions (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
@@ -2524,23 +2548,30 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_template_positions_templates | type: CONSTRAINT --
--- ALTER TABLE public.template_positions DROP CONSTRAINT IF EXISTS fk_template_positions_templates CASCADE;
-ALTER TABLE public.template_positions ADD CONSTRAINT fk_template_positions_templates FOREIGN KEY (template_id)
+-- ALTER TABLE public.module_template_positions DROP CONSTRAINT IF EXISTS fk_template_positions_templates CASCADE;
+ALTER TABLE public.module_template_positions ADD CONSTRAINT fk_template_positions_templates FOREIGN KEY (template_id)
 REFERENCES public.module_templates (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_widget_template_position_module_widget | type: CONSTRAINT --
--- ALTER TABLE public.widget_template_position DROP CONSTRAINT IF EXISTS fk_widget_template_position_module_widget CASCADE;
-ALTER TABLE public.widget_template_position ADD CONSTRAINT fk_widget_template_position_module_widget FOREIGN KEY (module_widget_id)
+-- ALTER TABLE public.module_widgets_module_template_positions DROP CONSTRAINT IF EXISTS fk_widget_template_position_module_widget CASCADE;
+ALTER TABLE public.module_widgets_module_template_positions ADD CONSTRAINT fk_widget_template_position_module_widget FOREIGN KEY (module_widget_id)
 REFERENCES public.module_widgets (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_widget_template_position_template_positions | type: CONSTRAINT --
--- ALTER TABLE public.widget_template_position DROP CONSTRAINT IF EXISTS fk_widget_template_position_template_positions CASCADE;
-ALTER TABLE public.widget_template_position ADD CONSTRAINT fk_widget_template_position_template_positions FOREIGN KEY (template_position_id)
-REFERENCES public.template_positions (id) MATCH FULL
+-- ALTER TABLE public.module_widgets_module_template_positions DROP CONSTRAINT IF EXISTS fk_widget_template_position_template_positions CASCADE;
+ALTER TABLE public.module_widgets_module_template_positions ADD CONSTRAINT fk_widget_template_position_template_positions FOREIGN KEY (template_position_id)
+REFERENCES public.module_template_positions (id) MATCH FULL
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: fk_contacts_users | type: CONSTRAINT --
+-- ALTER TABLE public.user_contacts DROP CONSTRAINT IF EXISTS fk_contacts_users CASCADE;
+ALTER TABLE public.user_contacts ADD CONSTRAINT fk_contacts_users FOREIGN KEY (user_id)
+REFERENCES public.users (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 

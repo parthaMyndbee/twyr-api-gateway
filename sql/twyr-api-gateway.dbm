@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="1917,284" last-zoom="0.7"
+<dbmodel pgmodeler-ver="0.8.1" last-position="1619,138" last-zoom="0.7"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -44,7 +44,7 @@ BEGIN
 
 	IF NEW.admin_only = true
 	THEN
-		INSERT INTO tenant_modules (
+		INSERT INTO tenants_modules (
 			tenant_id,
 			module_id
 		)
@@ -59,7 +59,7 @@ BEGIN
 
 	IF NEW.admin_only = false
 	THEN
-		INSERT INTO tenant_modules (
+		INSERT INTO tenants_modules (
 			tenant_id,
 			module_id
 		)
@@ -581,7 +581,7 @@ END;]]></definition>
 		</idxelement>
 </index>
 
-<table name="locations">
+<table name="tenant_locations">
 	<schema name="public"/>
 	<role name="postgres"/>
 	<position x="4026" y="728.93"/>
@@ -627,12 +627,12 @@ END;]]></definition>
 	<column name="updated_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
 	</column>
-	<constraint name="pk_locations" type="pk-constr" table="public.locations">
+	<constraint name="pk_locations" type="pk-constr" table="public.tenant_locations">
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
 </table>
 
-<index name="uidx_locations" table="public.locations"
+<index name="uidx_locations" table="public.tenant_locations"
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
@@ -643,7 +643,7 @@ END;]]></definition>
 		</idxelement>
 </index>
 
-<table name="job_titles">
+<table name="tenant_job_titles">
 	<schema name="public"/>
 	<role name="postgres"/>
 	<position x="4583.28" y="772.58"/>
@@ -665,12 +665,12 @@ END;]]></definition>
 	<column name="updated_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
 	</column>
-	<constraint name="pk_job_titles" type="pk-constr" table="public.job_titles">
+	<constraint name="pk_job_titles" type="pk-constr" table="public.tenant_job_titles">
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
 </table>
 
-<index name="uidx_job_titles" table="public.job_titles"
+<index name="uidx_job_titles" table="public.tenant_job_titles"
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
@@ -681,10 +681,10 @@ END;]]></definition>
 		</idxelement>
 </index>
 
-<table name="groups">
+<table name="tenant_groups">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="3407.33" y="739.93"/>
+	<position x="3404.47" y="739.93"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -712,12 +712,12 @@ END;]]></definition>
 	<column name="updated_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
 	</column>
-	<constraint name="fk_groups" type="pk-constr" table="public.groups">
+	<constraint name="fk_groups" type="pk-constr" table="public.tenant_groups">
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
 </table>
 
-<index name="uidx_group_parent_name" table="public.groups"
+<index name="uidx_group_parent_name" table="public.tenant_groups"
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
@@ -728,7 +728,7 @@ END;]]></definition>
 		</idxelement>
 </index>
 
-<index name="uidx_group_tenant" table="public.groups"
+<index name="uidx_group_tenant" table="public.tenant_groups"
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
@@ -739,7 +739,7 @@ END;]]></definition>
 		</idxelement>
 </index>
 
-<table name="tenant_user_groups">
+<table name="tenants_users_groups">
 	<schema name="public"/>
 	<role name="postgres"/>
 	<position x="3352.02" y="1212.27"/>
@@ -761,12 +761,12 @@ END;]]></definition>
 	<column name="updated_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
 	</column>
-	<constraint name="pk_tenant_user_groups" type="pk-constr" table="public.tenant_user_groups">
+	<constraint name="pk_tenant_user_groups" type="pk-constr" table="public.tenants_users_groups">
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
 </table>
 
-<table name="permissions">
+<table name="module_permissions">
 	<schema name="public"/>
 	<role name="postgres"/>
 	<position x="1087.33" y="740.667"/>
@@ -791,7 +791,7 @@ END;]]></definition>
 	<column name="updated_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
 	</column>
-	<constraint name="pk_permissions" type="pk-constr" table="public.permissions">
+	<constraint name="pk_permissions" type="pk-constr" table="public.module_permissions">
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
 </table>
@@ -1097,7 +1097,7 @@ BEGIN
 			A.parent_id,
 			A.name
 		FROM
-			groups A
+			tenant_groups A
 		WHERE
 			A.id = groupid
 		UNION ALL
@@ -1108,7 +1108,7 @@ BEGIN
 			B.name
 		FROM
 			q,
-			groups B
+			tenant_groups B
 		WHERE
 			B.id = q.parent_id
 	)
@@ -1164,7 +1164,7 @@ BEGIN
 			A.parent_id,
 			A.name
 		FROM
-			groups A
+			tenant_groups A
 		WHERE
 			A.id = groupid
 		UNION ALL
@@ -1175,7 +1175,7 @@ BEGIN
 			B.name
 		FROM
 			q,
-			groups B
+			tenant_groups B
 		WHERE
 			B.parent_id = q.id
 	)
@@ -1220,7 +1220,7 @@ END;]]></definition>
 
 <trigger name="trigger_check_group_update_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
 	 ins-event="false" del-event="false" upd-event="true" trunc-event="false"
-	 table="public.groups">
+	 table="public.tenant_groups">
 		<function signature="public.fn_check_group_update_is_valid()"/>
 </trigger>
 
@@ -1246,7 +1246,7 @@ BEGIN
 	SELECT
 		id
 	FROM
-		groups
+		tenant_groups
 	WHERE
 		tenant_id = NEW.tenant_id AND
 		default_for_new_user = true
@@ -1258,7 +1258,7 @@ BEGIN
 		RETURN NEW;
 	END IF;
 
-	INSERT INTO tenant_user_groups (
+	INSERT INTO tenants_users_groups (
 		tenant_id,
 		group_id,
 		user_id
@@ -1296,7 +1296,7 @@ END;]]></definition>
 	<definition><![CDATA[
 BEGIN
 	DELETE FROM
-		group_permissions
+		tenant_group_permissions
 	WHERE
 		group_id IN (SELECT id FROM fn_get_group_descendants(OLD.group_id) WHERE level = 2) AND
 		permission_id = OLD.permission_id;
@@ -1305,7 +1305,7 @@ BEGIN
 END;]]></definition>
 </function>
 
-<table name="social_logins">
+<table name="user_social_logins">
 	<schema name="public"/>
 	<role name="postgres"/>
 	<position x="5037.86" y="768.976"/>
@@ -1333,12 +1333,12 @@ END;]]></definition>
 	<column name="updated_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
 	</column>
-	<constraint name="pk_social_logins" type="pk-constr" table="public.social_logins">
+	<constraint name="pk_social_logins" type="pk-constr" table="public.user_social_logins">
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
 </table>
 
-<index name="uidx_social_logins" table="public.social_logins"
+<index name="uidx_social_logins" table="public.user_social_logins"
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
@@ -1349,7 +1349,7 @@ END;]]></definition>
 		</idxelement>
 </index>
 
-<table name="group_permissions">
+<table name="tenant_group_permissions">
 	<schema name="public"/>
 	<role name="postgres"/>
 	<position x="2388.46" y="756.25"/>
@@ -1374,7 +1374,7 @@ END;]]></definition>
 	<column name="updated_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
 	</column>
-	<constraint name="pk_group_permissions" type="pk-constr" table="public.group_permissions">
+	<constraint name="pk_group_permissions" type="pk-constr" table="public.tenant_group_permissions">
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
 </table>
@@ -1395,7 +1395,7 @@ END;]]></definition>
 	</return-type>
 	<definition><![CDATA[
 BEGIN
-	INSERT INTO groups (
+	INSERT INTO tenant_groups (
 		parent_id,
 		tenant_id,
 		name,
@@ -1412,7 +1412,7 @@ BEGIN
 
 	IF NEW.parent_id IS NOT NULL
 	THEN
-		INSERT INTO tenant_modules (
+		INSERT INTO tenants_modules (
 			tenant_id,
 			module_id
 		)
@@ -1428,7 +1428,7 @@ BEGIN
 
 	IF NEW.parent_id IS NULL
 	THEN
-		INSERT INTO tenant_modules (
+		INSERT INTO tenants_modules (
 			tenant_id,
 			module_id
 		)
@@ -1491,7 +1491,7 @@ END;]]></definition>
 
 <trigger name="trigger_check_permission_insert_is_valid" firing-type="BEFORE" per-line="false" constraint="false"
 	 ins-event="true" del-event="false" upd-event="false" trunc-event="false"
-	 table="public.permissions">
+	 table="public.module_permissions">
 		<function signature="public.fn_check_permission_insert_is_valid()"/>
 </trigger>
 
@@ -1529,11 +1529,11 @@ END;]]></definition>
 
 <trigger name="trigger_check_permission_update_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
 	 ins-event="false" del-event="false" upd-event="true" trunc-event="false"
-	 table="public.permissions">
+	 table="public.module_permissions">
 		<function signature="public.fn_check_permission_update_is_valid()"/>
 </trigger>
 
-<table name="tenant_modules">
+<table name="tenants_modules">
 	<schema name="public"/>
 	<role name="postgres"/>
 	<position x="2409.95" y="339.25"/>
@@ -1552,7 +1552,7 @@ END;]]></definition>
 	<column name="updated_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
 	</column>
-	<constraint name="pk_tenant_modules" type="pk-constr" table="public.tenant_modules">
+	<constraint name="pk_tenant_modules" type="pk-constr" table="public.tenants_modules">
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
 </table>
@@ -1611,7 +1611,7 @@ BEGIN
 		SELECT
 			count(id)
 		FROM
-			tenant_modules
+			tenants_modules
 		WHERE
 			tenant_id = NEW.tenant_id AND
 			module_id = component_parent_id
@@ -1662,7 +1662,7 @@ END;]]></definition>
 
 <trigger name="trigger_check_tenant_module_upsert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
 	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
-	 table="public.tenant_modules">
+	 table="public.tenants_modules">
 		<function signature="public.fn_check_tenant_module_upsert_is_valid()"/>
 </trigger>
 
@@ -1695,7 +1695,7 @@ END;]]></definition>
 		</idxelement>
 </index>
 
-<index name="uidx_permissions" table="public.permissions"
+<index name="uidx_permissions" table="public.module_permissions"
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
@@ -1708,11 +1708,11 @@ END;]]></definition>
 
 <trigger name="trigger_remove_group_permission_from_descendants" firing-type="BEFORE" per-line="true" constraint="false"
 	 ins-event="false" del-event="true" upd-event="false" trunc-event="false"
-	 table="public.group_permissions">
+	 table="public.tenant_group_permissions">
 		<function signature="public.fn_remove_group_permission_from_descendants()"/>
 </trigger>
 
-<index name="uidx_tenant_modules" table="public.tenant_modules"
+<index name="uidx_tenant_modules" table="public.tenants_modules"
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
@@ -1723,7 +1723,7 @@ END;]]></definition>
 		</idxelement>
 </index>
 
-<index name="uidx_permissions_modules" table="public.permissions"
+<index name="uidx_permissions_modules" table="public.module_permissions"
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
@@ -1756,7 +1756,7 @@ BEGIN
 	SELECT
 		id
 	FROM
-		groups
+		tenant_groups
 	WHERE
 		tenant_id = NEW.tenant_id AND
 		parent_id IS NULL
@@ -1768,7 +1768,7 @@ BEGIN
 		RETURN NEW;
 	END IF;
 
-	INSERT INTO group_permissions(
+	INSERT INTO tenant_group_permissions(
 		tenant_id,
 		group_id,
 		module_id,
@@ -1790,11 +1790,11 @@ END;]]></definition>
 
 <trigger name="trigger_assign_permission_to_tenant_group" firing-type="AFTER" per-line="true" constraint="false"
 	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
-	 table="public.tenant_modules">
+	 table="public.tenants_modules">
 		<function signature="public.fn_assign_permission_to_tenant_group()"/>
 </trigger>
 
-<index name="uidx_group_permissions" table="public.group_permissions"
+<index name="uidx_group_permissions" table="public.tenant_group_permissions"
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
@@ -1820,7 +1820,7 @@ END;]]></definition>
 	<type name="trigger"/>
 	</return-type>
 	<definition><![CDATA[BEGIN
-	INSERT INTO group_permissions (
+	INSERT INTO tenant_group_permissions (
 		tenant_id,
 		group_id,
 		module_id,
@@ -1832,8 +1832,8 @@ END;]]></definition>
 		A.module_id,
 		NEW.id
 	FROM
-		tenant_modules A
-		INNER JOIN groups B ON (A.tenant_id = B.tenant_id AND B.parent_id IS NULL)
+		tenants_modules A
+		INNER JOIN tenant_groups B ON (A.tenant_id = B.tenant_id AND B.parent_id IS NULL)
 	WHERE
 		module_id = NEW.module_id;
 
@@ -1843,11 +1843,11 @@ END;]]></definition>
 
 <trigger name="trigger_assign_permission_to_tenants" firing-type="AFTER" per-line="true" constraint="false"
 	 ins-event="true" del-event="false" upd-event="false" trunc-event="false"
-	 table="public.permissions">
+	 table="public.module_permissions">
 		<function signature="public.fn_assign_permission_to_tenants()"/>
 </trigger>
 
-<index name="uidx_tenant_user_groups" table="public.tenant_user_groups"
+<index name="uidx_tenant_user_groups" table="public.tenants_users_groups"
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
@@ -1877,7 +1877,7 @@ END;]]></definition>
 	</return-type>
 	<definition><![CDATA[BEGIN
 	DELETE FROM 
-		tenant_user_groups
+		tenants_users_groups
 	WHERE
 		tenant_id = NEW.tenant_id AND
 		group_id IN (SELECT id FROM fn_get_group_descendants(NEW.group_id) WHERE level > 1) AND
@@ -1889,7 +1889,7 @@ END;]]></definition>
 
 <trigger name="trigger_remove_descendant_group_from_tenant_user" firing-type="AFTER" per-line="true" constraint="false"
 	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
-	 table="public.tenant_user_groups">
+	 table="public.tenants_users_groups">
 		<function signature="public.fn_remove_descendant_group_from_tenant_user()"/>
 </trigger>
 
@@ -1915,7 +1915,7 @@ BEGIN
 	SELECT
 		parent_id
 	FROM
-		groups
+		tenant_groups
 	WHERE
 		id = NEW.group_id
 	INTO
@@ -1930,7 +1930,7 @@ BEGIN
 	SELECT
 		count(id)
 	FROM
-		group_permissions
+		tenant_group_permissions
 	WHERE
 		group_id = parent_group_id AND
 		permission_id = NEW.permission_id
@@ -1949,7 +1949,7 @@ END;]]></definition>
 
 <trigger name="trigger_check_group_permission_insert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
 	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
-	 table="public.group_permissions">
+	 table="public.tenant_group_permissions">
 		<function signature="public.fn_check_group_permission_insert_is_valid()"/>
 </trigger>
 
@@ -1974,7 +1974,7 @@ BEGIN
 	SELECT
 		count(id)
 	FROM
-		tenant_user_groups
+		tenants_users_groups
 	WHERE
 		tenant_id = NEW.tenant_id AND
 		group_id IN (SELECT id FROM fn_get_group_ancestors(NEW.group_id) WHERE level > 1) AND
@@ -1994,7 +1994,7 @@ END;]]></definition>
 
 <trigger name="trigger_check_tenant_user_group_upsert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
 	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
-	 table="public.tenant_user_groups">
+	 table="public.tenants_users_groups">
 		<function signature="public.fn_check_tenant_user_group_upsert_is_valid()"/>
 </trigger>
 
@@ -2102,7 +2102,7 @@ BEGIN
 	SELECT
 		count(id)
 	FROM
-		permissions
+		module_permissions
 	WHERE
 		module_id IN (SELECT id FROM fn_get_module_ancestors(NEW.module_id)) AND
 		id = NEW.permission_id
@@ -2254,7 +2254,7 @@ BEGIN
 	SELECT
 		count(id)
 	FROM
-		permissions
+		module_permissions
 	WHERE
 		module_id IN (SELECT id FROM fn_get_module_ancestors(NEW.module_id)) AND
 		id = NEW.permission_id
@@ -2495,9 +2495,9 @@ END;
 		A.tenant_id,
 		A.permission_id
 	FROM
-		group_permissions A
+		tenant_group_permissions A
 	WHERE
-		A.group_id IN (SELECT group_id FROM tenant_user_groups WHERE user_id = userid);
+		A.group_id IN (SELECT group_id FROM tenants_users_groups WHERE user_id = userid);
 END;]]></definition>
 </function>
 
@@ -2544,7 +2544,7 @@ BEGIN
 END;]]></definition>
 </function>
 
-<table name="template_positions">
+<table name="module_template_positions">
 	<schema name="public"/>
 	<role name="postgres"/>
 	<position x="248.214" y="737.857"/>
@@ -2563,15 +2563,15 @@ END;]]></definition>
 	<column name="updated_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
 	</column>
-	<constraint name="pk_template_positions" type="pk-constr" table="public.template_positions">
+	<constraint name="pk_template_positions" type="pk-constr" table="public.module_template_positions">
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
 </table>
 
-<table name="widget_template_position">
+<table name="module_widgets_module_template_positions">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="122.436" y="1199.82"/>
+	<position x="118.15" y="1199.82"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2590,7 +2590,7 @@ END;]]></definition>
 	<column name="updated_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
 	</column>
-	<constraint name="pk_widget_template_position" type="pk-constr" table="public.widget_template_position">
+	<constraint name="pk_widget_template_position" type="pk-constr" table="public.module_widgets_module_template_positions">
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
 </table>
@@ -2623,7 +2623,7 @@ BEGIN
 	FROM
 		module_templates
 	WHERE
-		id = (SELECT template_id FROM template_positions WHERE id = NEW.template_position_id)
+		id = (SELECT template_id FROM module_template_positions WHERE id = NEW.template_position_id)
 	INTO
 		template_module_id;
 
@@ -2655,7 +2655,7 @@ BEGIN
 END;]]></definition>
 </function>
 
-<index name="uidx_widget_template_position" table="public.widget_template_position"
+<index name="uidx_widget_template_position" table="public.module_widgets_module_template_positions"
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
@@ -2668,7 +2668,7 @@ END;]]></definition>
 
 <trigger name="trigger_check_widget_template_position_upsert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
 	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
-	 table="public.widget_template_position">
+	 table="public.module_widgets_module_template_positions">
 		<function signature="public.fn_check_widget_template_position_upsert_is_valid()"/>
 </trigger>
 
@@ -2728,6 +2728,39 @@ END;]]></definition>
 		<function signature="public.fn_check_module_template_upsert_is_valid()"/>
 </trigger>
 
+<usertype name="contact_type" configuration="enumeration">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<enumeration values="email,landline,mobile,other"/>
+</usertype>
+
+<table name="user_contacts">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="5507.14" y="998.571"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="user_id" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="contact" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="type" not-null="true" default-value="'other'::contact_type">
+		<type name="public.contact_type"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_contacts" type="pk-constr" table="public.user_contacts">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
 <constraint name="fk_modules_modules" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.modules" table="public.modules">
 	<columns names="parent_id" ref-type="src-columns"/>
@@ -2753,91 +2786,91 @@ END;]]></definition>
 </constraint>
 
 <constraint name="fk_tenants_users_locations" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.locations" table="public.tenants_users">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenant_locations" table="public.tenants_users">
 	<columns names="tenant_id,location_id" ref-type="src-columns"/>
 	<columns names="tenant_id,id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_tenants_users_job_titles" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.job_titles" table="public.tenants_users">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenant_job_titles" table="public.tenants_users">
 	<columns names="tenant_id,job_title_id" ref-type="src-columns"/>
 	<columns names="id,tenant_id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_locations_tenants" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.locations">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.tenant_locations">
 	<columns names="tenant_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_job_titles_tenants" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.job_titles">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.tenant_job_titles">
 	<columns names="tenant_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_group_tenant" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.groups">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.tenant_groups">
 	<columns names="tenant_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_groups_groups" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.groups" table="public.groups">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenant_groups" table="public.tenant_groups">
 	<columns names="parent_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_tenant_user_groups_groups" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.groups" table="public.tenant_user_groups">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenant_groups" table="public.tenants_users_groups">
 	<columns names="tenant_id,group_id" ref-type="src-columns"/>
 	<columns names="tenant_id,id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_tenant_user_groups_tenant_users" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants_users" table="public.tenant_user_groups">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants_users" table="public.tenants_users_groups">
 	<columns names="tenant_id,user_id" ref-type="src-columns"/>
 	<columns names="tenant_id,user_id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_permissions_modules" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.modules" table="public.permissions">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.modules" table="public.module_permissions">
 	<columns names="module_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_social_logins_users" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.social_logins">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.user_social_logins">
 	<columns names="user_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_group_permissions_groups" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.groups" table="public.group_permissions">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenant_groups" table="public.tenant_group_permissions">
 	<columns names="tenant_id,group_id" ref-type="src-columns"/>
 	<columns names="tenant_id,id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_group_permissions_permissions" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.permissions" table="public.group_permissions">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_permissions" table="public.tenant_group_permissions">
 	<columns names="module_id,permission_id" ref-type="src-columns"/>
 	<columns names="module_id,id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_group_permissions_tenant_modules" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenant_modules" table="public.group_permissions">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants_modules" table="public.tenant_group_permissions">
 	<columns names="tenant_id,module_id" ref-type="src-columns"/>
 	<columns names="tenant_id,module_id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_tenant_modules_tenants" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.tenant_modules">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.tenants_modules">
 	<columns names="tenant_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_tenant_modules_modules" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.modules" table="public.tenant_modules">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.modules" table="public.tenants_modules">
 	<columns names="module_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
@@ -2855,7 +2888,7 @@ END;]]></definition>
 </constraint>
 
 <constraint name="fk_module_menus_permissions" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.permissions" table="public.module_menus">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_permissions" table="public.module_menus">
 	<columns names="permission_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
@@ -2867,7 +2900,7 @@ END;]]></definition>
 </constraint>
 
 <constraint name="fk_module_widgets_permissions" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.permissions" table="public.module_widgets">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_permissions" table="public.module_widgets">
 	<columns names="permission_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
@@ -2879,20 +2912,26 @@ END;]]></definition>
 </constraint>
 
 <constraint name="fk_template_positions_templates" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_templates" table="public.template_positions">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_templates" table="public.module_template_positions">
 	<columns names="template_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_widget_template_position_module_widget" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_widgets" table="public.widget_template_position">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_widgets" table="public.module_widgets_module_template_positions">
 	<columns names="module_widget_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_widget_template_position_template_positions" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.template_positions" table="public.widget_template_position">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_template_positions" table="public.module_widgets_module_template_positions">
 	<columns names="template_position_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_contacts_users" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.user_contacts">
+	<columns names="user_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
@@ -2908,7 +2947,7 @@ END;]]></definition>
 </relationship>
 
 <relationship name="rel_permissions_modules" type="relfk"
-	 src-table="public.permissions"
+	 src-table="public.module_permissions"
 	 dst-table="public.modules"
 	 src-required="false" dst-required="false"/>
 
@@ -2933,23 +2972,23 @@ END;]]></definition>
 </relationship>
 
 <relationship name="rel_locations_tenants" type="relfk"
-	 src-table="public.locations"
+	 src-table="public.tenant_locations"
 	 dst-table="public.tenants"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_job_titles_tenants" type="relfk"
-	 src-table="public.job_titles"
+	 src-table="public.tenant_job_titles"
 	 dst-table="public.tenants"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_tenants_users_locations" type="relfk"
 	 src-table="public.tenants_users"
-	 dst-table="public.locations"
+	 dst-table="public.tenant_locations"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_tenants_users_job_titles" type="relfk"
 	 src-table="public.tenants_users"
-	 dst-table="public.job_titles"
+	 dst-table="public.tenant_job_titles"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_tenants_users_tenants" type="relfk"
@@ -2958,59 +2997,59 @@ END;]]></definition>
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_groups_tenants" type="relfk"
-	 src-table="public.groups"
+	 src-table="public.tenant_groups"
 	 dst-table="public.tenants"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_groups_groups" type="relfk"
-	 src-table="public.groups"
-	 dst-table="public.groups"
+	 src-table="public.tenant_groups"
+	 dst-table="public.tenant_groups"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="3797.1" y="823.21"/>
-	<position x="3797.1" y="729.93"/>
-	<position x="3660.51" y="729.93"/>
+		<position x="3794.24" y="823.21"/>
+	<position x="3794.24" y="729.93"/>
+	<position x="3657.65" y="729.93"/>
 	</line>
 </relationship>
 
 <relationship name="rel_tenant_user_groups_groups" type="relfk"
-	 src-table="public.tenant_user_groups"
-	 dst-table="public.groups"
+	 src-table="public.tenants_users_groups"
+	 dst-table="public.tenant_groups"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_tenant_user_groups_tenants_users" type="relfk"
-	 src-table="public.tenant_user_groups"
+	 src-table="public.tenants_users_groups"
 	 dst-table="public.tenants_users"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_group_permissions_groups" type="relfk"
-	 src-table="public.group_permissions"
-	 dst-table="public.groups"
+	 src-table="public.tenant_group_permissions"
+	 dst-table="public.tenant_groups"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_group_permissions_permissions" type="relfk"
-	 src-table="public.group_permissions"
-	 dst-table="public.permissions"
+	 src-table="public.tenant_group_permissions"
+	 dst-table="public.module_permissions"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_social_logins_users" type="relfk"
-	 src-table="public.social_logins"
+	 src-table="public.user_social_logins"
 	 dst-table="public.users"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_tenant_modules_tenants" type="relfk"
-	 src-table="public.tenant_modules"
+	 src-table="public.tenants_modules"
 	 dst-table="public.tenants"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_tenant_modules_modules" type="relfk"
-	 src-table="public.tenant_modules"
+	 src-table="public.tenants_modules"
 	 dst-table="public.modules"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_group_permissions_tenant_modules" type="relfk"
-	 src-table="public.group_permissions"
-	 dst-table="public.tenant_modules"
+	 src-table="public.tenant_group_permissions"
+	 dst-table="public.tenants_modules"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_module_menus_module_menus" type="relfk"
@@ -3031,7 +3070,7 @@ END;]]></definition>
 
 <relationship name="rel_module_menus_permissions" type="relfk"
 	 src-table="public.module_menus"
-	 dst-table="public.permissions"
+	 dst-table="public.module_permissions"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_module_widgets_modules" type="relfk"
@@ -3041,7 +3080,7 @@ END;]]></definition>
 
 <relationship name="rel_module_widgets_permissions" type="relfk"
 	 src-table="public.module_widgets"
-	 dst-table="public.permissions"
+	 dst-table="public.module_permissions"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_module_templates_modules" type="relfk"
@@ -3050,18 +3089,23 @@ END;]]></definition>
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_template_positions_module_templates" type="relfk"
-	 src-table="public.template_positions"
+	 src-table="public.module_template_positions"
 	 dst-table="public.module_templates"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_widget_template_position_module_widgets" type="relfk"
-	 src-table="public.widget_template_position"
+	 src-table="public.module_widgets_module_template_positions"
 	 dst-table="public.module_widgets"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_widget_template_position_template_positions" type="relfk"
-	 src-table="public.widget_template_position"
-	 dst-table="public.template_positions"
+	 src-table="public.module_widgets_module_template_positions"
+	 dst-table="public.module_template_positions"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_contacts_users" type="relfk"
+	 src-table="public.user_contacts"
+	 dst-table="public.users"
 	 src-required="false" dst-required="false"/>
 
 </dbmodel>

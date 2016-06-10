@@ -36,10 +36,10 @@ exports.seed = function(knex, Promise) {
 
 			return Promise.all([
 				parentId,
-				knex("permissions").insert({ 'module_id': parentId, 'name': 'public', 'display_name': 'Public User Permissions', 'description': 'The Twy\'r API Gateway Permissions for non-logged-in Users' }),
-				knex("permissions").insert({ 'module_id': parentId, 'name': 'registered', 'display_name': 'Registered User Permissions', 'description': 'The Twy\'r API Gateway Permissions for logged-in Users' }),
-				knex("permissions").insert({ 'module_id': parentId, 'name': 'administrator', 'display_name': 'Administrator Permissions', 'description': 'The Twy\'r API Gateway Permissions for Administrators' }),
-				knex("permissions").insert({ 'module_id': parentId, 'name': 'super-administrator', 'display_name': 'Super Administrator Permissions', 'description': 'The Twy\'r API Gateway Permissions for Super Administrators' })
+				knex("module_permissions").insert({ 'module_id': parentId, 'name': 'public', 'display_name': 'Public User Permissions', 'description': 'The Twy\'r API Gateway Permissions for non-logged-in Users' }),
+				knex("module_permissions").insert({ 'module_id': parentId, 'name': 'registered', 'display_name': 'Registered User Permissions', 'description': 'The Twy\'r API Gateway Permissions for logged-in Users' }),
+				knex("module_permissions").insert({ 'module_id': parentId, 'name': 'administrator', 'display_name': 'Administrator Permissions', 'description': 'The Twy\'r API Gateway Permissions for Administrators' }),
+				knex("module_permissions").insert({ 'module_id': parentId, 'name': 'super-administrator', 'display_name': 'Super Administrator Permissions', 'description': 'The Twy\'r API Gateway Permissions for Super Administrators' })
 			]);
 		});
 	})
@@ -62,7 +62,7 @@ exports.seed = function(knex, Promise) {
 			return [ userId.rows[0]['id'] ];
 		}
 
-		return knex("users").insert({ 'email': 'root@twyr.com', 'password': '$2a$10$vXn2EzX54o06fl0VTOxJk..4XNqCGxW6KQjIn4ZJIkblFrz7ohQ9S', 'first_name': 'Root', 'last_name': 'Twyr', 'nickname': 'root' }).returning('id');
+		return knex("users").insert({ 'email': 'root@twyr.com', 'password': '$2a$10$P7Vl27zD8grTPiocNj5U2eU5X7/9Vyy/tBVI3PO5KNR3tWkHhtM4S', 'first_name': 'Root', 'last_name': 'Twyr', 'nickname': 'root' }).returning('id');
 	})
 	.then(function(userId) {
 		rootUserId = userId[0];
@@ -76,7 +76,7 @@ exports.seed = function(knex, Promise) {
 		return knex("tenants_users").insert({ 'tenant_id': rootTenantId, 'user_id': rootUserId });
 	})
 	.then(function() {
-		return knex.raw('INSERT INTO tenant_user_groups (tenant_id, user_id, group_id) SELECT \'' + rootTenantId + '\', \'' + rootUserId + '\', id FROM groups WHERE tenant_id = \'' + rootTenantId + '\' AND parent_id IS NULL ON CONFLICT DO NOTHING;');
+		return knex.raw('INSERT INTO tenants_users_groups (tenant_id, user_id, group_id) SELECT \'' + rootTenantId + '\', \'' + rootUserId + '\', id FROM tenant_groups WHERE tenant_id = \'' + rootTenantId + '\' AND parent_id IS NULL ON CONFLICT DO NOTHING;');
 	})
 	.then(function() {
 		var superAdminGroupId = null,
@@ -84,53 +84,53 @@ exports.seed = function(knex, Promise) {
 			registeredGroupId = null,
 			publicGroupId = null;
 
-		return knex.raw('SELECT id FROM groups WHERE tenant_id = \'' + rootTenantId + '\' AND parent_id IS NULL;')
+		return knex.raw('SELECT id FROM tenant_groups WHERE tenant_id = \'' + rootTenantId + '\' AND parent_id IS NULL;')
 		.then(function(groupId) {
 			superAdminGroupId = groupId.rows[0]['id'];
 
-			return knex('groups').where('id', '=', superAdminGroupId).update({ 'name': 'super-administators', 'display_name': 'Super Administrators', 'description': 'The Super Administrator Group for the root tenant' });
+			return knex('tenant_groups').where('id', '=', superAdminGroupId).update({ 'name': 'super-administators', 'display_name': 'Super Administrators', 'description': 'The Super Administrator Group for the root tenant' });
 		})
 		.then(function() {
-			return knex.raw('SELECT id FROM groups WHERE tenant_id = \'' + rootTenantId + '\' AND parent_id = \'' + superAdminGroupId + '\';');
+			return knex.raw('SELECT id FROM tenant_groups WHERE tenant_id = \'' + rootTenantId + '\' AND parent_id = \'' + superAdminGroupId + '\';');
 		})
 		.then(function(groupId) {
 			if(groupId.rows.length) {
 				return [ groupId.rows[0]['id'] ];
 			}
 
-			return knex('groups').insert({ 'tenant_id': rootTenantId, 'parent_id': superAdminGroupId, 'name': 'administrators', 'display_name': 'Twy\'r Root Administrators', 'description': 'The Administrator Group for the root tenant' }).returning('id');
+			return knex('tenant_groups').insert({ 'tenant_id': rootTenantId, 'parent_id': superAdminGroupId, 'name': 'administrators', 'display_name': 'Twy\'r Root Administrators', 'description': 'The Administrator Group for the root tenant' }).returning('id');
 		})
 		.then(function(groupId) {
 			adminGroupId = groupId[0];
-			return knex.raw('SELECT id FROM groups WHERE tenant_id = \'' + rootTenantId + '\' AND parent_id = \'' + adminGroupId + '\';');
+			return knex.raw('SELECT id FROM tenant_groups WHERE tenant_id = \'' + rootTenantId + '\' AND parent_id = \'' + adminGroupId + '\';');
 		})
 		.then(function(groupId) {
 			if(groupId.rows.length) {
 				return [ groupId.rows[0]['id'] ];
 			}
 
-			return knex('groups').insert({ 'tenant_id': rootTenantId, 'parent_id': adminGroupId, 'name': 'registered-users', 'display_name': 'Twy\'r Registered Users', 'description': 'The Registered User Group for the root tenant', 'default_for_new_user': true }).returning('id');
+			return knex('tenant_groups').insert({ 'tenant_id': rootTenantId, 'parent_id': adminGroupId, 'name': 'registered-users', 'display_name': 'Twy\'r Registered Users', 'description': 'The Registered User Group for the root tenant', 'default_for_new_user': true }).returning('id');
 		})
 		.then(function(groupId) {
 			registeredGroupId = groupId[0];
-			return knex.raw('SELECT id FROM groups WHERE tenant_id = \'' + rootTenantId + '\' AND parent_id = \'' + registeredGroupId + '\';');
+			return knex.raw('SELECT id FROM tenant_groups WHERE tenant_id = \'' + rootTenantId + '\' AND parent_id = \'' + registeredGroupId + '\';');
 		})
 		.then(function(groupId) {
 			if(groupId.rows.length) {
 				return [ groupId.rows[0]['id'] ];
 			}
 
-			return knex('groups').insert({ 'tenant_id': rootTenantId, 'parent_id': registeredGroupId, 'name': 'public', 'display_name': 'Twy\'r Public Users', 'description': 'The public, non-logged-in, Users' }).returning('id');
+			return knex('tenant_groups').insert({ 'tenant_id': rootTenantId, 'parent_id': registeredGroupId, 'name': 'public', 'display_name': 'Twy\'r Public Users', 'description': 'The public, non-logged-in, Users' }).returning('id');
 		})
 		.then(function(groupId) {
 			publicGroupId = groupId[0];
-			return knex.raw('INSERT INTO group_permissions (tenant_id, group_id, module_id, permission_id) SELECT \'' + rootTenantId + '\', \'' + adminGroupId + '\', module_id, id FROM permissions WHERE name NOT IN (\'super-administrator\') ON CONFLICT DO NOTHING;');
+			return knex.raw('INSERT INTO tenant_group_permissions (tenant_id, group_id, module_id, permission_id) SELECT \'' + rootTenantId + '\', \'' + adminGroupId + '\', module_id, id FROM module_permissions WHERE name NOT IN (\'super-administrator\') ON CONFLICT DO NOTHING;');
 		})
 		.then(function() {
-			return knex.raw('INSERT INTO group_permissions (tenant_id, group_id, module_id, permission_id) SELECT \'' + rootTenantId + '\', \'' + registeredGroupId + '\', module_id, id FROM permissions WHERE name NOT IN (\'super-administrator\', \'administrator\') ON CONFLICT DO NOTHING;');
+			return knex.raw('INSERT INTO tenant_group_permissions (tenant_id, group_id, module_id, permission_id) SELECT \'' + rootTenantId + '\', \'' + registeredGroupId + '\', module_id, id FROM module_permissions WHERE name NOT IN (\'super-administrator\', \'administrator\') ON CONFLICT DO NOTHING;');
 		})
 		.then(function() {
-			return knex.raw('INSERT INTO group_permissions (tenant_id, group_id, module_id, permission_id) SELECT \'' + rootTenantId + '\', \'' + publicGroupId + '\', module_id, id FROM permissions WHERE name NOT IN (\'super-administrator\', \'administrator\', \'registered\') ON CONFLICT DO NOTHING;');
+			return knex.raw('INSERT INTO tenant_group_permissions (tenant_id, group_id, module_id, permission_id) SELECT \'' + rootTenantId + '\', \'' + publicGroupId + '\', module_id, id FROM module_permissions WHERE name NOT IN (\'super-administrator\', \'administrator\', \'registered\') ON CONFLICT DO NOTHING;');
 		});
 	});
 };

@@ -17,7 +17,9 @@ var base = require('./../../module-base').baseModule,
 /**
  * Module dependencies, required for this module
  */
-var path = require('path');
+var path = require('path'),
+	jsonApiDeserializer = require('jsonapi-serializer').Deserializer,
+	jsonApiMapper = require('jsonapi-mapper');
 
 var twyrComponentBase = prime({
 	'inherits': base,
@@ -35,8 +37,15 @@ var twyrComponentBase = prime({
 			this.dependencies.push('express-service');
 
 		this['$router'] = require('express').Router();
-		this._checkPermissionAsync = promises.promisify(this._checkPermission);
+		this['$jsonApiDeserializer'] = promises.promisifyAll(new jsonApiDeserializer({
+			'keyForAttribute': 'underscore_case'
+		}));
+		this['$jsonApiMapper'] = new jsonApiMapper.Bookshelf('https://api.twyr.com', {
+			'ignoreRelationshipData': true,
+			'keyForAttribute': 'underscore_case'
+		});
 
+		this._checkPermissionAsync = promises.promisify(this._checkPermission);
 		base.call(this, module, loader);
 	},
 

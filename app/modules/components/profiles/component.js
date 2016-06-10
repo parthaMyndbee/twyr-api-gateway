@@ -20,6 +20,7 @@ var base = require('./../component-base').baseComponent,
 /**
  * Module dependencies, required for this module
  */
+var bcrypt = require('bcrypt-nodejs');
 
 var profilesComponent = prime({
 	'inherits': base,
@@ -49,6 +50,10 @@ var profilesComponent = prime({
 
 					'socialLogins': function() {
 						return this.hasMany(self.$SocialLoginModel, 'user_id');
+					},
+
+					'contacts': function() {
+						return this.hasMany(self.$ContactModel, 'user_id');
 					}
 				})
 			});
@@ -56,7 +61,19 @@ var profilesComponent = prime({
 			Object.defineProperty(self, '$SocialLoginModel', {
 				'__proto__': null,
 				'value': dbSrvc.Model.extend({
-					'tableName': 'social_logins',
+					'tableName': 'user_social_logins',
+					'idAttribute': 'id',
+
+					'user': function() {
+						return this.belongsTo(self.$UserModel, 'user_id');
+					}
+				})
+			});
+
+			Object.defineProperty(self, '$ContactModel', {
+				'__proto__': null,
+				'value': dbSrvc.Model.extend({
+					'tableName': 'user_contacts',
 					'idAttribute': 'id',
 
 					'user': function() {
@@ -71,6 +88,9 @@ var profilesComponent = prime({
 
 	'_addRoutes': function() {
 		this.$router.get('/:id', this._getProfile.bind(this));
+		this.$router.patch('/:id', this._updateProfile.bind(this));
+
+		this.$router.post('/change-password', this._changePassword.bind(this));
 	},
 
 	'_getProfile': function(request, response, next) {
@@ -93,7 +113,7 @@ var profilesComponent = prime({
 		}
 
 		new self.$UserModel({ 'id': request.params.id })
-		.fetch()
+		.fetch({ 'withRelated': 'contacts' })
 		.then(function(userRecord) {
 			if(!userRecord) {
 				throw({
@@ -101,30 +121,119 @@ var profilesComponent = prime({
 					'message': 'Unknown User Id. Please check your request and try again'
 				});
 
-				return;
+				return null;
 			}
 
-			userRecord = userRecord.toJSON();
-			delete userRecord.password;
+			var mappedData = self['$jsonApiMapper'].map(userRecord, 'profiles');
+			delete mappedData.data.attributes.password;
 
-			response.status(200).json({
-				'data': {
-					'type': 'profiles',
-					'id': request.params.id,
-					'attributes': userRecord
-				}
-			});
+			response.status(200).json(mappedData);
 			return null;
 		})
 		.catch(function(err) {
-			self.$dependencies.logger.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
 			response.status(422).json({
-				'errors': {
+				'errors': [{
 					'status': 422,
-					'code': err.code || err.number || 422,
+					'source': { 'pointer': '/data/id' },
 					'title': 'Could not find the required profile',
-					'detail': err.message
+					'detail': err.detail || err.message
+				}]
+			});
+		});
+	},
+
+	'_updateProfile': function(request, response, next) {
+		var self = this,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		if(request.user.id != request.params.id) {
+			response.status(422).json({
+				'errors': [{
+					'status': 422,
+					'source': { 'pointer': '/data/id' },
+					'title': 'Unauthorized Access',
+					'detail': 'Profile information of other users is private'
+				}]
+			});
+
+			return;
+		}
+
+		self['$jsonApiDeserializer'].deserializeAsync(request.body)
+		.then(function(jsonDeserializedData) {
+			delete jsonDeserializedData.email;
+			delete jsonDeserializedData.created_at;
+			delete jsonDeserializedData.updated_at;
+
+			return self.$UserModel
+			.forge()
+			.save(jsonDeserializedData, {
+				'patch': true
+			});
+		})
+		.then(function(savedRecord) {
+			response.status(200).json({
+				'data': {
+					'type': request.body.data.type,
+					'id': savedRecord.get('id')
 				}
+			});
+
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			response.status(422).json({
+				'errors': [{
+					'status': 422,
+					'source': { 'pointer': '/data/id' },
+					'title': 'Update profile error',
+					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+				}]
+			});
+		});
+	},
+
+	'_changePassword': function(request, response, next) {
+		var self = this,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		new self.$UserModel({ 'id': request.user.id })
+		.fetch()
+		.then(function(userRecord) {
+			if(request.body.newPassword1 != request.body.newPassword2) {
+				throw({ 'code': 403, 'message': 'The new passwords do not match' });
+				return;
+			}
+
+			if(!bcrypt.compareSync(request.body.currentPassword, userRecord.get('password'))) {
+				throw({ 'code': 403, 'message': 'Incorrect current password' });
+				return;
+			}
+
+			userRecord.set('password', bcrypt.hashSync(request.body.newPassword1));
+			return userRecord.save();
+		})
+		.then(function() {
+			response.status(200).json({
+				'status': true,
+				'responseText': 'Change Password Successful!'
+			});
+
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query,  '\nParams: ', request.params, '\nError: ', err);
+			response.status(500).json({
+				'status': false,
+				'message': err.message || err.detail || 'Change Password Failure!'
 			});
 		});
 	},

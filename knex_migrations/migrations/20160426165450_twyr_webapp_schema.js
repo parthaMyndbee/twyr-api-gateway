@@ -8,6 +8,7 @@ exports.up = function(knex, Promise) {
 	// Step 2: Setup types
 	.then(function() {
 		return Promise.all([
+			knex.schema.raw("CREATE TYPE public.contact_type AS ENUM ('email','landline', 'mobile','other')"),
 			knex.schema.raw("CREATE TYPE public.gender AS ENUM ('female','male','other')"),
 			knex.schema.raw("CREATE TYPE public.module_type AS ENUM ('component','middleware','service')"),
 			knex.schema.raw("CREATE TYPE public.tenant_type AS ENUM ('department','organization')"),
@@ -46,7 +47,7 @@ exports.up = function(knex, Promise) {
 				userTbl.text('nickname');
 				userTbl.uuid('profile_image_id');
 				userTbl.specificType('gender', 'public.gender').notNullable().defaultTo('other');
-				userTbl.date('dob');
+				userTbl.timestamp('dob');
 				userTbl.uuid('home_module_menu_id');
 				userTbl.boolean('enabled').notNullable().defaultTo(true);
 				userTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
@@ -71,7 +72,7 @@ exports.up = function(knex, Promise) {
 	.then(function() {
 		return Promise.all([
 			knex.schema.withSchema('public')
-			.createTableIfNotExists('tenant_modules', function(tenantModuleTbl) {
+			.createTableIfNotExists('tenants_modules', function(tenantModuleTbl) {
 				tenantModuleTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
 				tenantModuleTbl.uuid('tenant_id').notNullable().references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
 				tenantModuleTbl.uuid('module_id').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
@@ -81,7 +82,7 @@ exports.up = function(knex, Promise) {
 			}),
 
 			knex.schema.withSchema('public')
-			.createTableIfNotExists('permissions', function(permTbl) {
+			.createTableIfNotExists('module_permissions', function(permTbl) {
 				permTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
 				permTbl.uuid('module_id').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
 				permTbl.text('name').notNullable();
@@ -110,7 +111,7 @@ exports.up = function(knex, Promise) {
 			}),
 
 			knex.schema.withSchema('public')
-			.createTableIfNotExists('social_logins', function(socialLoginTbl) {
+			.createTableIfNotExists('user_social_logins', function(socialLoginTbl) {
 				socialLoginTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
 				socialLoginTbl.uuid('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE').onUpdate('CASCADE');
 				socialLoginTbl.text('provider').notNullable();
@@ -123,7 +124,17 @@ exports.up = function(knex, Promise) {
 			}),
 
 			knex.schema.withSchema('public')
-			.createTableIfNotExists('locations', function(locationTbl) {
+			.createTableIfNotExists('user_contacts', function(contactsTbl) {
+				contactsTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
+				contactsTbl.uuid('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE').onUpdate('CASCADE');
+				contactsTbl.text('contact').notNullable();
+				contactsTbl.specificType('type', 'public.contact_type').notNullable().defaultTo('other');
+				contactsTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
+				contactsTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
+			}),
+
+			knex.schema.withSchema('public')
+			.createTableIfNotExists('tenant_locations', function(locationTbl) {
 				locationTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
 				locationTbl.uuid('tenant_id').notNullable().references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
 				locationTbl.text('line1').notNullable();
@@ -142,7 +153,7 @@ exports.up = function(knex, Promise) {
 			}),
 
 			knex.schema.withSchema('public')
-			.createTableIfNotExists('job_titles', function(jobTitleTbl) {
+			.createTableIfNotExists('tenant_job_titles', function(jobTitleTbl) {
 				jobTitleTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
 				jobTitleTbl.uuid('tenant_id').notNullable().references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
 				jobTitleTbl.text('title').notNullable();
@@ -153,10 +164,10 @@ exports.up = function(knex, Promise) {
 			}),
 
 			knex.schema.withSchema('public')
-			.createTableIfNotExists('groups', function(groupTbl) {
+			.createTableIfNotExists('tenant_groups', function(groupTbl) {
 				groupTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
 				groupTbl.uuid('tenant_id').notNullable().references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
-				groupTbl.uuid('parent_id').references('id').inTable('groups').onDelete('CASCADE').onUpdate('CASCADE');
+				groupTbl.uuid('parent_id').references('id').inTable('tenant_groups').onDelete('CASCADE').onUpdate('CASCADE');
 				groupTbl.text('name').notNullable();
 				groupTbl.text('display_name').notNullable();
 				groupTbl.text('description');
@@ -175,7 +186,7 @@ exports.up = function(knex, Promise) {
 			.createTableIfNotExists('module_widgets', function(modWidgetsTbl) {
 				modWidgetsTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
 				modWidgetsTbl.uuid('module_id').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
-				modWidgetsTbl.uuid('permission_id').notNullable().references('id').inTable('permissions').onDelete('CASCADE').onUpdate('CASCADE');
+				modWidgetsTbl.uuid('permission_id').notNullable().references('id').inTable('module_permissions').onDelete('CASCADE').onUpdate('CASCADE');
 				modWidgetsTbl.text('ember_component').notNullable();
 				modWidgetsTbl.text('display_name').notNullable();
 				modWidgetsTbl.text('description');
@@ -190,7 +201,7 @@ exports.up = function(knex, Promise) {
 				modMenusTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
 				modMenusTbl.uuid('parent_id').references('id').inTable('module_menus').onDelete('CASCADE').onUpdate('CASCADE');
 				modMenusTbl.uuid('module_id').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
-				modMenusTbl.uuid('permission_id').notNullable().references('id').inTable('permissions').onDelete('CASCADE').onUpdate('CASCADE');
+				modMenusTbl.uuid('permission_id').notNullable().references('id').inTable('module_permissions').onDelete('CASCADE').onUpdate('CASCADE');
 				modMenusTbl.text('ember_route').notNullable();
 				modMenusTbl.text('icon_class').notNullable();
 				modMenusTbl.text('display_name').notNullable();
@@ -208,15 +219,15 @@ exports.up = function(knex, Promise) {
 				tenantUserTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
 				tenantUserTbl.uuid('tenant_id').notNullable().references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
 				tenantUserTbl.uuid('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE').onUpdate('CASCADE');
-				tenantUserTbl.uuid('job_title_id').references('id').inTable('job_titles').onDelete('CASCADE').onUpdate('CASCADE');
-				tenantUserTbl.uuid('location_id').references('id').inTable('locations').onDelete('CASCADE').onUpdate('CASCADE');
+				tenantUserTbl.uuid('job_title_id').references('id').inTable('tenant_job_titles').onDelete('CASCADE').onUpdate('CASCADE');
+				tenantUserTbl.uuid('location_id').references('id').inTable('tenant_locations').onDelete('CASCADE').onUpdate('CASCADE');
 				tenantUserTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				tenantUserTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
 				tenantUserTbl.unique(['tenant_id', 'user_id']);
 			}),
 
 			knex.schema.withSchema('public')
-			.createTableIfNotExists('group_permissions', function(groupPermissionTbl) {
+			.createTableIfNotExists('tenant_group_permissions', function(groupPermissionTbl) {
 				groupPermissionTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
 				groupPermissionTbl.uuid('tenant_id').notNullable();
 				groupPermissionTbl.uuid('group_id').notNullable();
@@ -226,13 +237,13 @@ exports.up = function(knex, Promise) {
 				groupPermissionTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
 				groupPermissionTbl.unique(['group_id', 'permission_id']);
 
-				groupPermissionTbl.foreign(['module_id', 'permission_id']).references(['module_id', 'id']).inTable('permissions').onDelete('CASCADE').onUpdate('CASCADE');
-				groupPermissionTbl.foreign(['tenant_id', 'group_id']).references(['tenant_id', 'id']).inTable('groups').onDelete('CASCADE').onUpdate('CASCADE');
-				groupPermissionTbl.foreign(['tenant_id', 'module_id']).references(['tenant_id', 'module_id']).inTable('tenant_modules').onDelete('CASCADE').onUpdate('CASCADE');
+				groupPermissionTbl.foreign(['module_id', 'permission_id']).references(['module_id', 'id']).inTable('module_permissions').onDelete('CASCADE').onUpdate('CASCADE');
+				groupPermissionTbl.foreign(['tenant_id', 'group_id']).references(['tenant_id', 'id']).inTable('tenant_groups').onDelete('CASCADE').onUpdate('CASCADE');
+				groupPermissionTbl.foreign(['tenant_id', 'module_id']).references(['tenant_id', 'module_id']).inTable('tenants_modules').onDelete('CASCADE').onUpdate('CASCADE');
 			}),
 
 			knex.schema.withSchema('public')
-			.createTableIfNotExists('template_positions', function(tmplPositionsTbl) {
+			.createTableIfNotExists('module_template_positions', function(tmplPositionsTbl) {
 				tmplPositionsTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
 				tmplPositionsTbl.uuid('template_id').notNullable().references('id').inTable('module_templates').onDelete('CASCADE').onUpdate('CASCADE');
 				tmplPositionsTbl.text('name').notNullable();
@@ -245,7 +256,7 @@ exports.up = function(knex, Promise) {
 	.then(function() {
 		return Promise.all([
 			knex.schema.withSchema('public')
-			.createTableIfNotExists('tenant_user_groups', function(tenantUserGroupTbl) {
+			.createTableIfNotExists('tenants_users_groups', function(tenantUserGroupTbl) {
 				tenantUserGroupTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
 				tenantUserGroupTbl.uuid('tenant_id').notNullable();
 				tenantUserGroupTbl.uuid('group_id').notNullable();
@@ -254,14 +265,14 @@ exports.up = function(knex, Promise) {
 				tenantUserGroupTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
 				tenantUserGroupTbl.unique(['tenant_id', 'group_id', 'user_id']);
 
-				tenantUserGroupTbl.foreign(['tenant_id', 'group_id']).references(['tenant_id', 'id']).inTable('groups').onDelete('CASCADE').onUpdate('CASCADE');
+				tenantUserGroupTbl.foreign(['tenant_id', 'group_id']).references(['tenant_id', 'id']).inTable('tenant_groups').onDelete('CASCADE').onUpdate('CASCADE');
 				tenantUserGroupTbl.foreign(['tenant_id', 'user_id']).references(['tenant_id', 'user_id']).inTable('tenants_users').onDelete('CASCADE').onUpdate('CASCADE');
 			}),
 
 			knex.schema.withSchema('public')
-			.createTableIfNotExists('widget_template_position', function(widgetTmplPositionTbl) {
+			.createTableIfNotExists('module_widget_module_template_positions', function(widgetTmplPositionTbl) {
 				widgetTmplPositionTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				widgetTmplPositionTbl.uuid('template_position_id').notNullable().references('id').inTable('template_positions').onDelete('CASCADE').onUpdate('CASCADE');
+				widgetTmplPositionTbl.uuid('template_position_id').notNullable().references('id').inTable('module_template_positions').onDelete('CASCADE').onUpdate('CASCADE');
 				widgetTmplPositionTbl.uuid('module_widget_id').notNullable().references('id').inTable('module_widgets').onDelete('CASCADE').onUpdate('CASCADE');
 				widgetTmplPositionTbl.integer('display_order').notNullable().defaultTo(1);
 				widgetTmplPositionTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
@@ -530,7 +541,7 @@ exports.up = function(knex, Promise) {
 
 					'IF NEW.admin_only = true ' +
 					'THEN ' +
-						'INSERT INTO tenant_modules ( ' +
+						'INSERT INTO tenants_modules ( ' +
 							'tenant_id, ' +
 							'module_id ' +
 						') ' +
@@ -545,7 +556,7 @@ exports.up = function(knex, Promise) {
 
 					'IF NEW.admin_only = false ' +
 					'THEN ' +
-						'INSERT INTO tenant_modules ( ' +
+						'INSERT INTO tenants_modules ( ' +
 							'tenant_id, ' +
 							'module_id ' +
 						') ' +
@@ -768,7 +779,7 @@ exports.up = function(knex, Promise) {
 					'AS $$ ' +
 
 				'BEGIN ' +
-					'INSERT INTO groups ( ' +
+					'INSERT INTO tenant_groups ( ' +
 						'parent_id, ' +
 						'tenant_id, ' +
 						'name, ' +
@@ -785,7 +796,7 @@ exports.up = function(knex, Promise) {
 
 					'IF NEW.parent_id IS NOT NULL ' +
 					'THEN ' +
-						'INSERT INTO tenant_modules ( ' +
+						'INSERT INTO tenants_modules ( ' +
 							'tenant_id, ' +
 							'module_id ' +
 						') ' +
@@ -801,7 +812,7 @@ exports.up = function(knex, Promise) {
 
 					'IF NEW.parent_id IS NULL ' +
 					'THEN ' +
-						'INSERT INTO tenant_modules ( ' +
+						'INSERT INTO tenants_modules ( ' +
 							'tenant_id, ' +
 							'module_id ' +
 						') ' +
@@ -839,9 +850,9 @@ exports.up = function(knex, Promise) {
 						'A.tenant_id AS tenant_id, ' +
 						'A.permission_id AS permission_id ' +
 					'FROM ' +
-						'group_permissions A ' +
+						'tenant_group_permissions A ' +
 					'WHERE ' +
-						'A.group_id IN (SELECT group_id FROM tenant_user_groups WHERE user_id = userid); ' +
+						'A.group_id IN (SELECT group_id FROM tenants_users_groups WHERE user_id = userid); ' +
 				'END; ' +
 				'$$;'
 			),
@@ -962,7 +973,7 @@ exports.up = function(knex, Promise) {
 					'COST 1 ' +
 					'AS $$ ' +
 				'BEGIN ' +
-					'INSERT INTO group_permissions ( ' +
+					'INSERT INTO tenant_group_permissions ( ' +
 						'tenant_id, ' +
 						'group_id, ' +
 						'module_id, ' +
@@ -974,8 +985,8 @@ exports.up = function(knex, Promise) {
 						'A.module_id, ' +
 						'NEW.id ' +
 					'FROM ' +
-						'tenant_modules A ' +
-						'INNER JOIN groups B ON (A.tenant_id = B.tenant_id AND B.parent_id IS NULL) ' +
+						'tenants_modules A ' +
+						'INNER JOIN tenant_groups B ON (A.tenant_id = B.tenant_id AND B.parent_id IS NULL) ' +
 					'WHERE ' +
 						'A.module_id = NEW.module_id; ' +
 
@@ -1038,7 +1049,7 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'count(id) ' +
 						'FROM ' +
-							'tenant_modules ' +
+							'tenants_modules ' +
 						'WHERE ' +
 							'tenant_id = NEW.tenant_id AND ' +
 							'module_id = component_parent_id ' +
@@ -1105,7 +1116,7 @@ exports.up = function(knex, Promise) {
 					'SELECT ' +
 						'id ' +
 					'FROM ' +
-						'groups ' +
+						'tenant_groups ' +
 					'WHERE ' +
 						'tenant_id = NEW.tenant_id AND ' +
 						'parent_id IS NULL ' +
@@ -1117,7 +1128,7 @@ exports.up = function(knex, Promise) {
 						'RETURN NEW; ' +
 					'END IF; ' +
 
-					'INSERT INTO group_permissions( ' +
+					'INSERT INTO tenant_group_permissions( ' +
 						'tenant_id, ' +
 						'group_id, ' +
 						'module_id, ' +
@@ -1129,7 +1140,7 @@ exports.up = function(knex, Promise) {
 						'module_id, ' +
 						'id ' +
 					'FROM ' +
-						'permissions ' +
+						'module_permissions ' +
 					'WHERE ' +
 						'module_id = NEW.module_id; ' +
 
@@ -1161,7 +1172,7 @@ exports.up = function(knex, Promise) {
 							'A.parent_id, ' +
 							'A.name ' +
 						'FROM ' +
-							'groups A ' +
+							'tenant_groups A ' +
 						'WHERE ' +
 							'A.id = groupid ' +
 						'UNION ALL ' +
@@ -1172,7 +1183,7 @@ exports.up = function(knex, Promise) {
 							'B.name ' +
 						'FROM ' +
 							'q, ' +
-							'groups B ' +
+							'tenant_groups B ' +
 						'WHERE ' +
 							'B.id = q.parent_id ' +
 					') ' +
@@ -1208,7 +1219,7 @@ exports.up = function(knex, Promise) {
 							'A.parent_id, ' +
 							'A.name ' +
 						'FROM ' +
-							'groups A ' +
+							'tenant_groups A ' +
 						'WHERE ' +
 							'A.id = groupid ' +
 						'UNION ALL ' +
@@ -1219,7 +1230,7 @@ exports.up = function(knex, Promise) {
 							'B.name ' +
 						'FROM ' +
 							'q, ' +
-							'groups B ' +
+							'tenant_groups B ' +
 						'WHERE ' +
 							'B.parent_id = q.id ' +
 					') ' +
@@ -1276,7 +1287,7 @@ exports.up = function(knex, Promise) {
 					'SELECT ' +
 						'parent_id ' +
 					'FROM ' +
-						'groups ' +
+						'tenant_groups ' +
 					'WHERE ' +
 						'id = NEW.group_id ' +
 					'INTO ' +
@@ -1291,7 +1302,7 @@ exports.up = function(knex, Promise) {
 					'SELECT ' +
 						'count(id) ' +
 					'FROM ' +
-						'group_permissions ' +
+						'tenant_group_permissions ' +
 					'WHERE ' +
 						'group_id = parent_group_id AND ' +
 						'permission_id = NEW.permission_id ' +
@@ -1321,7 +1332,7 @@ exports.up = function(knex, Promise) {
 
 				'BEGIN ' +
 					'DELETE FROM ' +
-						'group_permissions ' +
+						'tenant_group_permissions ' +
 					'WHERE ' +
 						'group_id IN (SELECT id FROM fn_get_group_descendants(OLD.group_id) WHERE level = 2) AND ' +
 						'permission_id = OLD.permission_id; ' +
@@ -1353,7 +1364,7 @@ exports.up = function(knex, Promise) {
 					'SELECT ' +
 						'id ' +
 					'FROM ' +
-						'groups ' +
+						'tenant_groups ' +
 					'WHERE ' +
 						'tenant_id = NEW.tenant_id AND ' +
 						'default_for_new_user = true ' +
@@ -1365,7 +1376,7 @@ exports.up = function(knex, Promise) {
 						'RETURN NEW; ' +
 					'END IF; ' +
 
-					'INSERT INTO tenant_user_groups ( ' +
+					'INSERT INTO tenants_users_groups ( ' +
 						'tenant_id, ' +
 						'group_id, ' +
 						'user_id ' +
@@ -1402,7 +1413,7 @@ exports.up = function(knex, Promise) {
 					'SELECT ' +
 						'count(id) ' +
 					'FROM ' +
-						'tenant_user_groups ' +
+						'tenants_users_groups ' +
 					'WHERE ' +
 						'tenant_id = NEW.tenant_id AND ' +
 						'group_id IN (SELECT id FROM fn_get_group_ancestors(NEW.group_id) WHERE level > 1) AND ' +
@@ -1432,7 +1443,7 @@ exports.up = function(knex, Promise) {
 					'AS $$ ' +
 				'BEGIN ' +
 					'DELETE FROM ' +
-						'tenant_user_groups ' +
+						'tenants_users_groups ' +
 					'WHERE ' +
 						'tenant_id = NEW.tenant_id AND ' +
 						'group_id IN (SELECT id FROM fn_get_group_descendants(NEW.group_id) WHERE level > 1) AND ' +
@@ -1578,7 +1589,7 @@ exports.up = function(knex, Promise) {
 					'SELECT ' +
 						'count(id) ' +
 					'FROM ' +
-						'permissions ' +
+						'module_permissions ' +
 					'WHERE ' +
 						'module_id IN (SELECT id FROM fn_get_module_ancestors(NEW.module_id)) AND ' +
 						'id = NEW.permission_id ' +
@@ -1680,7 +1691,7 @@ exports.up = function(knex, Promise) {
 					'SELECT ' +
 						'count(id) ' +
 					'FROM ' +
-						'permissions ' +
+						'module_permissions ' +
 					'WHERE ' +
 						'module_id IN (SELECT id FROM fn_get_module_ancestors(NEW.module_id)) AND ' +
 						'id = NEW.permission_id ' +
@@ -1766,7 +1777,7 @@ exports.up = function(knex, Promise) {
 					'FROM ' +
 						'module_templates ' +
 					'WHERE ' +
-						'id = (SELECT template_id FROM template_positions WHERE id = NEW.template_position_id) ' +
+						'id = (SELECT template_id FROM module_template_positions WHERE id = NEW.template_position_id) ' +
 					'INTO ' +
 						'template_module_id; ' +
 
@@ -1809,21 +1820,21 @@ exports.up = function(knex, Promise) {
 			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_tenant_upsert_is_valid BEFORE INSERT OR UPDATE ON public.tenants FOR EACH ROW EXECUTE PROCEDURE public.fn_check_tenant_upsert_is_valid();'),
 			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_user_upsert_is_valid BEFORE INSERT OR UPDATE ON public.users FOR EACH ROW EXECUTE PROCEDURE public.fn_check_user_upsert_is_valid();'),
 			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_assign_defaults_to_tenant AFTER INSERT ON public.tenants FOR EACH ROW EXECUTE PROCEDURE public.fn_assign_defaults_to_tenant();'),
-			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_permission_insert_is_valid BEFORE INSERT ON public.permissions FOR EACH ROW EXECUTE PROCEDURE public.fn_check_permission_insert_is_valid();'),
-			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_permission_update_is_valid BEFORE UPDATE ON public.permissions FOR EACH ROW EXECUTE PROCEDURE public.fn_check_permission_update_is_valid();'),
+			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_permission_insert_is_valid BEFORE INSERT ON public.module_permissions FOR EACH ROW EXECUTE PROCEDURE public.fn_check_permission_insert_is_valid();'),
+			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_permission_update_is_valid BEFORE UPDATE ON public.module_permissions FOR EACH ROW EXECUTE PROCEDURE public.fn_check_permission_update_is_valid();'),
 			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_assign_default_group_to_tenant_user AFTER INSERT ON public.tenants_users FOR EACH ROW EXECUTE PROCEDURE public.fn_assign_default_group_to_tenant_user();'),
-			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_group_update_is_valid BEFORE UPDATE ON public.groups FOR EACH ROW EXECUTE PROCEDURE public.fn_check_group_update_is_valid();'),
-			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_assign_permission_to_tenant_group AFTER INSERT OR UPDATE ON public.tenant_modules FOR EACH ROW EXECUTE PROCEDURE public.fn_assign_permission_to_tenant_group();'),
-			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_tenant_module_upsert_is_valid BEFORE INSERT OR UPDATE ON public.tenant_modules FOR EACH ROW EXECUTE PROCEDURE public.fn_check_tenant_module_upsert_is_valid();'),
-			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_remove_group_permission_from_descendants BEFORE DELETE ON public.group_permissions FOR EACH ROW EXECUTE PROCEDURE public.fn_remove_group_permission_from_descendants();'),
-			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_group_permission_insert_is_valid BEFORE INSERT OR UPDATE ON public.group_permissions FOR EACH ROW EXECUTE PROCEDURE public.fn_check_group_permission_insert_is_valid();'),
-			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_assign_permission_to_tenants AFTER INSERT ON public.permissions FOR EACH ROW EXECUTE PROCEDURE public.fn_assign_permission_to_tenants();'),
-			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_remove_descendant_group_from_tenant_user AFTER INSERT OR UPDATE ON public.tenant_user_groups FOR EACH ROW EXECUTE PROCEDURE public.fn_remove_descendant_group_from_tenant_user();'),
-			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_tenant_user_group_upsert_is_valid BEFORE INSERT OR UPDATE ON public.tenant_user_groups FOR EACH ROW EXECUTE PROCEDURE public.fn_check_tenant_user_group_upsert_is_valid();'),
+			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_group_update_is_valid BEFORE UPDATE ON public.tenant_groups FOR EACH ROW EXECUTE PROCEDURE public.fn_check_group_update_is_valid();'),
+			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_assign_permission_to_tenant_group AFTER INSERT OR UPDATE ON public.tenants_modules FOR EACH ROW EXECUTE PROCEDURE public.fn_assign_permission_to_tenant_group();'),
+			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_tenant_module_upsert_is_valid BEFORE INSERT OR UPDATE ON public.tenants_modules FOR EACH ROW EXECUTE PROCEDURE public.fn_check_tenant_module_upsert_is_valid();'),
+			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_remove_group_permission_from_descendants BEFORE DELETE ON public.tenant_group_permissions FOR EACH ROW EXECUTE PROCEDURE public.fn_remove_group_permission_from_descendants();'),
+			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_group_permission_insert_is_valid BEFORE INSERT OR UPDATE ON public.tenant_group_permissions FOR EACH ROW EXECUTE PROCEDURE public.fn_check_group_permission_insert_is_valid();'),
+			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_assign_permission_to_tenants AFTER INSERT ON public.module_permissions FOR EACH ROW EXECUTE PROCEDURE public.fn_assign_permission_to_tenants();'),
+			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_remove_descendant_group_from_tenant_user AFTER INSERT OR UPDATE ON public.tenants_users_groups FOR EACH ROW EXECUTE PROCEDURE public.fn_remove_descendant_group_from_tenant_user();'),
+			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_tenant_user_group_upsert_is_valid BEFORE INSERT OR UPDATE ON public.tenants_users_groups FOR EACH ROW EXECUTE PROCEDURE public.fn_check_tenant_user_group_upsert_is_valid();'),
 			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_module_menu_upsert_is_valid BEFORE INSERT OR UPDATE ON public.module_menus FOR EACH ROW EXECUTE PROCEDURE public.fn_check_module_menu_upsert_is_valid();'),
 			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_module_widget_upsert_is_valid BEFORE INSERT OR UPDATE ON public.module_widgets FOR EACH ROW EXECUTE PROCEDURE public.fn_check_module_widget_upsert_is_valid();'),
 			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_module_template_upsert_is_valid BEFORE INSERT OR UPDATE ON public.module_templates FOR EACH ROW EXECUTE PROCEDURE public.fn_check_module_template_upsert_is_valid();'),
-			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_widget_template_position_upsert_is_valid BEFORE INSERT OR UPDATE ON public.widget_template_position FOR EACH ROW EXECUTE PROCEDURE public.fn_check_widget_template_position_upsert_is_valid();')
+			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_widget_template_position_upsert_is_valid BEFORE INSERT OR UPDATE ON public.module_widget_module_template_positions FOR EACH ROW EXECUTE PROCEDURE public.fn_check_widget_template_position_upsert_is_valid();')
 		]);
 	});
 };
