@@ -29,7 +29,55 @@ var masterdataComponent = prime({
 	},
 
 	'_addRoutes': function() {
+		this.$router.get('/contactTypes', this._getContactTypes.bind(this));
+		this.$router.get('/emergencyContactTypes', this._getEmergencyContactTypes.bind(this));
 		this.$router.get('/genders', this._getGenders.bind(this));
+	},
+
+	'_getContactTypes': function(request, response, next) {
+		var self = this,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.silly('Servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params);
+		response.type('application/javascript');
+
+		self.dependencies['database-service'].knex.raw('SELECT unnest(enum_range(NULL::contact_type)) AS contact_types;')
+		.then(function(contactTypes) {
+			var responseData = [];
+			for(var idx in contactTypes.rows) {
+				responseData.push(contactTypes.rows[idx]['contact_types']);
+			}
+
+			response.status(200).json(responseData);
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			response.status(422).json({ 'code': 422, 'message': err.message || err.detail || 'Error fetching contact types from the database' });
+		});
+	},
+
+	'_getEmergencyContactTypes': function(request, response, next) {
+		var self = this,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.silly('Servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params);
+		response.type('application/javascript');
+
+		self.dependencies['database-service'].knex.raw('SELECT unnest(enum_range(NULL::emergency_contact_type)) AS emergency_contact_types;')
+		.then(function(emergencyContactTypes) {
+			var responseData = [];
+			for(var idx in emergencyContactTypes.rows) {
+				responseData.push(emergencyContactTypes.rows[idx]['emergency_contact_types']);
+			}
+
+			response.status(200).json(responseData);
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			response.status(422).json({ 'code': 422, 'message': err.message || err.detail || 'Error fetching emergency contact types from the database' });
+		});
 	},
 
 	'_getGenders': function(request, response, next) {

@@ -30,7 +30,7 @@ exports.socialAuthenticate = (function(request, profile, token, done) {
 			'idAttribute': 'id',
 
 			'social': function() {
-				return this.hasMany(UserSocialLogins, 'user_id');
+				return this.hasMany(UserSocialLogins, 'login');
 			}
 		});
 	}
@@ -41,13 +41,13 @@ exports.socialAuthenticate = (function(request, profile, token, done) {
 			'idAttribute': 'id',
 
 			'user': function() {
-				return this.belongsTo(User, 'user_id');
+				return this.belongsTo(User, 'login');
 			}
 		});
 	}
 
 	// Step 1: Is this user already in the database?
-	UserSocialLogins.where({ 'provider': profile.provider, 'profile_id': profile.id }).fetch({'withRelated': ['user']})
+	UserSocialLogins.where({ 'provider': profile.provider, 'provider_uid': profile.id }).fetch({'withRelated': ['user']})
 	.then(function(userSocialRecord) {
 		if(userSocialRecord) {
 			var responseUser = userSocialRecord.related('user').toJSON();
@@ -84,18 +84,18 @@ exports.socialAuthenticate = (function(request, profile, token, done) {
 			.then(function(userRecord) {
 				return new UserSocialLogins({
 					'provider': profile.provider,
-					'profile_id': profile.id,
-					'profile_displayname': profile.displayName || profile.emails[0].value,
-					'user_id': userRecord.get('id'),
-					'profile_data': profile._json
+					'provider_uid': profile.id,
+					'display_name': profile.displayName || profile.emails[0].value,
+					'login': userRecord.get('id'),
+					'social_data': profile._json
 				}).save();
 			})
 			.then(function(userSocialLoginRecord) {
 				if(newSocialUser) {
-					self.$module.emit('socialregistration', userSocialLoginRecord.get('user_id'), request.query.state);
+					self.$module.emit('socialregistration', userSocialLoginRecord.get('login'), request.query.state);
 				}
 
-				done(null, { 'id': userSocialLoginRecord.get('user_id'), 'first_name': profile.name.givenName, 'last_name': profile.name.familyName });
+				done(null, { 'id': userSocialLoginRecord.get('login'), 'first_name': profile.name.givenName, 'last_name': profile.name.familyName });
 				return null;
 			})
 			.catch(function(err) {
@@ -123,7 +123,7 @@ exports.socialAuthorize = (function(request, profile, token, done) {
 			'idAttribute': 'id',
 
 			'social': function() {
-				return this.hasMany(UserSocialLogins, 'user_id');
+				return this.hasMany(UserSocialLogins, 'login');
 			}
 		});
 	}
@@ -134,7 +134,7 @@ exports.socialAuthorize = (function(request, profile, token, done) {
 			'idAttribute': 'id',
 
 			'user': function() {
-				return this.belongsTo(User, 'user_id');
+				return this.belongsTo(User, 'login');
 			}
 		});
 	}
@@ -152,24 +152,24 @@ exports.socialAuthorize = (function(request, profile, token, done) {
 
 	new UserSocialLogins({
 		'provider': profile.provider,
-		'profile_id': profile.id
+		'provider_uid': profile.id
 	})
 	.fetch()
 	.then(function(userSocialRecord) {
 		if(userSocialRecord) {
-			userSocialRecord.set('profile_displayname', profile.displayName || profile.emails[0].value);
-			userSocialRecord.set('user_id', request.user.id);
-			userSocialRecord.set('profile_data', profile._json);
+			userSocialRecord.set('display_name', profile.displayName || profile.emails[0].value);
+			userSocialRecord.set('login', request.user.id);
+			userSocialRecord.set('social_data', profile._json);
 
 			return userSocialRecord.save();
 		}
 		else {
 			return new UserSocialLogins({
 				'provider': profile.provider,
-				'profile_id': profile.id,
-				'profile_displayname': profile.displayName || profile.emails[0].value,
-				'user_id': request.user.id,
-				'profile_data': profile._json
+				'provider_uid': profile.id,
+				'display_name': profile.displayName || profile.emails[0].value,
+				'login': request.user.id,
+				'social_data': profile._json
 			}).save();
 		}
 	})

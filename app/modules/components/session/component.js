@@ -31,6 +31,18 @@ var sessionComponent = prime({
 	'_addRoutes': function() {
 		this.$router.post('/login', this._login.bind(this));
 		this.$router.get('/logout', this._logout.bind(this));
+
+		this.$router.get('/facebook', this._socialLoginRequest.bind(this, 'twyr-facebook'));
+		this.$router.get('/github', this._socialLoginRequest.bind(this, 'twyr-github'));
+		this.$router.get('/google', this._socialLoginRequest.bind(this, 'twyr-google'));
+		this.$router.get('/linkedin', this._socialLoginRequest.bind(this, 'twyr-linkedin'));
+		this.$router.get('/twitter', this._socialLoginRequest.bind(this, 'twyr-twitter'));
+
+		this.$router.get('/facebookcallback', this._socialLoginResponse.bind(this, 'twyr-facebook'));
+		this.$router.get('/githubcallback', this._socialLoginResponse.bind(this, 'twyr-github'));
+		this.$router.get('/googlecallback', this._socialLoginResponse.bind(this, 'twyr-google'));
+		this.$router.get('/linkedincallback', this._socialLoginResponse.bind(this, 'twyr-linkedin'));
+		this.$router.get('/twittercallback', this._socialLoginResponse.bind(this, 'twyr-twitter'));
 	},
 
 	'_login': function(request, response, next) {
@@ -108,6 +120,51 @@ var sessionComponent = prime({
 			self.$dependencies.logger.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
 			response.status(err.code || err.number || 500).json(err);
 		});
+	},
+
+	'_socialLoginRequest': function(strategy, request, response, next) {
+		if(!request.user) {
+			(this.dependencies['auth-service'].authenticate(strategy, function(err, user, info) {
+				response.redirect(request.get('referrer'));
+			}))(request, response, next);
+		}
+		else {
+			(this.dependencies['auth-service'].authorize(strategy, function(err, user, info) {
+				response.redirect(request.get('referrer'));
+			}))(request, response, next);
+		}
+	},
+
+	'_socialLoginResponse': function(strategy, request, response, next) {
+		var self = this;
+		if(!request.user) {
+			(this.dependencies['auth-service'].authenticate(strategy, function(err, user, info) {
+				request.login(user, function(err) {
+					if(err) {
+						self.dependencies['logger-service'].error(self.name + '::_socialLoginResponse authenticate\nStrategy: ', strategy,'\nError: ', err);
+					}
+					else {
+						self.$module.emit('login', user.id);
+					}
+
+					response.redirect(request.get('referrer'));
+				});
+			}))(request, response, next);
+		}
+		else {
+			(this.dependencies['auth-service'].authorize(strategy, function(err, user, info) {
+				request.login(user, function(err) {
+					if(err) {
+						self.dependencies['logger-service'].error(self.name + '::_socialLoginResponse authorize\nStrategy: ', strategy, '\nError: ', err);
+					}
+					else {
+						self.$dependencies.eventService.emit('login', user.id);
+					}
+
+					response.redirect(request.get('referrer'));
+				});
+			}))(request, response, next);
+		}
 	},
 
 	'name': 'session',

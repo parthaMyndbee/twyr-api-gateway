@@ -8,7 +8,8 @@ exports.up = function(knex, Promise) {
 	// Step 2: Setup types
 	.then(function() {
 		return Promise.all([
-			knex.schema.raw("CREATE TYPE public.contact_type AS ENUM ('email','landline', 'mobile','other')"),
+			knex.schema.raw("CREATE TYPE public.contact_type AS ENUM ('email','landline','mobile','other')"),
+			knex.schema.raw("CREATE TYPE public.emergency_contact_type AS ENUM ('self','parent','sibling','child','cousin','colleague','medical professional','legal professional','other')"),
 			knex.schema.raw("CREATE TYPE public.gender AS ENUM ('female','male','other')"),
 			knex.schema.raw("CREATE TYPE public.module_type AS ENUM ('component','middleware','service')"),
 			knex.schema.raw("CREATE TYPE public.tenant_type AS ENUM ('department','organization')"),
@@ -22,7 +23,7 @@ exports.up = function(knex, Promise) {
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('modules', function(modTbl) {
 				modTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				modTbl.uuid('parent_id').references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
+				modTbl.uuid('parent').references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
 				modTbl.specificType('type', 'public.module_type').notNullable().defaultTo('component');
 				modTbl.text('name').notNullable();
 				modTbl.text('display_name').notNullable();
@@ -33,7 +34,7 @@ exports.up = function(knex, Promise) {
 				modTbl.boolean('enabled').notNullable().defaultTo(true);
 				modTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				modTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				modTbl.unique(['parent_id', 'name']);
+				modTbl.unique(['parent', 'name']);
 			}),
 
 			knex.schema.withSchema('public')
@@ -45,10 +46,10 @@ exports.up = function(knex, Promise) {
 				userTbl.text('middle_names');
 				userTbl.text('last_name').notNullable();
 				userTbl.text('nickname');
-				userTbl.uuid('profile_image_id');
+				userTbl.uuid('profile_image');
 				userTbl.specificType('gender', 'public.gender').notNullable().defaultTo('other');
 				userTbl.timestamp('dob');
-				userTbl.uuid('home_module_menu_id');
+				userTbl.uuid('home_module_menu');
 				userTbl.boolean('enabled').notNullable().defaultTo(true);
 				userTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				userTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
@@ -58,13 +59,13 @@ exports.up = function(knex, Promise) {
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('tenants', function(tenantTbl) {
 				tenantTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				tenantTbl.uuid('parent_id').references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
+				tenantTbl.uuid('parent').references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
 				tenantTbl.specificType('type', 'public.tenant_type').notNullable().defaultTo('organization');
 				tenantTbl.text('name').notNullable();
 				tenantTbl.boolean('enabled').notNullable().defaultTo(true);
 				tenantTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				tenantTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				tenantTbl.unique(['parent_id', 'name']);
+				tenantTbl.unique(['parent', 'name']);
 			})
 		]);
 	})
@@ -74,30 +75,30 @@ exports.up = function(knex, Promise) {
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('tenants_modules', function(tenantModuleTbl) {
 				tenantModuleTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				tenantModuleTbl.uuid('tenant_id').notNullable().references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
-				tenantModuleTbl.uuid('module_id').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
+				tenantModuleTbl.uuid('tenant').notNullable().references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
+				tenantModuleTbl.uuid('module').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
 				tenantModuleTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				tenantModuleTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				tenantModuleTbl.unique(['tenant_id', 'module_id']);
+				tenantModuleTbl.unique(['tenant', 'module']);
 			}),
 
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('module_permissions', function(permTbl) {
 				permTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				permTbl.uuid('module_id').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
+				permTbl.uuid('module').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
 				permTbl.text('name').notNullable();
 				permTbl.text('display_name').notNullable();
 				permTbl.text('description').notNullable().defaultTo('Another Random Permission');
 				permTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				permTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				permTbl.unique(['module_id', 'name']);
-				permTbl.unique(['module_id', 'id']);
+				permTbl.unique(['module', 'name']);
+				permTbl.unique(['module', 'id']);
 			}),
 
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('module_templates', function(modTmplTbl) {
 				modTmplTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				modTmplTbl.uuid('module_id').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
+				modTmplTbl.uuid('module').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
 				modTmplTbl.text('name').notNullable();
 				modTmplTbl.text('description').notNullable().defaultTo('Another Module Template');
 				modTmplTbl.specificType('media_type', 'public.template_media_type').notNullable().defaultTo('all');
@@ -107,26 +108,26 @@ exports.up = function(knex, Promise) {
 				modTmplTbl.jsonb('metadata').notNullable().defaultTo('{}');
 				modTmplTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				modTmplTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				modTmplTbl.unique(['module_id', 'name']);
+				modTmplTbl.unique(['module', 'name']);
 			}),
 
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('user_social_logins', function(socialLoginTbl) {
 				socialLoginTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				socialLoginTbl.uuid('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE').onUpdate('CASCADE');
+				socialLoginTbl.uuid('login').notNullable().references('id').inTable('users').onDelete('CASCADE').onUpdate('CASCADE');
 				socialLoginTbl.text('provider').notNullable();
-				socialLoginTbl.text('provider_id').notNullable();
+				socialLoginTbl.text('provider_uid').notNullable();
 				socialLoginTbl.text('display_name').notNullable();
 				socialLoginTbl.jsonb('social_data').notNullable();
 				socialLoginTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				socialLoginTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				socialLoginTbl.unique(['provider', 'provider_id']);
+				socialLoginTbl.unique(['provider', 'provider_uid']);
 			}),
 
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('user_contacts', function(contactsTbl) {
 				contactsTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				contactsTbl.uuid('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE').onUpdate('CASCADE');
+				contactsTbl.uuid('login').notNullable().references('id').inTable('users').onDelete('CASCADE').onUpdate('CASCADE');
 				contactsTbl.text('contact').notNullable();
 				contactsTbl.specificType('type', 'public.contact_type').notNullable().defaultTo('other');
 				contactsTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
@@ -134,9 +135,20 @@ exports.up = function(knex, Promise) {
 			}),
 
 			knex.schema.withSchema('public')
+			.createTableIfNotExists('user_emergency_contacts', function(emergencyContactsTbl) {
+				emergencyContactsTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
+				emergencyContactsTbl.uuid('login').notNullable().references('id').inTable('users').onDelete('CASCADE').onUpdate('CASCADE');
+				emergencyContactsTbl.uuid('contact').notNullable().references('id').inTable('users').onDelete('CASCADE').onUpdate('CASCADE');
+				emergencyContactsTbl.specificType('relationship', 'public.emergency_contact_type').notNullable().defaultTo('other');
+				emergencyContactsTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
+				emergencyContactsTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
+				emergencyContactsTbl.unique(['login', 'contact']);
+			}),
+
+			knex.schema.withSchema('public')
 			.createTableIfNotExists('tenant_locations', function(locationTbl) {
 				locationTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				locationTbl.uuid('tenant_id').notNullable().references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
+				locationTbl.uuid('tenant').notNullable().references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
 				locationTbl.text('line1').notNullable();
 				locationTbl.text('line2');
 				locationTbl.text('line3');
@@ -149,33 +161,33 @@ exports.up = function(knex, Promise) {
 				locationTbl.decimal('longitude').notNullable();
 				locationTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				locationTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				locationTbl.unique(['tenant_id', 'id']);
+				locationTbl.unique(['tenant', 'id']);
 			}),
 
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('tenant_job_titles', function(jobTitleTbl) {
 				jobTitleTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				jobTitleTbl.uuid('tenant_id').notNullable().references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
+				jobTitleTbl.uuid('tenant').notNullable().references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
 				jobTitleTbl.text('title').notNullable();
 				jobTitleTbl.text('description');
 				jobTitleTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				jobTitleTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				jobTitleTbl.unique(['tenant_id', 'id']);
+				jobTitleTbl.unique(['tenant', 'id']);
 			}),
 
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('tenant_groups', function(groupTbl) {
 				groupTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				groupTbl.uuid('tenant_id').notNullable().references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
-				groupTbl.uuid('parent_id').references('id').inTable('tenant_groups').onDelete('CASCADE').onUpdate('CASCADE');
+				groupTbl.uuid('tenant').notNullable().references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
+				groupTbl.uuid('parent').references('id').inTable('tenant_groups').onDelete('CASCADE').onUpdate('CASCADE');
 				groupTbl.text('name').notNullable();
 				groupTbl.text('display_name').notNullable();
 				groupTbl.text('description');
 				groupTbl.boolean('default_for_new_user').notNullable().defaultTo(false);
 				groupTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				groupTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				groupTbl.unique(['parent_id', 'name']);
-				groupTbl.unique(['tenant_id', 'id']);
+				groupTbl.unique(['parent', 'name']);
+				groupTbl.unique(['tenant', 'id']);
 			})
 		]);
 	})
@@ -185,8 +197,8 @@ exports.up = function(knex, Promise) {
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('module_widgets', function(modWidgetsTbl) {
 				modWidgetsTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				modWidgetsTbl.uuid('module_id').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
-				modWidgetsTbl.uuid('permission_id').notNullable().references('id').inTable('module_permissions').onDelete('CASCADE').onUpdate('CASCADE');
+				modWidgetsTbl.uuid('module').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
+				modWidgetsTbl.uuid('permission').notNullable().references('id').inTable('module_permissions').onDelete('CASCADE').onUpdate('CASCADE');
 				modWidgetsTbl.text('ember_component').notNullable();
 				modWidgetsTbl.text('display_name').notNullable();
 				modWidgetsTbl.text('description');
@@ -199,9 +211,9 @@ exports.up = function(knex, Promise) {
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('module_menus', function(modMenusTbl) {
 				modMenusTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				modMenusTbl.uuid('parent_id').references('id').inTable('module_menus').onDelete('CASCADE').onUpdate('CASCADE');
-				modMenusTbl.uuid('module_id').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
-				modMenusTbl.uuid('permission_id').notNullable().references('id').inTable('module_permissions').onDelete('CASCADE').onUpdate('CASCADE');
+				modMenusTbl.uuid('parent').references('id').inTable('module_menus').onDelete('CASCADE').onUpdate('CASCADE');
+				modMenusTbl.uuid('module').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
+				modMenusTbl.uuid('permission').notNullable().references('id').inTable('module_permissions').onDelete('CASCADE').onUpdate('CASCADE');
 				modMenusTbl.text('ember_route').notNullable();
 				modMenusTbl.text('icon_class').notNullable();
 				modMenusTbl.text('display_name').notNullable();
@@ -211,41 +223,41 @@ exports.up = function(knex, Promise) {
 				modMenusTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				modMenusTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
 				modMenusTbl.unique(['ember_route']);
-				modMenusTbl.unique(['module_id', 'display_name']);
+				modMenusTbl.unique(['module', 'display_name']);
 			}),
 
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('tenants_users', function(tenantUserTbl) {
 				tenantUserTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				tenantUserTbl.uuid('tenant_id').notNullable().references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
-				tenantUserTbl.uuid('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE').onUpdate('CASCADE');
-				tenantUserTbl.uuid('job_title_id').references('id').inTable('tenant_job_titles').onDelete('CASCADE').onUpdate('CASCADE');
-				tenantUserTbl.uuid('location_id').references('id').inTable('tenant_locations').onDelete('CASCADE').onUpdate('CASCADE');
+				tenantUserTbl.uuid('tenant').notNullable().references('id').inTable('tenants').onDelete('CASCADE').onUpdate('CASCADE');
+				tenantUserTbl.uuid('login').notNullable().references('id').inTable('users').onDelete('CASCADE').onUpdate('CASCADE');
+				tenantUserTbl.uuid('job_title').references('id').inTable('tenant_job_titles').onDelete('CASCADE').onUpdate('CASCADE');
+				tenantUserTbl.uuid('location').references('id').inTable('tenant_locations').onDelete('CASCADE').onUpdate('CASCADE');
 				tenantUserTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				tenantUserTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				tenantUserTbl.unique(['tenant_id', 'user_id']);
+				tenantUserTbl.unique(['tenant', 'login']);
 			}),
 
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('tenant_group_permissions', function(groupPermissionTbl) {
 				groupPermissionTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				groupPermissionTbl.uuid('tenant_id').notNullable();
-				groupPermissionTbl.uuid('group_id').notNullable();
-				groupPermissionTbl.uuid('module_id').notNullable();
-				groupPermissionTbl.uuid('permission_id').notNullable();
+				groupPermissionTbl.uuid('tenant').notNullable();
+				groupPermissionTbl.uuid('tenant_group').notNullable();
+				groupPermissionTbl.uuid('module').notNullable();
+				groupPermissionTbl.uuid('permission').notNullable();
 				groupPermissionTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				groupPermissionTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				groupPermissionTbl.unique(['group_id', 'permission_id']);
+				groupPermissionTbl.unique(['tenant_group', 'permission']);
 
-				groupPermissionTbl.foreign(['module_id', 'permission_id']).references(['module_id', 'id']).inTable('module_permissions').onDelete('CASCADE').onUpdate('CASCADE');
-				groupPermissionTbl.foreign(['tenant_id', 'group_id']).references(['tenant_id', 'id']).inTable('tenant_groups').onDelete('CASCADE').onUpdate('CASCADE');
-				groupPermissionTbl.foreign(['tenant_id', 'module_id']).references(['tenant_id', 'module_id']).inTable('tenants_modules').onDelete('CASCADE').onUpdate('CASCADE');
+				groupPermissionTbl.foreign(['module', 'permission']).references(['module', 'id']).inTable('module_permissions').onDelete('CASCADE').onUpdate('CASCADE');
+				groupPermissionTbl.foreign(['tenant', 'tenant_group']).references(['tenant', 'id']).inTable('tenant_groups').onDelete('CASCADE').onUpdate('CASCADE');
+				groupPermissionTbl.foreign(['tenant', 'module']).references(['tenant', 'module']).inTable('tenants_modules').onDelete('CASCADE').onUpdate('CASCADE');
 			}),
 
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('module_template_positions', function(tmplPositionsTbl) {
 				tmplPositionsTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				tmplPositionsTbl.uuid('template_id').notNullable().references('id').inTable('module_templates').onDelete('CASCADE').onUpdate('CASCADE');
+				tmplPositionsTbl.uuid('template').notNullable().references('id').inTable('module_templates').onDelete('CASCADE').onUpdate('CASCADE');
 				tmplPositionsTbl.text('name').notNullable();
 				tmplPositionsTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				tmplPositionsTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
@@ -258,26 +270,26 @@ exports.up = function(knex, Promise) {
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('tenants_users_groups', function(tenantUserGroupTbl) {
 				tenantUserGroupTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				tenantUserGroupTbl.uuid('tenant_id').notNullable();
-				tenantUserGroupTbl.uuid('group_id').notNullable();
-				tenantUserGroupTbl.uuid('user_id').notNullable();
+				tenantUserGroupTbl.uuid('tenant').notNullable();
+				tenantUserGroupTbl.uuid('tenant_group').notNullable();
+				tenantUserGroupTbl.uuid('login').notNullable();
 				tenantUserGroupTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				tenantUserGroupTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				tenantUserGroupTbl.unique(['tenant_id', 'group_id', 'user_id']);
+				tenantUserGroupTbl.unique(['tenant', 'tenant_group', 'login']);
 
-				tenantUserGroupTbl.foreign(['tenant_id', 'group_id']).references(['tenant_id', 'id']).inTable('tenant_groups').onDelete('CASCADE').onUpdate('CASCADE');
-				tenantUserGroupTbl.foreign(['tenant_id', 'user_id']).references(['tenant_id', 'user_id']).inTable('tenants_users').onDelete('CASCADE').onUpdate('CASCADE');
+				tenantUserGroupTbl.foreign(['tenant', 'tenant_group']).references(['tenant', 'id']).inTable('tenant_groups').onDelete('CASCADE').onUpdate('CASCADE');
+				tenantUserGroupTbl.foreign(['tenant', 'login']).references(['tenant', 'login']).inTable('tenants_users').onDelete('CASCADE').onUpdate('CASCADE');
 			}),
 
 			knex.schema.withSchema('public')
 			.createTableIfNotExists('module_widget_module_template_positions', function(widgetTmplPositionTbl) {
 				widgetTmplPositionTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				widgetTmplPositionTbl.uuid('template_position_id').notNullable().references('id').inTable('module_template_positions').onDelete('CASCADE').onUpdate('CASCADE');
-				widgetTmplPositionTbl.uuid('module_widget_id').notNullable().references('id').inTable('module_widgets').onDelete('CASCADE').onUpdate('CASCADE');
+				widgetTmplPositionTbl.uuid('template_position').notNullable().references('id').inTable('module_template_positions').onDelete('CASCADE').onUpdate('CASCADE');
+				widgetTmplPositionTbl.uuid('module_widget').notNullable().references('id').inTable('module_widgets').onDelete('CASCADE').onUpdate('CASCADE');
 				widgetTmplPositionTbl.integer('display_order').notNullable().defaultTo(1);
 				widgetTmplPositionTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				widgetTmplPositionTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				widgetTmplPositionTbl.unique(['template_position_id', 'module_widget_id']);
+				widgetTmplPositionTbl.unique(['template_position', 'module_widget']);
 			})
 		]);
 	})
@@ -287,7 +299,7 @@ exports.up = function(knex, Promise) {
 			knex.schema.withSchema('public')
 			.raw(
 				'CREATE FUNCTION public.fn_get_module_ancestors (IN moduleid uuid) ' +
-					'RETURNS TABLE ( level integer,  id uuid,  parent_id uuid,  name text,  type public.module_type) ' +
+					'RETURNS TABLE ( level integer,  id uuid,  parent uuid,  name text,  type public.module_type) ' +
 					'LANGUAGE plpgsql ' +
 					'VOLATILE  ' +
 					'CALLED ON NULL INPUT ' +
@@ -300,7 +312,7 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'1 AS level, ' +
 							'A.id, ' +
-							'A.parent_id, ' +
+							'A.parent, ' +
 							'A.name, ' +
 							'A.type ' +
 						'FROM ' +
@@ -311,26 +323,26 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'q.level + 1, ' +
 							'B.id, ' +
-							'B.parent_id, ' +
+							'B.parent, ' +
 							'B.name, ' +
 							'B.type ' +
 						'FROM ' +
 							'q, ' +
 							'modules B ' +
 						'WHERE ' +
-							'B.id = q.parent_id ' +
+							'B.id = q.parent ' +
 					') ' +
 					'SELECT DISTINCT ' +
 						'q.level, ' +
 						'q.id, ' +
-						'q.parent_id, ' +
+						'q.parent, ' +
 						'q.name, ' +
 						'q.type ' +
 					'FROM ' +
 						'q ' +
 					'ORDER BY ' +
 						'q.level, ' +
-						'q.parent_id; ' +
+						'q.parent; ' +
 				'END; ' +
 				'$$;'
 			),
@@ -363,7 +375,7 @@ exports.up = function(knex, Promise) {
 			knex.schema.withSchema('public')
 			.raw(
 				'CREATE FUNCTION public.fn_get_module_descendants (IN moduleid uuid) ' +
-					'RETURNS TABLE ( level integer,  id uuid,  parent_id uuid,  name text,  type public.module_type, enabled boolean ) ' +
+					'RETURNS TABLE ( level integer,  id uuid,  parent uuid,  name text,  type public.module_type, enabled boolean ) ' +
 					'LANGUAGE plpgsql ' +
 					'VOLATILE  ' +
 					'CALLED ON NULL INPUT ' +
@@ -376,7 +388,7 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'1 AS level, ' +
 							'A.id, ' +
-							'A.parent_id, ' +
+							'A.parent, ' +
 							'A.name, ' +
 							'A.type, ' +
 							'fn_is_module_enabled(A.id) AS enabled ' +
@@ -388,7 +400,7 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'q.level + 1, ' +
 							'B.id, ' +
-							'B.parent_id, ' +
+							'B.parent, ' +
 							'B.name, ' +
 							'B.type, ' +
 							'fn_is_module_enabled(B.id) AS enabled ' +
@@ -396,12 +408,12 @@ exports.up = function(knex, Promise) {
 							'q, ' +
 							'modules B ' +
 						'WHERE ' +
-							'B.parent_id = q.id ' +
+							'B.parent = q.id ' +
 					') ' +
 					'SELECT DISTINCT ' +
 						'q.level, ' +
 						'q.id, ' +
-						'q.parent_id, ' +
+						'q.parent, ' +
 						'q.name, ' +
 						'q.type, ' +
 						'q.enabled ' +
@@ -409,7 +421,7 @@ exports.up = function(knex, Promise) {
 						'q ' +
 					'ORDER BY ' +
 						'q.level, ' +
-						'q.parent_id; ' +
+						'q.parent; ' +
 				'END; ' +
 				'$$;'
 			),
@@ -443,12 +455,12 @@ exports.up = function(knex, Promise) {
 					'END IF; ' +
 
 
-					'IF NEW.parent_id IS NULL ' +
+					'IF NEW.parent IS NULL ' +
 					'THEN ' +
 						'RETURN NEW; ' +
 					'END IF; ' +
 
-					'IF NEW.id = NEW.parent_id ' +
+					'IF NEW.id = NEW.parent ' +
 					'THEN ' +
 						'RAISE SQLSTATE \'2F003\' USING MESSAGE = \'Module cannot be its own parent\'; ' +
 						'RETURN NULL; ' +
@@ -458,7 +470,7 @@ exports.up = function(knex, Promise) {
 					'SELECT ' +
 						'COUNT(id) ' +
 					'FROM ' +
-						'fn_get_module_ancestors(NEW.parent_id) ' +
+						'fn_get_module_ancestors(NEW.parent) ' +
 					'WHERE ' +
 						'id = NEW.id ' +
 					'INTO ' +
@@ -542,8 +554,8 @@ exports.up = function(knex, Promise) {
 					'IF NEW.admin_only = true ' +
 					'THEN ' +
 						'INSERT INTO tenants_modules ( ' +
-							'tenant_id, ' +
-							'module_id ' +
+							'tenant, ' +
+							'module ' +
 						') ' +
 						'SELECT ' +
 							'id, ' +
@@ -551,14 +563,14 @@ exports.up = function(knex, Promise) {
 						'FROM ' +
 							'tenants ' +
 						'WHERE ' +
-							'parent_id IS NULL; ' +
+							'parent IS NULL; ' +
 					'END IF; ' +
 
 					'IF NEW.admin_only = false ' +
 					'THEN ' +
 						'INSERT INTO tenants_modules ( ' +
-							'tenant_id, ' +
-							'module_id ' +
+							'tenant, ' +
+							'module ' +
 						') ' +
 						'SELECT ' +
 							'id, ' +
@@ -579,7 +591,7 @@ exports.up = function(knex, Promise) {
 			knex.schema.withSchema('public')
 			.raw(
 				'CREATE FUNCTION public.fn_get_tenant_ancestors (IN tenantid uuid) ' +
-					'RETURNS TABLE (level integer,  id uuid,  parent_id uuid,  name text,  type public.tenant_type) ' +
+					'RETURNS TABLE (level integer,  id uuid,  parent uuid,  name text,  type public.tenant_type) ' +
 					'LANGUAGE plpgsql ' +
 					'VOLATILE  ' +
 					'CALLED ON NULL INPUT ' +
@@ -592,7 +604,7 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'1 AS level, ' +
 							'A.id, ' +
-							'A.parent_id, ' +
+							'A.parent, ' +
 							'A.name, ' +
 							'A.type ' +
 						'FROM ' +
@@ -603,26 +615,26 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'q.level + 1, ' +
 							'B.id, ' +
-							'B.parent_id, ' +
+							'B.parent, ' +
 							'B.name, ' +
 							'B.type ' +
 						'FROM ' +
 							'q, ' +
 							'tenants B ' +
 						'WHERE ' +
-							'B.id = q.parent_id ' +
+							'B.id = q.parent ' +
 					') ' +
 					'SELECT DISTINCT ' +
 						'q.level, ' +
 						'q.id, ' +
-						'q.parent_id, ' +
+						'q.parent, ' +
 						'q.name, ' +
 						'q.type ' +
 					'FROM ' +
 						'q ' +
 					'ORDER BY ' +
 						'q.level, ' +
-						'q.parent_id; ' +
+						'q.parent; ' +
 				'END; ' +
 				'$$;'
 			),
@@ -655,7 +667,7 @@ exports.up = function(knex, Promise) {
 			knex.schema.withSchema('public')
 			.raw(
 				'CREATE FUNCTION public.fn_get_tenant_descendants (IN tenantid uuid) ' +
-					'RETURNS TABLE ( level integer,  id uuid,  parent_id uuid,  name text,  type public.tenant_type, enabled boolean ) ' +
+					'RETURNS TABLE ( level integer,  id uuid,  parent uuid,  name text,  type public.tenant_type, enabled boolean ) ' +
 					'LANGUAGE plpgsql ' +
 					'VOLATILE  ' +
 					'CALLED ON NULL INPUT ' +
@@ -668,7 +680,7 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'1 AS level, ' +
 							'A.id, ' +
-							'A.parent_id, ' +
+							'A.parent, ' +
 							'A.name, ' +
 							'A.type, ' +
 							'fn_is_tenant_enabled(A.id) AS enabled ' +
@@ -680,7 +692,7 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'q.level + 1, ' +
 							'B.id, ' +
-							'B.parent_id, ' +
+							'B.parent, ' +
 							'B.name, ' +
 							'B.type, ' +
 							'fn_is_tenant_enabled(B.id) AS enabled ' +
@@ -688,12 +700,12 @@ exports.up = function(knex, Promise) {
 							'q, ' +
 							'tenants B ' +
 						'WHERE ' +
-							'B.parent_id = q.id ' +
+							'B.parent = q.id ' +
 					') ' +
 					'SELECT DISTINCT ' +
 						'q.level, ' +
 						'q.id, ' +
-						'q.parent_id, ' +
+						'q.parent, ' +
 						'q.name, ' +
 						'q.type, ' +
 						'q.enabled ' +
@@ -701,7 +713,7 @@ exports.up = function(knex, Promise) {
 						'q ' +
 					'ORDER BY ' +
 						'q.level, ' +
-						'q.parent_id; ' +
+						'q.parent; ' +
 				'END; ' +
 				'$$;'
 			),
@@ -719,12 +731,12 @@ exports.up = function(knex, Promise) {
 				'DECLARE ' +
 					'is_tenant_in_tree	INTEGER; ' +
 				'BEGIN ' +
-					'IF NEW.parent_id IS NULL ' +
+					'IF NEW.parent IS NULL ' +
 					'THEN ' +
 						'RETURN NEW; ' +
 					'END IF; ' +
 
-					'IF NEW.id = NEW.parent_id ' +
+					'IF NEW.id = NEW.parent ' +
 					'THEN ' +
 						'RAISE SQLSTATE \'2F003\' USING MESSAGE = \'Tenant cannot be its own parent\'; ' +
 						'RETURN NULL; ' +
@@ -734,7 +746,7 @@ exports.up = function(knex, Promise) {
 					'SELECT ' +
 						'COUNT(id) ' +
 					'FROM ' +
-						'fn_get_tenant_ancestors(NEW.parent_id) ' +
+						'fn_get_tenant_ancestors(NEW.parent) ' +
 					'WHERE ' +
 						'id = NEW.id ' +
 					'INTO ' +
@@ -780,8 +792,8 @@ exports.up = function(knex, Promise) {
 
 				'BEGIN ' +
 					'INSERT INTO tenant_groups ( ' +
-						'parent_id, ' +
-						'tenant_id, ' +
+						'parent, ' +
+						'tenant, ' +
 						'name, ' +
 						'display_name, ' +
 						'description ' +
@@ -794,11 +806,11 @@ exports.up = function(knex, Promise) {
 						'\'The Administrator Group for \' || NEW.name ' +
 					'); ' +
 
-					'IF NEW.parent_id IS NOT NULL ' +
+					'IF NEW.parent IS NOT NULL ' +
 					'THEN ' +
 						'INSERT INTO tenants_modules ( ' +
-							'tenant_id, ' +
-							'module_id ' +
+							'tenant, ' +
+							'module ' +
 						') ' +
 						'SELECT ' +
 							'NEW.id, ' +
@@ -810,11 +822,11 @@ exports.up = function(knex, Promise) {
 							'type = \'component\'; ' +
 					'END IF; ' +
 
-					'IF NEW.parent_id IS NULL ' +
+					'IF NEW.parent IS NULL ' +
 					'THEN ' +
 						'INSERT INTO tenants_modules ( ' +
-							'tenant_id, ' +
-							'module_id ' +
+							'tenant, ' +
+							'module ' +
 						') ' +
 						'SELECT ' +
 							'NEW.id, ' +
@@ -837,7 +849,7 @@ exports.up = function(knex, Promise) {
 			knex.schema.withSchema('public')
 			.raw(
 				'CREATE FUNCTION public.fn_get_user_permissions (IN userid uuid) ' +
-					'RETURNS TABLE ( tenant_id uuid,  permission_id uuid) ' +
+					'RETURNS TABLE ( tenant uuid,  permission uuid) ' +
 					'LANGUAGE plpgsql ' +
 					'VOLATILE  ' +
 					'CALLED ON NULL INPUT ' +
@@ -847,12 +859,12 @@ exports.up = function(knex, Promise) {
 				'BEGIN ' +
 					'RETURN QUERY ' +
 					'SELECT DISTINCT ' +
-						'A.tenant_id AS tenant_id, ' +
-						'A.permission_id AS permission_id ' +
+						'A.tenant AS tenant, ' +
+						'A.permission AS permission ' +
 					'FROM ' +
 						'tenant_group_permissions A ' +
 					'WHERE ' +
-						'A.group_id IN (SELECT group_id FROM tenants_users_groups WHERE user_id = userid); ' +
+						'A.tenant_group IN (SELECT tenant_group FROM tenants_users_groups WHERE login = userid); ' +
 				'END; ' +
 				'$$;'
 			),
@@ -869,7 +881,7 @@ exports.up = function(knex, Promise) {
 				'DECLARE ' +
 					'is_valid_home_module_menu INTEGER; ' +
 				'BEGIN ' +
-					'IF NEW.home_module_menu_id IS NULL ' +
+					'IF NEW.home_module_menu IS NULL ' +
 					'THEN ' +
 						'RETURN NEW; ' +
 					'END IF; ' +
@@ -880,8 +892,8 @@ exports.up = function(knex, Promise) {
 					'FROM ' +
 						'module_menus ' +
 					'WHERE ' +
-						'id = NEW.home_module_menu_id AND ' +
-						'permission_id IN (SELECT DISTINCT permission_id FROM fn_get_user_permissions(NEW.id)) ' +
+						'id = NEW.home_module_menu AND ' +
+						'permission IN (SELECT DISTINCT permission FROM fn_get_user_permissions(NEW.id)) ' +
 					'INTO ' +
 						'is_valid_home_module_menu; ' +
 
@@ -919,7 +931,7 @@ exports.up = function(knex, Promise) {
 					'FROM ' +
 						'modules ' +
 					'WHERE ' +
-						'id = NEW.module_id AND ' +
+						'id = NEW.module AND ' +
 						'type = \'component\' ' +
 					'INTO ' +
 						'is_component; ' +
@@ -946,7 +958,7 @@ exports.up = function(knex, Promise) {
 					'AS $$ ' +
 
 				'BEGIN ' +
-					'IF OLD.module_id <> NEW.module_id ' +
+					'IF OLD.module <> NEW.module ' +
 					'THEN ' +
 						'RAISE SQLSTATE \'2F003\' USING MESSAGE = \'Module assigned to a permission is NOT mutable\'; ' +
 						'RETURN NULL; ' +
@@ -974,21 +986,21 @@ exports.up = function(knex, Promise) {
 					'AS $$ ' +
 				'BEGIN ' +
 					'INSERT INTO tenant_group_permissions ( ' +
-						'tenant_id, ' +
-						'group_id, ' +
-						'module_id, ' +
-						'permission_id ' +
+						'tenant, ' +
+						'tenant_group, ' +
+						'module, ' +
+						'permission ' +
 					') ' +
 					'SELECT ' +
-						'A.tenant_id, ' +
+						'A.tenant, ' +
 						'B.id, ' +
-						'A.module_id, ' +
+						'A.module, ' +
 						'NEW.id ' +
 					'FROM ' +
 						'tenants_modules A ' +
-						'INNER JOIN tenant_groups B ON (A.tenant_id = B.tenant_id AND B.parent_id IS NULL) ' +
+						'INNER JOIN tenant_groups B ON (A.tenant = B.tenant AND B.parent IS NULL) ' +
 					'WHERE ' +
-						'A.module_id = NEW.module_id; ' +
+						'A.module = NEW.module; ' +
 
 					'RETURN NEW; ' +
 				'END; ' +
@@ -1013,8 +1025,8 @@ exports.up = function(knex, Promise) {
 				'DECLARE ' +
 					'is_component	INTEGER; ' +
 					'is_admin_only	BOOLEAN; ' +
-					'tenant_parent_id	UUID; ' +
-					'component_parent_id	UUID; ' +
+					'tenant_parent	UUID; ' +
+					'component_parent	UUID; ' +
 				'BEGIN ' +
 					'is_component := 0; ' +
 					'SELECT ' +
@@ -1022,7 +1034,7 @@ exports.up = function(knex, Promise) {
 					'FROM ' +
 						'modules ' +
 					'WHERE ' +
-						'id = NEW.module_id AND ' +
+						'id = NEW.module AND ' +
 						'type = \'component\' ' +
 					'INTO ' +
 						'is_component; ' +
@@ -1033,17 +1045,17 @@ exports.up = function(knex, Promise) {
 						'RETURN NULL; ' +
 					'END IF; ' +
 
-					'component_parent_id := NULL; ' +
+					'component_parent := NULL; ' +
 					'SELECT  ' +
-						'parent_id ' +
+						'parent ' +
 					'FROM ' +
 						'modules ' +
 					'WHERE ' +
-						'id = NEW.module_id ' +
+						'id = NEW.module ' +
 					'INTO ' +
-						'component_parent_id; ' +
+						'component_parent; ' +
 
-					'IF component_parent_id IS NOT NULL ' +
+					'IF component_parent IS NOT NULL ' +
 					'THEN ' +
 						'is_component := 0; ' +
 						'SELECT ' +
@@ -1051,8 +1063,8 @@ exports.up = function(knex, Promise) {
 						'FROM ' +
 							'tenants_modules ' +
 						'WHERE ' +
-							'tenant_id = NEW.tenant_id AND ' +
-							'module_id = component_parent_id ' +
+							'tenant = NEW.tenant AND ' +
+							'module = component_parent ' +
 						'INTO ' +
 							'is_component; ' +
 
@@ -1069,7 +1081,7 @@ exports.up = function(knex, Promise) {
 					'FROM ' +
 						'modules ' +
 					'WHERE ' +
-						'id = NEW.module_id ' +
+						'id = NEW.module ' +
 					'INTO ' +
 						'is_admin_only; ' +
 
@@ -1078,17 +1090,17 @@ exports.up = function(knex, Promise) {
 						'RETURN NEW; ' +
 					'END IF; ' +
 
-					'tenant_parent_id := NULL; ' +
+					'tenant_parent := NULL; ' +
 					'SELECT ' +
-						'parent_id ' +
+						'parent ' +
 					'FROM ' +
 						'tenants ' +
 					'WHERE ' +
-						'id = NEW.tenant_id ' +
+						'id = NEW.tenant ' +
 					'INTO ' +
-						'tenant_parent_id; ' +
+						'tenant_parent; ' +
 
-					'IF tenant_parent_id IS NOT NULL ' +
+					'IF tenant_parent IS NOT NULL ' +
 					'THEN ' +
 						'RAISE SQLSTATE \'2F003\' USING MESSAGE = \'Admin only components can be mapped only to root tenant\'; ' +
 						'RETURN NULL; ' +
@@ -1110,39 +1122,39 @@ exports.up = function(knex, Promise) {
 					'AS $$ ' +
 
 				'DECLARE ' +
-					'tenant_root_group_id	UUID; ' +
+					'tenant_root_tenant_group	UUID; ' +
 				'BEGIN ' +
-					'tenant_root_group_id := NULL; ' +
+					'tenant_root_tenant_group := NULL; ' +
 					'SELECT ' +
 						'id ' +
 					'FROM ' +
 						'tenant_groups ' +
 					'WHERE ' +
-						'tenant_id = NEW.tenant_id AND ' +
-						'parent_id IS NULL ' +
+						'tenant = NEW.tenant AND ' +
+						'parent IS NULL ' +
 					'INTO ' +
-						'tenant_root_group_id; ' +
+						'tenant_root_tenant_group; ' +
 
-					'IF tenant_root_group_id IS NULL ' +
+					'IF tenant_root_tenant_group IS NULL ' +
 					'THEN ' +
 						'RETURN NEW; ' +
 					'END IF; ' +
 
 					'INSERT INTO tenant_group_permissions( ' +
-						'tenant_id, ' +
-						'group_id, ' +
-						'module_id, ' +
-						'permission_id ' +
+						'tenant, ' +
+						'tenant_group, ' +
+						'module, ' +
+						'permission ' +
 					') ' +
 					'SELECT ' +
-						'NEW.tenant_id, ' +
-						'tenant_root_group_id, ' +
-						'module_id, ' +
+						'NEW.tenant, ' +
+						'tenant_root_tenant_group, ' +
+						'module, ' +
 						'id ' +
 					'FROM ' +
 						'module_permissions ' +
 					'WHERE ' +
-						'module_id = NEW.module_id; ' +
+						'module = NEW.module; ' +
 
 					'RETURN NEW; ' +
 				'END; ' +
@@ -1156,7 +1168,7 @@ exports.up = function(knex, Promise) {
 			knex.schema.withSchema('public')
 			.raw(
 				'CREATE FUNCTION public.fn_get_group_ancestors (IN groupid uuid) ' +
-					'RETURNS TABLE (level integer,  id uuid,  parent_id uuid,  name text) ' +
+					'RETURNS TABLE (level integer,  id uuid,  parent uuid,  name text) ' +
 					'LANGUAGE plpgsql ' +
 					'VOLATILE  ' +
 					'CALLED ON NULL INPUT ' +
@@ -1169,7 +1181,7 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'1 AS level, ' +
 							'A.id, ' +
-							'A.parent_id, ' +
+							'A.parent, ' +
 							'A.name ' +
 						'FROM ' +
 							'tenant_groups A ' +
@@ -1179,31 +1191,31 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'q.level + 1, ' +
 							'B.id, ' +
-							'B.parent_id, ' +
+							'B.parent, ' +
 							'B.name ' +
 						'FROM ' +
 							'q, ' +
 							'tenant_groups B ' +
 						'WHERE ' +
-							'B.id = q.parent_id ' +
+							'B.id = q.parent ' +
 					') ' +
 					'SELECT DISTINCT ' +
 						'q.level, ' +
 						'q.id, ' +
-						'q.parent_id, ' +
+						'q.parent, ' +
 						'q.name ' +
 					'FROM ' +
 						'q ' +
 					'ORDER BY ' +
 						'q.level, ' +
-						'q.parent_id; ' +
+						'q.parent; ' +
 				'END; ' +
 				'$$;'
 			),
 			knex.schema.withSchema('public')
 			.raw(
 				'CREATE FUNCTION public.fn_get_group_descendants (IN groupid uuid) ' +
-					'RETURNS TABLE (level integer,  id uuid,  parent_id uuid,  name text) ' +
+					'RETURNS TABLE (level integer,  id uuid,  parent uuid,  name text) ' +
 					'LANGUAGE plpgsql ' +
 					'VOLATILE  ' +
 					'CALLED ON NULL INPUT ' +
@@ -1216,7 +1228,7 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'1 AS level, ' +
 							'A.id, ' +
-							'A.parent_id, ' +
+							'A.parent, ' +
 							'A.name ' +
 						'FROM ' +
 							'tenant_groups A ' +
@@ -1226,24 +1238,24 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'q.level + 1, ' +
 							'B.id, ' +
-							'B.parent_id, ' +
+							'B.parent, ' +
 							'B.name ' +
 						'FROM ' +
 							'q, ' +
 							'tenant_groups B ' +
 						'WHERE ' +
-							'B.parent_id = q.id ' +
+							'B.parent = q.id ' +
 					') ' +
 					'SELECT DISTINCT ' +
 						'q.level, ' +
 						'q.id, ' +
-						'q.parent_id, ' +
+						'q.parent, ' +
 						'q.name ' +
 					'FROM ' +
 						'q ' +
 					'ORDER BY ' +
 						'q.level, ' +
-						'q.parent_id; ' +
+						'q.parent; ' +
 				'END; ' +
 				'$$;'
 			),
@@ -1259,7 +1271,7 @@ exports.up = function(knex, Promise) {
 					'AS $$ ' +
 
 				'BEGIN ' +
-					'IF OLD.parent_id <> NEW.parent_id ' +
+					'IF OLD.parent <> NEW.parent ' +
 					'THEN ' +
 						'RAISE SQLSTATE \'2F003\' USING MESSAGE = \'Group cannot change parent\'; ' +
 						'RETURN NULL; ' +
@@ -1280,20 +1292,20 @@ exports.up = function(knex, Promise) {
 					'COST 1 ' +
 					'AS $$ ' +
 				'DECLARE ' +
-					'parent_group_id					UUID; ' +
+					'parent_tenant_group					UUID; ' +
 					'does_parent_group_have_permission	INTEGER; ' +
 				'BEGIN ' +
-					'parent_group_id := NULL; ' +
+					'parent_tenant_group := NULL; ' +
 					'SELECT ' +
-						'parent_id ' +
+						'parent ' +
 					'FROM ' +
 						'tenant_groups ' +
 					'WHERE ' +
-						'id = NEW.group_id ' +
+						'id = NEW.tenant_group ' +
 					'INTO ' +
-						'parent_group_id; ' +
+						'parent_tenant_group; ' +
 
-					'IF parent_group_id IS NULL ' +
+					'IF parent_tenant_group IS NULL ' +
 					'THEN ' +
 						'RETURN NEW; ' +
 					'END IF; ' +
@@ -1304,8 +1316,8 @@ exports.up = function(knex, Promise) {
 					'FROM ' +
 						'tenant_group_permissions ' +
 					'WHERE ' +
-						'group_id = parent_group_id AND ' +
-						'permission_id = NEW.permission_id ' +
+						'tenant_group = parent_tenant_group AND ' +
+						'permission = NEW.permission ' +
 					'INTO ' +
 						'does_parent_group_have_permission; ' +
 
@@ -1334,8 +1346,8 @@ exports.up = function(knex, Promise) {
 					'DELETE FROM ' +
 						'tenant_group_permissions ' +
 					'WHERE ' +
-						'group_id IN (SELECT id FROM fn_get_group_descendants(OLD.group_id) WHERE level = 2) AND ' +
-						'permission_id = OLD.permission_id; ' +
+						'tenant_group IN (SELECT id FROM fn_get_group_descendants(OLD.tenant_group) WHERE level = 2) AND ' +
+						'permission = OLD.permission; ' +
 
 					'RETURN OLD; ' +
 				'END; ' +
@@ -1358,33 +1370,33 @@ exports.up = function(knex, Promise) {
 					'AS $$ ' +
 
 				'DECLARE ' +
-					'default_group_id	UUID; ' +
+					'default_tenant_group	UUID; ' +
 				'BEGIN ' +
-					'default_group_id := NULL; ' +
+					'default_tenant_group := NULL; ' +
 					'SELECT ' +
 						'id ' +
 					'FROM ' +
 						'tenant_groups ' +
 					'WHERE ' +
-						'tenant_id = NEW.tenant_id AND ' +
+						'tenant = NEW.tenant AND ' +
 						'default_for_new_user = true ' +
 					'INTO ' +
-						'default_group_id; ' +
+						'default_tenant_group; ' +
 
-					'IF default_group_id IS NULL ' +
+					'IF default_tenant_group IS NULL ' +
 					'THEN ' +
 						'RETURN NEW; ' +
 					'END IF; ' +
 
 					'INSERT INTO tenants_users_groups ( ' +
-						'tenant_id, ' +
-						'group_id, ' +
-						'user_id ' +
+						'tenant, ' +
+						'tenant_group, ' +
+						'login ' +
 					') ' +
 					'VALUES ( ' +
-						'NEW.tenant_id, ' +
-						'default_group_id, ' +
-						'NEW.user_id ' +
+						'NEW.tenant, ' +
+						'default_tenant_group, ' +
+						'NEW.login ' +
 					'); ' +
 
 					'RETURN NEW; ' +
@@ -1415,9 +1427,9 @@ exports.up = function(knex, Promise) {
 					'FROM ' +
 						'tenants_users_groups ' +
 					'WHERE ' +
-						'tenant_id = NEW.tenant_id AND ' +
-						'group_id IN (SELECT id FROM fn_get_group_ancestors(NEW.group_id) WHERE level > 1) AND ' +
-						'user_id = NEW.user_id ' +
+						'tenant = NEW.tenant AND ' +
+						'tenant_group IN (SELECT id FROM fn_get_group_ancestors(NEW.tenant_group) WHERE level > 1) AND ' +
+						'login = NEW.login ' +
 					'INTO ' +
 						'is_member_of_ancestor_group; ' +
 
@@ -1445,9 +1457,9 @@ exports.up = function(knex, Promise) {
 					'DELETE FROM ' +
 						'tenants_users_groups ' +
 					'WHERE ' +
-						'tenant_id = NEW.tenant_id AND ' +
-						'group_id IN (SELECT id FROM fn_get_group_descendants(NEW.group_id) WHERE level > 1) AND ' +
-						'user_id = NEW.user_id; ' +
+						'tenant = NEW.tenant AND ' +
+						'tenant_group IN (SELECT id FROM fn_get_group_descendants(NEW.tenant_group) WHERE level > 1) AND ' +
+						'login = NEW.login; ' +
 
 					'RETURN NEW; ' +
 				'END; ' +
@@ -1461,7 +1473,7 @@ exports.up = function(knex, Promise) {
 			knex.schema.withSchema('public')
 			.raw(
 				'CREATE FUNCTION public.fn_get_module_menu_ancestors (IN menuid uuid) ' +
-					'RETURNS TABLE ( level integer,  id uuid,  parent_id uuid,  ember_route text) ' +
+					'RETURNS TABLE ( level integer,  id uuid,  parent uuid,  ember_route text) ' +
 					'LANGUAGE plpgsql ' +
 					'VOLATILE  ' +
 					'CALLED ON NULL INPUT ' +
@@ -1474,7 +1486,7 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'1 AS level, ' +
 							'A.id, ' +
-							'A.parent_id, ' +
+							'A.parent, ' +
 							'A.ember_route ' +
 						'FROM ' +
 							'module_menus A ' +
@@ -1484,31 +1496,31 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'q.level + 1, ' +
 							'B.id, ' +
-							'B.parent_id, ' +
+							'B.parent, ' +
 							'B.ember_route ' +
 						'FROM ' +
 							'q, ' +
 							'module_menus B ' +
 						'WHERE ' +
-							'B.id = q.parent_id ' +
+							'B.id = q.parent ' +
 					') ' +
 					'SELECT DISTINCT ' +
 						'q.level, ' +
 						'q.id, ' +
-						'q.parent_id, ' +
+						'q.parent, ' +
 						'q.ember_route ' +
 					'FROM ' +
 						'q ' +
 					'ORDER BY ' +
 						'q.level, ' +
-						'q.parent_id; ' +
+						'q.parent; ' +
 				'END; ' +
 				'$$;'
 			),
 			knex.schema.withSchema('public')
 			.raw(
 				'CREATE FUNCTION public.fn_get_module_menu_descendants (IN menuid uuid) ' +
-					'RETURNS TABLE ( level integer,  id uuid,  parent_id uuid,  ember_route text) ' +
+					'RETURNS TABLE ( level integer,  id uuid,  parent uuid,  ember_route text) ' +
 					'LANGUAGE plpgsql ' +
 					'VOLATILE  ' +
 					'CALLED ON NULL INPUT ' +
@@ -1521,7 +1533,7 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'1 AS level, ' +
 							'A.id, ' +
-							'A.parent_id, ' +
+							'A.parent, ' +
 							'A.ember_route ' +
 						'FROM ' +
 							'module_menus A ' +
@@ -1531,24 +1543,24 @@ exports.up = function(knex, Promise) {
 						'SELECT ' +
 							'q.level + 1, ' +
 							'B.id, ' +
-							'B.parent_id, ' +
+							'B.parent, ' +
 							'B.ember_route ' +
 						'FROM ' +
 							'q, ' +
 							'module_menus B ' +
 						'WHERE ' +
-							'B.parent_id = q.id ' +
+							'B.parent = q.id ' +
 					') ' +
 					'SELECT DISTINCT ' +
 						'q.level, ' +
 						'q.id, ' +
-						'q.parent_id, ' +
+						'q.parent, ' +
 						'q.ember_route ' +
 					'FROM ' +
 						'q ' +
 					'ORDER BY ' +
 						'q.level, ' +
-						'q.parent_id; ' +
+						'q.parent; ' +
 				'END; ' +
 				'$$;'
 			),
@@ -1574,7 +1586,7 @@ exports.up = function(knex, Promise) {
 					'FROM ' +
 						'modules ' +
 					'WHERE ' +
-						'id = NEW.module_id AND ' +
+						'id = NEW.module AND ' +
 						'type = \'component\' ' +
 					'INTO ' +
 						'is_component; ' +
@@ -1591,8 +1603,8 @@ exports.up = function(knex, Promise) {
 					'FROM ' +
 						'module_permissions ' +
 					'WHERE ' +
-						'module_id IN (SELECT id FROM fn_get_module_ancestors(NEW.module_id)) AND ' +
-						'id = NEW.permission_id ' +
+						'module IN (SELECT id FROM fn_get_module_ancestors(NEW.module)) AND ' +
+						'id = NEW.permission ' +
 					'INTO ' +
 						'is_permission_ok; ' +
 
@@ -1602,12 +1614,12 @@ exports.up = function(knex, Promise) {
 						'RETURN NULL; ' +
 					'END IF; ' +
 
-					'IF NEW.parent_id IS NULL ' +
+					'IF NEW.parent IS NULL ' +
 					'THEN ' +
 						'RETURN NEW; ' +
 					'END IF; ' +
 
-					'IF NEW.id = NEW.parent_id ' +
+					'IF NEW.id = NEW.parent ' +
 					'THEN ' +
 						'RAISE SQLSTATE \'2F003\' USING MESSAGE = \'Module Menu cannot be its own parent\'; ' +
 						'RETURN NULL; ' +
@@ -1617,7 +1629,7 @@ exports.up = function(knex, Promise) {
 					'SELECT ' +
 						'COUNT(id) ' +
 					'FROM ' +
-						'fn_get_module_menu_ancestors(NEW.parent_id) ' +
+						'fn_get_module_menu_ancestors(NEW.parent) ' +
 					'WHERE ' +
 						'id = NEW.id ' +
 					'INTO ' +
@@ -1676,7 +1688,7 @@ exports.up = function(knex, Promise) {
 					'FROM ' +
 						'modules ' +
 					'WHERE ' +
-						'id = NEW.module_id AND ' +
+						'id = NEW.module AND ' +
 						'type = \'component\' ' +
 					'INTO ' +
 						'is_component; ' +
@@ -1693,8 +1705,8 @@ exports.up = function(knex, Promise) {
 					'FROM ' +
 						'module_permissions ' +
 					'WHERE ' +
-						'module_id IN (SELECT id FROM fn_get_module_ancestors(NEW.module_id)) AND ' +
-						'id = NEW.permission_id ' +
+						'module IN (SELECT id FROM fn_get_module_ancestors(NEW.module)) AND ' +
+						'id = NEW.permission ' +
 					'INTO ' +
 						'is_permission_ok; ' +
 
@@ -1733,7 +1745,7 @@ exports.up = function(knex, Promise) {
 					'FROM ' +
 						'modules ' +
 					'WHERE ' +
-						'id = NEW.module_id AND ' +
+						'id = NEW.module AND ' +
 						'type = \'component\' ' +
 					'INTO ' +
 						'is_component; ' +
@@ -1764,38 +1776,38 @@ exports.up = function(knex, Promise) {
 					'COST 1 ' +
 					'AS $$ ' +
 				'DECLARE ' +
-					'template_module_id 	UUID; ' +
-					'widget_module_id		UUID; ' +
+					'template_module 	UUID; ' +
+					'widget_module		UUID; ' +
 					'is_child_component		INTEGER; ' +
 				'BEGIN ' +
-					'template_module_id := NULL; ' +
-					'widget_module_id := NULL; ' +
+					'template_module := NULL; ' +
+					'widget_module := NULL; ' +
 					'is_child_component := 0; ' +
 
 					'SELECT ' +
-						'module_id ' +
+						'module ' +
 					'FROM ' +
 						'module_templates ' +
 					'WHERE ' +
-						'id = (SELECT template_id FROM module_template_positions WHERE id = NEW.template_position_id) ' +
+						'id = (SELECT template FROM module_template_positions WHERE id = NEW.template_position) ' +
 					'INTO ' +
-						'template_module_id; ' +
+						'template_module; ' +
 
 					'SELECT ' +
-						'module_id ' +
+						'module ' +
 					'FROM ' +
 						'module_widgets ' +
 					'WHERE ' +
-						'id = NEW.module_widget_id ' +
+						'id = NEW.module_widget ' +
 					'INTO ' +
-						'widget_module_id; ' +
+						'widget_module; ' +
 
 					'SELECT ' +
 						'count(A.id) ' +
 					'FROM ' +
-						'(SELECT id FROM fn_get_module_descendants(template_module_id) WHERE level <= 2) A ' +
+						'(SELECT id FROM fn_get_module_descendants(template_module) WHERE level <= 2) A ' +
 					'WHERE ' +
-						'A.id = widget_module_id ' +
+						'A.id = widget_module ' +
 					'INTO ' +
 						'is_child_component; ' +
 

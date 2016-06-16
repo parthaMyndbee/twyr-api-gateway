@@ -18,8 +18,10 @@ var base = require('./../../module-base').baseModule,
  * Module dependencies, required for this module
  */
 var path = require('path'),
+	jsonApiSerializer = require('jsonapi-serializer').Serializer,
 	jsonApiDeserializer = require('jsonapi-serializer').Deserializer,
-	jsonApiMapper = require('jsonapi-mapper');
+	jsonApiMapper = require('jsonapi-mapper'),
+	jsonApiQueryParser = require('jsonapi-query-parser');
 
 var twyrComponentBase = prime({
 	'inherits': base,
@@ -37,13 +39,6 @@ var twyrComponentBase = prime({
 			this.dependencies.push('express-service');
 
 		this['$router'] = require('express').Router();
-		this['$jsonApiDeserializer'] = promises.promisifyAll(new jsonApiDeserializer({
-			'keyForAttribute': 'underscore_case'
-		}));
-		this['$jsonApiMapper'] = new jsonApiMapper.Bookshelf('https://api.twyr.com', {
-			'ignoreRelationshipData': true,
-			'keyForAttribute': 'underscore_case'
-		});
 
 		this._checkPermissionAsync = promises.promisify(this._checkPermission);
 		base.call(this, module, loader);
@@ -100,6 +95,28 @@ var twyrComponentBase = prime({
 			'stream': loggerStream
 		}))
 		.use(function(request, response, next) {
+			if(!self['$jsonApiSerializer']) {
+				self['$jsonApiSerializer'] = promises.promisifyAll(new jsonApiSerializer({
+					'keyForAttribute': 'underscore_case'
+				}));
+			}
+
+			if(!self['$jsonApiDeserializer']) {
+				self['$jsonApiDeserializer'] = promises.promisifyAll(new jsonApiDeserializer({
+					'keyForAttribute': 'underscore_case'
+				}));
+			}
+
+			if(!self['$jsonApiMapper']) {
+				self['$jsonApiMapper'] = new jsonApiMapper.Bookshelf(request.protocol + '://' + request.hostname + ':' + request.app.get('port'), {
+					'keyForAttribute': 'underscore_case'
+				});
+			}
+
+			if(!self['$jsonApiQueryParser']) {
+				self['$jsonApiQueryParser'] = new jsonApiQueryParser();
+			}
+
 			if(self['$enabled']) {
 				next();
 				return;

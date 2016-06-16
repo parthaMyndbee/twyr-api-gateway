@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="1619,138" last-zoom="0.7"
+<dbmodel pgmodeler-ver="0.8.1" last-position="2497,276" last-zoom="0.7"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -45,25 +45,25 @@ BEGIN
 	IF NEW.admin_only = true
 	THEN
 		INSERT INTO tenants_modules (
-			tenant_id,
-			module_id
+			tenant,
+			module
 		)
-		SELECT 
+		SELECT
 			id,
 			NEW.id
 		FROM
 			tenants
 		WHERE
-			parent_id IS NULL;
+			parent IS NULL;
 	END IF;
 
 	IF NEW.admin_only = false
 	THEN
 		INSERT INTO tenants_modules (
-			tenant_id,
-			module_id
+			tenant,
+			module
 		)
-		SELECT 
+		SELECT
 			id,
 			NEW.id
 		FROM
@@ -92,7 +92,7 @@ END;]]></definition>
 	<parameter name="id">
 		<type name="uuid"/>
 	</parameter>
-	<parameter name="parent_id">
+	<parameter name="parent">
 		<type name="uuid"/>
 	</parameter>
 	<parameter name="name">
@@ -112,7 +112,7 @@ BEGIN
 		SELECT
 			1 AS level,
 			A.id,
-			A.parent_id,
+			A.parent,
 			A.name,
 			A.type
 		FROM
@@ -123,26 +123,26 @@ BEGIN
 		SELECT
 			q.level + 1,
 			B.id,
-			B.parent_id,
+			B.parent,
 			B.name,
 			B.type
 		FROM
 			q,
 			modules B
 		WHERE
-			B.id = q.parent_id
+			B.id = q.parent
 	)
 	SELECT DISTINCT
 		q.level,
 		q.id,
-		q.parent_id,
+		q.parent,
 		q.name,
 		q.type
 	FROM
 		q
 	ORDER BY
 		q.level,
-		q.parent_id;
+		q.parent;
 END;
 ]]></definition>
 </function>
@@ -165,7 +165,7 @@ END;
 	<parameter name="id">
 		<type name="uuid"/>
 	</parameter>
-	<parameter name="parent_id">
+	<parameter name="parent">
 		<type name="uuid"/>
 	</parameter>
 	<parameter name="name">
@@ -188,7 +188,7 @@ BEGIN
 		SELECT
 			1 AS level,
 			A.id,
-			A.parent_id,
+			A.parent,
 			A.name,
 			A.type,
 			fn_is_module_enabled(A.id) AS enabled
@@ -200,7 +200,7 @@ BEGIN
 		SELECT
 			q.level + 1,
 			B.id,
-			B.parent_id,
+			B.parent,
 			B.name,
 			B.type,
 			fn_is_module_enabled(B.id) AS enabled
@@ -208,12 +208,12 @@ BEGIN
 			q,
 			modules B
 		WHERE
-			B.parent_id = q.id
+			B.parent = q.id
 	)
 	SELECT DISTINCT
 		q.level,
 		q.id,
-		q.parent_id,
+		q.parent,
 		q.name,
 		q.type,
 		q.enabled
@@ -221,7 +221,7 @@ BEGIN
 		q
 	ORDER BY
 		q.level,
-		q.parent_id;
+		q.parent;
 END;
 ]]></definition>
 </function>
@@ -297,12 +297,12 @@ BEGIN
 
 
 
-	IF NEW.parent_id IS NULL
+	IF NEW.parent IS NULL
 	THEN
 		RETURN NEW;
 	END IF;
 
-	IF NEW.id = NEW.parent_id
+	IF NEW.id = NEW.parent
 	THEN
 		RAISE SQLSTATE '2F003' USING MESSAGE = 'Module cannot be its own parent';
 		RETURN NULL;
@@ -313,7 +313,7 @@ BEGIN
 	SELECT
 		COUNT(id)
 	FROM
-		fn_get_module_ancestors(NEW.parent_id)
+		fn_get_module_ancestors(NEW.parent)
 	WHERE
 		id = NEW.id
 	INTO
@@ -390,7 +390,7 @@ END;]]></definition>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="parent_id">
+	<column name="parent">
 		<type name="uuid"/>
 	</column>
 	<column name="type" not-null="true" default-value="'component'">
@@ -441,7 +441,7 @@ END;]]></definition>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="parent_id">
+	<column name="parent">
 		<type name="uuid"/>
 	</column>
 	<column name="type" not-null="true" default-value="'organization'::tenant_type">
@@ -495,7 +495,7 @@ END;]]></definition>
 	<column name="nickname">
 		<type name="text"/>
 	</column>
-	<column name="profile_image_id">
+	<column name="profile_image">
 		<type name="uuid"/>
 	</column>
 	<column name="gender" not-null="true" default-value="'male'::gender">
@@ -504,7 +504,7 @@ END;]]></definition>
 	<column name="dob">
 		<type name="date"/>
 	</column>
-	<column name="home_module_menu_id">
+	<column name="home_route">
 		<type name="uuid"/>
 	</column>
 	<column name="enabled" not-null="true" default-value="true::boolean">
@@ -533,7 +533,7 @@ END;]]></definition>
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="parent_id"/>
+			<column name="parent"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
 			<column name="name"/>
@@ -547,16 +547,16 @@ END;]]></definition>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="tenant_id" not-null="true">
+	<column name="tenant" not-null="true">
 		<type name="uuid"/>
 	</column>
-	<column name="user_id" not-null="true">
+	<column name="login" not-null="true">
 		<type name="uuid"/>
 	</column>
-	<column name="job_title_id">
+	<column name="job_title">
 		<type name="uuid"/>
 	</column>
-	<column name="location_id">
+	<column name="location">
 		<type name="uuid"/>
 	</column>
 	<column name="created_at" not-null="true" default-value="now()">
@@ -574,10 +574,10 @@ END;]]></definition>
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="tenant_id"/>
+			<column name="tenant"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="user_id"/>
+			<column name="login"/>
 		</idxelement>
 </index>
 
@@ -588,7 +588,7 @@ END;]]></definition>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="tenant_id" not-null="true">
+	<column name="tenant" not-null="true">
 		<type name="uuid"/>
 	</column>
 	<column name="line1" not-null="true">
@@ -636,7 +636,7 @@ END;]]></definition>
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="tenant_id"/>
+			<column name="tenant"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
 			<column name="id"/>
@@ -650,7 +650,7 @@ END;]]></definition>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="tenant_id" not-null="true">
+	<column name="tenant" not-null="true">
 		<type name="uuid"/>
 	</column>
 	<column name="title" not-null="true">
@@ -674,7 +674,7 @@ END;]]></definition>
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="tenant_id"/>
+			<column name="tenant"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
 			<column name="id"/>
@@ -684,14 +684,14 @@ END;]]></definition>
 <table name="tenant_groups">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="3404.47" y="739.93"/>
+	<position x="3405.9" y="744.216"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="parent_id">
+	<column name="parent">
 		<type name="uuid"/>
 	</column>
-	<column name="tenant_id" not-null="true">
+	<column name="tenant" not-null="true">
 		<type name="uuid"/>
 	</column>
 	<column name="name" not-null="true">
@@ -721,7 +721,7 @@ END;]]></definition>
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="parent_id"/>
+			<column name="parent"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
 			<column name="name"/>
@@ -732,7 +732,7 @@ END;]]></definition>
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="tenant_id"/>
+			<column name="tenant"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
 			<column name="id"/>
@@ -746,13 +746,13 @@ END;]]></definition>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="tenant_id" not-null="true">
+	<column name="tenant" not-null="true">
 		<type name="uuid"/>
 	</column>
-	<column name="group_id" not-null="true">
+	<column name="tenant_group" not-null="true">
 		<type name="uuid"/>
 	</column>
-	<column name="user_id" not-null="true">
+	<column name="login" not-null="true">
 		<type name="uuid"/>
 	</column>
 	<column name="created_at" not-null="true" default-value="now()">
@@ -773,7 +773,7 @@ END;]]></definition>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="module_id" not-null="true">
+	<column name="module" not-null="true">
 		<type name="uuid"/>
 	</column>
 	<column name="name" not-null="true">
@@ -814,7 +814,7 @@ END;]]></definition>
 	<parameter name="id">
 		<type name="uuid"/>
 	</parameter>
-	<parameter name="parent_id">
+	<parameter name="parent">
 		<type name="uuid"/>
 	</parameter>
 	<parameter name="name">
@@ -834,7 +834,7 @@ BEGIN
 		SELECT
 			1 AS level,
 			A.id,
-			A.parent_id,
+			A.parent,
 			A.name,
 			A.type
 		FROM
@@ -845,26 +845,26 @@ BEGIN
 		SELECT
 			q.level + 1,
 			B.id,
-			B.parent_id,
+			B.parent,
 			B.name,
 			B.type
 		FROM
 			q,
 			tenants B
 		WHERE
-			B.id = q.parent_id
+			B.id = q.parent
 	)
 	SELECT DISTINCT
 		q.level,
 		q.id,
-		q.parent_id,
+		q.parent,
 		q.name,
 		q.type
 	FROM
 		q
 	ORDER BY
 		q.level,
-		q.parent_id;
+		q.parent;
 END;
 ]]></definition>
 </function>
@@ -923,7 +923,7 @@ END;
 	<parameter name="id">
 		<type name="uuid"/>
 	</parameter>
-	<parameter name="parent_id">
+	<parameter name="parent">
 		<type name="uuid"/>
 	</parameter>
 	<parameter name="name">
@@ -946,7 +946,7 @@ BEGIN
 		SELECT
 			1 AS level,
 			A.id,
-			A.parent_id,
+			A.parent,
 			A.name,
 			A.type,
 			fn_is_tenant_enabled(A.id) AS enabled
@@ -958,7 +958,7 @@ BEGIN
 		SELECT
 			q.level + 1,
 			B.id,
-			B.parent_id,
+			B.parent,
 			B.name,
 			B.type,
 			fn_is_tenant_enabled(B.id) AS enabled
@@ -966,12 +966,12 @@ BEGIN
 			q,
 			tenants B
 		WHERE
-			B.parent_id = q.id
+			B.parent = q.id
 	)
 	SELECT DISTINCT
 		q.level,
 		q.id,
-		q.parent_id,
+		q.parent,
 		q.name,
 		q.type,
 		q.enabled
@@ -979,7 +979,7 @@ BEGIN
 		q
 	ORDER BY
 		q.level,
-		q.parent_id;
+		q.parent;
 END;
 ]]></definition>
 </function>
@@ -1002,12 +1002,12 @@ END;
 DECLARE
 	is_tenant_in_tree	INTEGER;
 BEGIN
-	IF NEW.parent_id IS NULL
+	IF NEW.parent IS NULL
 	THEN
 		RETURN NEW;
 	END IF;
 
-	IF NEW.id = NEW.parent_id
+	IF NEW.id = NEW.parent
 	THEN
 		RAISE SQLSTATE '2F003' USING MESSAGE = 'Tenant cannot be its own parent';
 		RETURN NULL;
@@ -1018,7 +1018,7 @@ BEGIN
 	SELECT
 		COUNT(id)
 	FROM
-		fn_get_tenant_ancestors(NEW.parent_id)
+		fn_get_tenant_ancestors(NEW.parent)
 	WHERE
 		id = NEW.id
 	INTO
@@ -1077,7 +1077,7 @@ END;
 	<parameter name="id">
 		<type name="uuid"/>
 	</parameter>
-	<parameter name="parent_id">
+	<parameter name="parent">
 		<type name="uuid"/>
 	</parameter>
 	<parameter name="name">
@@ -1094,7 +1094,7 @@ BEGIN
 		SELECT
 			1 AS level,
 			A.id,
-			A.parent_id,
+			A.parent,
 			A.name
 		FROM
 			tenant_groups A
@@ -1104,24 +1104,24 @@ BEGIN
 		SELECT
 			q.level + 1,
 			B.id,
-			B.parent_id,
+			B.parent,
 			B.name
 		FROM
 			q,
 			tenant_groups B
 		WHERE
-			B.id = q.parent_id
+			B.id = q.parent
 	)
 	SELECT DISTINCT
 		q.level,
 		q.id,
-		q.parent_id,
+		q.parent,
 		q.name
 	FROM
 		q
 	ORDER BY
 		q.level,
-		q.parent_id;
+		q.parent;
 END;
 ]]></definition>
 </function>
@@ -1144,7 +1144,7 @@ END;
 	<parameter name="id">
 		<type name="uuid"/>
 	</parameter>
-	<parameter name="parent_id">
+	<parameter name="parent">
 		<type name="uuid"/>
 	</parameter>
 	<parameter name="name">
@@ -1161,7 +1161,7 @@ BEGIN
 		SELECT
 			1 AS level,
 			A.id,
-			A.parent_id,
+			A.parent,
 			A.name
 		FROM
 			tenant_groups A
@@ -1171,24 +1171,24 @@ BEGIN
 		SELECT
 			q.level + 1,
 			B.id,
-			B.parent_id,
+			B.parent,
 			B.name
 		FROM
 			q,
 			tenant_groups B
 		WHERE
-			B.parent_id = q.id
+			B.parent = q.id
 	)
 	SELECT DISTINCT
 		q.level,
 		q.id,
-		q.parent_id,
+		q.parent,
 		q.name
 	FROM
 		q
 	ORDER BY
 		q.level,
-		q.parent_id;
+		q.parent;
 END;
 ]]></definition>
 </function>
@@ -1208,7 +1208,7 @@ END;
 	<type name="trigger"/>
 	</return-type>
 	<definition><![CDATA[BEGIN
-	IF OLD.parent_id <> NEW.parent_id
+	IF OLD.parent <> NEW.parent
 	THEN
 		RAISE SQLSTATE '2F003' USING MESSAGE = 'Group cannot change parent';
 		RETURN NULL;
@@ -1240,33 +1240,33 @@ END;]]></definition>
 	</return-type>
 	<definition><![CDATA[
 DECLARE
-	default_group_id	UUID;
+	default_tenant_group	UUID;
 BEGIN
-	default_group_id := NULL;
+	default_tenant_group := NULL;
 	SELECT
 		id
 	FROM
 		tenant_groups
 	WHERE
-		tenant_id = NEW.tenant_id AND
+		tenant = NEW.tenant AND
 		default_for_new_user = true
 	INTO
-		default_group_id;
+		default_tenant_group;
 
-	IF default_group_id IS NULL
+	IF default_tenant_group IS NULL
 	THEN
 		RETURN NEW;
 	END IF;
 
 	INSERT INTO tenants_users_groups (
-		tenant_id,
-		group_id,
-		user_id
+		tenant,
+		tenant_group,
+		login
 	)
 	VALUES (
-		NEW.tenant_id,
-		default_group_id,
-		NEW.user_id
+		NEW.tenant,
+		default_tenant_group,
+		NEW.login
 	);
 
 	RETURN NEW;
@@ -1298,8 +1298,8 @@ BEGIN
 	DELETE FROM
 		tenant_group_permissions
 	WHERE
-		group_id IN (SELECT id FROM fn_get_group_descendants(OLD.group_id) WHERE level = 2) AND
-		permission_id = OLD.permission_id;
+		tenant_group IN (SELECT id FROM fn_get_group_descendants(OLD.tenant_group) WHERE level = 2) AND
+		permission = OLD.permission;
 
 	RETURN OLD;
 END;]]></definition>
@@ -1312,13 +1312,13 @@ END;]]></definition>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="user_id" not-null="true">
+	<column name="login" not-null="true">
 		<type name="uuid"/>
 	</column>
 	<column name="provider" not-null="true">
 		<type name="text"/>
 	</column>
-	<column name="provider_id" not-null="true">
+	<column name="provider_uid" not-null="true">
 		<type name="text"/>
 	</column>
 	<column name="display_name" not-null="true">
@@ -1345,7 +1345,7 @@ END;]]></definition>
 			<column name="provider"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="provider_id"/>
+			<column name="provider_uid"/>
 		</idxelement>
 </index>
 
@@ -1356,16 +1356,16 @@ END;]]></definition>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="tenant_id" not-null="true">
+	<column name="tenant" not-null="true">
 		<type name="uuid"/>
 	</column>
-	<column name="group_id" not-null="true">
+	<column name="tenant_group" not-null="true">
 		<type name="uuid"/>
 	</column>
-	<column name="module_id" not-null="true">
+	<column name="module" not-null="true">
 		<type name="uuid"/>
 	</column>
-	<column name="permission_id" not-null="true">
+	<column name="permission" not-null="true">
 		<type name="uuid"/>
 	</column>
 	<column name="created_at" not-null="true" default-value="now()">
@@ -1396,8 +1396,8 @@ END;]]></definition>
 	<definition><![CDATA[
 BEGIN
 	INSERT INTO tenant_groups (
-		parent_id,
-		tenant_id,
+		parent,
+		tenant,
 		name,
 		display_name,
 		description
@@ -1410,13 +1410,13 @@ BEGIN
 		'The Administrator Group for ' || NEW.name
 	);
 
-	IF NEW.parent_id IS NOT NULL
+	IF NEW.parent IS NOT NULL
 	THEN
 		INSERT INTO tenants_modules (
-			tenant_id,
-			module_id
+			tenant,
+			module
 		)
-		SELECT 
+		SELECT
 			NEW.id,
 			id
 		FROM
@@ -1426,13 +1426,13 @@ BEGIN
 			type = 'component';
 	END IF;
 
-	IF NEW.parent_id IS NULL
+	IF NEW.parent IS NULL
 	THEN
 		INSERT INTO tenants_modules (
-			tenant_id,
-			module_id
+			tenant,
+			module
 		)
-		SELECT 
+		SELECT
 			NEW.id,
 			id
 		FROM
@@ -1474,7 +1474,7 @@ BEGIN
 	FROM
 		modules
 	WHERE
-		id = NEW.module_id AND
+		id = NEW.module AND
 		type = 'component'
 	INTO
 		is_component;
@@ -1511,7 +1511,7 @@ END;]]></definition>
 	</return-type>
 	<definition><![CDATA[
 BEGIN
-	IF OLD.module_id <> NEW.module_id
+	IF OLD.module <> NEW.module
 	THEN
 		RAISE SQLSTATE '2F003' USING MESSAGE = 'Module assigned to a permission is NOT mutable';
 		RETURN NULL;
@@ -1540,10 +1540,10 @@ END;]]></definition>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="tenant_id" not-null="true">
+	<column name="tenant" not-null="true">
 		<type name="uuid"/>
 	</column>
-	<column name="module_id" not-null="true">
+	<column name="module" not-null="true">
 		<type name="uuid"/>
 	</column>
 	<column name="created_at" not-null="true" default-value="now()">
@@ -1575,8 +1575,8 @@ END;]]></definition>
 DECLARE
 	is_component	INTEGER;
 	is_admin_only	BOOLEAN;
-	component_parent_id	UUID;
-	tenant_parent_id	UUID;
+	component_parent	UUID;
+	tenant_parent	UUID;
 BEGIN
 	is_component := 0;
 	SELECT
@@ -1584,7 +1584,7 @@ BEGIN
 	FROM
 		modules
 	WHERE
-		id = NEW.module_id AND
+		id = NEW.module AND
 		type = 'component'
 	INTO
 		is_component;
@@ -1595,17 +1595,17 @@ BEGIN
 		RETURN NULL;
 	END IF;
 
-	component_parent_id := NULL;
-	SELECT 
-		parent_id
+	component_parent := NULL;
+	SELECT
+		parent
 	FROM
 		modules
 	WHERE
-		id = NEW.module_id
+		id = NEW.module
 	INTO
-		component_parent_id;
+		component_parent;
 
-	IF component_parent_id IS NOT NULL
+	IF component_parent IS NOT NULL
 	THEN
 		is_component := 0;
 		SELECT
@@ -1613,8 +1613,8 @@ BEGIN
 		FROM
 			tenants_modules
 		WHERE
-			tenant_id = NEW.tenant_id AND
-			module_id = component_parent_id
+			tenant = NEW.tenant AND
+			module = component_parent
 		INTO
 			is_component;
 
@@ -1631,7 +1631,7 @@ BEGIN
 	FROM
 		modules
 	WHERE
-		id = NEW.module_id
+		id = NEW.module
 	INTO
 		is_admin_only;
 
@@ -1640,17 +1640,17 @@ BEGIN
 		RETURN NEW;
 	END IF;
 
-	tenant_parent_id := NULL;
+	tenant_parent := NULL;
 	SELECT
-		parent_id
+		parent
 	FROM
 		tenants
 	WHERE
-		id = NEW.tenant_id
+		id = NEW.tenant
 	INTO
-		tenant_parent_id;
+		tenant_parent;
 
-	IF tenant_parent_id IS NOT NULL
+	IF tenant_parent IS NOT NULL
 	THEN
 		RAISE SQLSTATE '2F003' USING MESSAGE = 'Admin only components can be mapped only to root tenant';
 		RETURN NULL;
@@ -1688,7 +1688,7 @@ END;]]></definition>
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="parent_id"/>
+			<column name="parent"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
 			<column name="name"/>
@@ -1699,7 +1699,7 @@ END;]]></definition>
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="module_id"/>
+			<column name="module"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
 			<column name="name"/>
@@ -1716,10 +1716,10 @@ END;]]></definition>
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="tenant_id"/>
+			<column name="tenant"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="module_id"/>
+			<column name="module"/>
 		</idxelement>
 </index>
 
@@ -1727,7 +1727,7 @@ END;]]></definition>
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="module_id"/>
+			<column name="module"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
 			<column name="id"/>
@@ -1750,39 +1750,39 @@ END;]]></definition>
 	</return-type>
 	<definition><![CDATA[
 DECLARE
-	tenant_root_group_id	UUID;
+	tenant_root_tenant_group	UUID;
 BEGIN
-	tenant_root_group_id := NULL;
+	tenant_root_tenant_group := NULL;
 	SELECT
 		id
 	FROM
 		tenant_groups
 	WHERE
-		tenant_id = NEW.tenant_id AND
-		parent_id IS NULL
+		tenant = NEW.tenant AND
+		parent IS NULL
 	INTO
-		tenant_root_group_id;
+		tenant_root_tenant_group;
 
-	IF tenant_root_group_id IS NULL
+	IF tenant_root_tenant_group IS NULL
 	THEN
 		RETURN NEW;
 	END IF;
 
 	INSERT INTO tenant_group_permissions(
-		tenant_id,
-		group_id,
-		module_id,
-		permission_id
+		tenant,
+		tenant_group,
+		module,
+		permission
 	)
 	SELECT
-		NEW.tenant_id,
-		tenant_root_group_id,
-		module_id,
+		NEW.tenant,
+		tenant_root_tenant_group,
+		module,
 		id
 	FROM
 		permissions
 	WHERE
-		module_id = NEW.module_id;
+		module = NEW.module;
 
 	RETURN NEW;
 END;]]></definition>
@@ -1798,10 +1798,10 @@ END;]]></definition>
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="group_id"/>
+			<column name="tenant_group"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="permission_id"/>
+			<column name="permission"/>
 		</idxelement>
 </index>
 
@@ -1821,21 +1821,21 @@ END;]]></definition>
 	</return-type>
 	<definition><![CDATA[BEGIN
 	INSERT INTO tenant_group_permissions (
-		tenant_id,
-		group_id,
-		module_id,
-		permission_id
+		tenant,
+		tenant_group,
+		module,
+		permission
 	)
 	SELECT
-		A.tenant_id,
+		A.tenant,
 		B.id,
-		A.module_id,
+		A.module,
 		NEW.id
 	FROM
 		tenants_modules A
-		INNER JOIN tenant_groups B ON (A.tenant_id = B.tenant_id AND B.parent_id IS NULL)
+		INNER JOIN tenant_groups B ON (A.tenant = B.tenant AND B.parent IS NULL)
 	WHERE
-		module_id = NEW.module_id;
+		module = NEW.module;
 
 	RETURN NEW;
 END;]]></definition>
@@ -1851,13 +1851,13 @@ END;]]></definition>
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="tenant_id"/>
+			<column name="tenant"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="group_id"/>
+			<column name="tenant_group"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="user_id"/>
+			<column name="login"/>
 		</idxelement>
 </index>
 
@@ -1876,12 +1876,12 @@ END;]]></definition>
 	<type name="trigger"/>
 	</return-type>
 	<definition><![CDATA[BEGIN
-	DELETE FROM 
+	DELETE FROM
 		tenants_users_groups
 	WHERE
-		tenant_id = NEW.tenant_id AND
-		group_id IN (SELECT id FROM fn_get_group_descendants(NEW.group_id) WHERE level > 1) AND
-		user_id = NEW.user_id;
+		tenant = NEW.tenant AND
+		tenant_group IN (SELECT id FROM fn_get_group_descendants(NEW.tenant_group) WHERE level > 1) AND
+		login = NEW.login;
 
 	RETURN NEW;
 END;]]></definition>
@@ -1908,20 +1908,20 @@ END;]]></definition>
 	<type name="trigger"/>
 	</return-type>
 	<definition><![CDATA[DECLARE
-	parent_group_id			UUID;
+	parent_tenant_group			UUID;
 	does_parent_group_have_permission	INTEGER;
 BEGIN
-	parent_group_id := NULL;
+	parent_tenant_group := NULL;
 	SELECT
-		parent_id
+		parent
 	FROM
 		tenant_groups
 	WHERE
-		id = NEW.group_id
+		id = NEW.tenant_group
 	INTO
-		parent_group_id;
+		parent_tenant_group;
 
-	IF parent_group_id IS NULL
+	IF parent_tenant_group IS NULL
 	THEN
 		RETURN NEW;
 	END IF;
@@ -1932,8 +1932,8 @@ BEGIN
 	FROM
 		tenant_group_permissions
 	WHERE
-		group_id = parent_group_id AND
-		permission_id = NEW.permission_id
+		tenant_group = parent_tenant_group AND
+		permission = NEW.permission
 	INTO
 		does_parent_group_have_permission;
 
@@ -1942,7 +1942,7 @@ BEGIN
 		RETURN NEW;
 	END IF;
 
-	RAISE SQLSTATE '2F003' USING MESSAGE = 'Parent Group does not have this permission';	
+	RAISE SQLSTATE '2F003' USING MESSAGE = 'Parent Group does not have this permission';
 	RETURN NULL;
 END;]]></definition>
 </function>
@@ -1976,9 +1976,9 @@ BEGIN
 	FROM
 		tenants_users_groups
 	WHERE
-		tenant_id = NEW.tenant_id AND
-		group_id IN (SELECT id FROM fn_get_group_ancestors(NEW.group_id) WHERE level > 1) AND
-		user_id = NEW.user_id
+		tenant = NEW.tenant AND
+		tenant_group IN (SELECT id FROM fn_get_group_ancestors(NEW.tenant_group) WHERE level > 1) AND
+		login = NEW.login
 	INTO
 		is_member_of_ancestor_group;
 
@@ -2005,13 +2005,13 @@ END;]]></definition>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="parent_id">
+	<column name="parent">
 		<type name="uuid"/>
 	</column>
-	<column name="module_id" not-null="true">
+	<column name="module" not-null="true">
 		<type name="uuid"/>
 	</column>
-	<column name="permission_id" not-null="true">
+	<column name="permission" not-null="true">
 		<type name="uuid"/>
 	</column>
 	<column name="ember_route" not-null="true">
@@ -2055,7 +2055,7 @@ END;]]></definition>
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="module_id"/>
+			<column name="module"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
 			<column name="display_name"/>
@@ -2087,7 +2087,7 @@ BEGIN
 	FROM
 		modules
 	WHERE
-		id = NEW.module_id AND
+		id = NEW.module AND
 		type = 'component'
 	INTO
 		is_component;
@@ -2104,8 +2104,8 @@ BEGIN
 	FROM
 		module_permissions
 	WHERE
-		module_id IN (SELECT id FROM fn_get_module_ancestors(NEW.module_id)) AND
-		id = NEW.permission_id
+		module IN (SELECT id FROM fn_get_module_ancestors(NEW.module)) AND
+		id = NEW.permission
 	INTO
 		is_permission_ok;
 
@@ -2115,12 +2115,12 @@ BEGIN
 		RETURN NULL;
 	END IF;
 
-	IF NEW.parent_id IS NULL
+	IF NEW.parent IS NULL
 	THEN
 		RETURN NEW;
 	END IF;
 
-	IF NEW.id = NEW.parent_id
+	IF NEW.id = NEW.parent
 	THEN
 		RAISE SQLSTATE '2F003' USING MESSAGE = 'Menu cannot be its own parent';
 		RETURN NULL;
@@ -2131,7 +2131,7 @@ BEGIN
 	SELECT
 		COUNT(id)
 	FROM
-		fn_get_module_menu_ancestors(NEW.parent_id)
+		fn_get_module_menu_ancestors(NEW.parent)
 	WHERE
 		id = NEW.id
 	INTO
@@ -2178,10 +2178,10 @@ END;]]></definition>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="module_id" not-null="true">
+	<column name="module" not-null="true">
 		<type name="uuid"/>
 	</column>
-	<column name="permission_id" not-null="true">
+	<column name="permission" not-null="true">
 		<type name="uuid"/>
 	</column>
 	<column name="ember_component" not-null="true">
@@ -2239,7 +2239,7 @@ BEGIN
 	FROM
 		modules
 	WHERE
-		id = NEW.module_id AND
+		id = NEW.module AND
 		type = 'component'
 	INTO
 		is_component;
@@ -2256,8 +2256,8 @@ BEGIN
 	FROM
 		module_permissions
 	WHERE
-		module_id IN (SELECT id FROM fn_get_module_ancestors(NEW.module_id)) AND
-		id = NEW.permission_id
+		module IN (SELECT id FROM fn_get_module_ancestors(NEW.module)) AND
+		id = NEW.permission
 	INTO
 		is_permission_ok;
 
@@ -2289,7 +2289,7 @@ END;]]></definition>
 	<parameter name="id">
 		<type name="uuid"/>
 	</parameter>
-	<parameter name="parent_id">
+	<parameter name="parent">
 		<type name="uuid"/>
 	</parameter>
 	<parameter name="ember_route">
@@ -2306,7 +2306,7 @@ BEGIN
 		SELECT
 			1 AS level,
 			A.id,
-			A.parent_id,
+			A.parent,
 			A.ember_route
 		FROM
 			module_menus A
@@ -2316,24 +2316,24 @@ BEGIN
 		SELECT
 			q.level + 1,
 			B.id,
-			B.parent_id,
+			B.parent,
 			B.ember_route
 		FROM
 			q,
 			module_menus B
 		WHERE
-			B.id = q.parent_id
+			B.id = q.parent
 	)
 	SELECT DISTINCT
 		q.level,
 		q.id,
-		q.parent_id,
+		q.parent,
 		q.ember_route
 	FROM
 		q
 	ORDER BY
 		q.level,
-		q.parent_id;
+		q.parent;
 END;
 ]]></definition>
 </function>
@@ -2356,7 +2356,7 @@ END;
 	<parameter name="id">
 		<type name="uuid"/>
 	</parameter>
-	<parameter name="parent_id">
+	<parameter name="parent">
 		<type name="uuid"/>
 	</parameter>
 	<parameter name="ember_route">
@@ -2370,7 +2370,7 @@ BEGIN
 		SELECT
 			1 AS level,
 			A.id,
-			A.parent_id,
+			A.parent,
 			A.ember_route
 		FROM
 			module_menus A
@@ -2380,24 +2380,24 @@ BEGIN
 		SELECT
 			q.level + 1,
 			B.id,
-			B.parent_id,
+			B.parent,
 			B.ember_route
 		FROM
 			q,
 			module_menus B
 		WHERE
-			B.parent_id = q.id
+			B.parent = q.id
 	)
 	SELECT DISTINCT
 		q.level,
 		q.id,
-		q.parent_id,
+		q.parent,
 		q.ember_route
 	FROM
 		q
 	ORDER BY
 		q.level,
-		q.parent_id;
+		q.parent;
 END;
 ]]></definition>
 </function>
@@ -2421,7 +2421,7 @@ END;
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="module_id" not-null="true">
+	<column name="module" not-null="true">
 		<type name="uuid"/>
 	</column>
 	<column name="name" not-null="true">
@@ -2430,10 +2430,10 @@ END;
 	<column name="description">
 		<type name="text"/>
 	</column>
-	<column name="media_type" not-null="true" default-value="'all'::template_media_type">
+	<column name="media" not-null="true" default-value="'all'::template_media_type">
 		<type name="public.template_media_type"/>
 	</column>
-	<column name="user_type" not-null="true" default-value="'all'::template_user_type">
+	<column name="role" not-null="true" default-value="'all'::template_user_type">
 		<type name="public.template_user_type"/>
 	</column>
 	<column name="is_default" not-null="true" default-value="false::boolean">
@@ -2460,7 +2460,7 @@ END;
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="module_id"/>
+			<column name="module"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
 			<column name="name"/>
@@ -2479,10 +2479,10 @@ END;
 	<role name="postgres"/>
 	<language name="plpgsql" protected="true" sql-disabled="true"/>
 	<return-type>
-	<parameter name="tenant_id">
+	<parameter name="tenant">
 		<type name="uuid"/>
 	</parameter>
-	<parameter name="permission_id">
+	<parameter name="permission">
 		<type name="uuid"/>
 	</parameter>
 	</return-type>
@@ -2492,12 +2492,12 @@ END;
 	<definition><![CDATA[BEGIN
 	RETURN QUERY
 	SELECT DISTINCT
-		A.tenant_id,
-		A.permission_id
+		A.tenant,
+		A.permission
 	FROM
 		tenant_group_permissions A
 	WHERE
-		A.group_id IN (SELECT group_id FROM tenants_users_groups WHERE user_id = userid);
+		A.tenant_group IN (SELECT tenant_group FROM tenants_users_groups WHERE login = userid);
 END;]]></definition>
 </function>
 
@@ -2516,25 +2516,25 @@ END;]]></definition>
 	<type name="trigger"/>
 	</return-type>
 	<definition><![CDATA[DECLARE
-	is_valid_home_module_menu INTEGER;
+	is_valid_home_route INTEGER;
 BEGIN
-	IF NEW.home_module_menu_id IS NULL
+	IF NEW.home_route IS NULL
 	THEN
 		RETURN NEW;
 	END IF;
 
-	is_valid_home_module_menu := 0;
+	is_valid_home_route := 0;
 	SELECT
 		count(id)
 	FROM
 		module_menus
 	WHERE
-		id = NEW.home_module_menu_id AND
-		permission_id IN (SELECT DISTINCT permission_id FROM fn_get_user_permissions(NEW.id))
+		id = NEW.home_route AND
+		permission IN (SELECT DISTINCT permission FROM fn_get_user_permissions(NEW.id))
 	INTO
-		is_valid_home_module_menu;
+		is_valid_home_route;
 
-	IF is_valid_home_module_menu <= 0
+	IF is_valid_home_route <= 0
 	THEN
 		RAISE SQLSTATE '2F003' USING MESSAGE = 'User does not have permissions for chosen Home Menu';
 		RETURN NULL;
@@ -2551,7 +2551,7 @@ END;]]></definition>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="template_id" not-null="true">
+	<column name="template" not-null="true">
 		<type name="uuid"/>
 	</column>
 	<column name="name" not-null="true">
@@ -2575,10 +2575,10 @@ END;]]></definition>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="template_position_id" not-null="true">
+	<column name="template_position" not-null="true">
 		<type name="uuid"/>
 	</column>
-	<column name="module_widget_id" not-null="true">
+	<column name="module_widget" not-null="true">
 		<type name="uuid"/>
 	</column>
 	<column name="display_order" not-null="true" default-value="1">
@@ -2610,38 +2610,38 @@ END;]]></definition>
 	<type name="trigger"/>
 	</return-type>
 	<definition><![CDATA[DECLARE
-	template_module_id 	UUID;
-	widget_module_id	UUID;
+	template_module 	UUID;
+	widget_module	UUID;
 	is_child_component	INTEGER;
 BEGIN
-	template_module_id := NULL;
-	widget_module_id := NULL;
+	template_module := NULL;
+	widget_module := NULL;
 	is_child_component := 0;
 
 	SELECT
-		module_id
+		module
 	FROM
 		module_templates
 	WHERE
-		id = (SELECT template_id FROM module_template_positions WHERE id = NEW.template_position_id)
+		id = (SELECT template FROM module_template_positions WHERE id = NEW.template_position)
 	INTO
-		template_module_id;
+		template_module;
 
 	SELECT
-		module_id
+		module
 	FROM
 		module_widgets
 	WHERE
-		id = NEW.module_widget_id
+		id = NEW.module_widget
 	INTO
-		widget_module_id;
+		widget_module;
 
 	SELECT
 		count(A.id)
 	FROM
-		(SELECT id FROM fn_get_module_descendants(template_module_id) WHERE level <= 2) A
+		(SELECT id FROM fn_get_module_descendants(template_module) WHERE level <= 2) A
 	WHERE
-		A.id = widget_module_id
+		A.id = widget_module
 	INTO
 		is_child_component;
 
@@ -2659,10 +2659,10 @@ END;]]></definition>
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="template_position_id"/>
+			<column name="template_position"/>
 		</idxelement>
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="module_widget_id"/>
+			<column name="module_widget"/>
 		</idxelement>
 </index>
 
@@ -2707,7 +2707,7 @@ BEGIN
 	FROM
 		modules
 	WHERE
-		id = NEW.module_id AND
+		id = NEW.module AND
 		type = 'component'
 	INTO
 		is_component;
@@ -2737,11 +2737,11 @@ END;]]></definition>
 <table name="user_contacts">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="5507.14" y="998.571"/>
+	<position x="5602.85" y="1238.57"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
-	<column name="user_id" not-null="true">
+	<column name="login" not-null="true">
 		<type name="uuid"/>
 	</column>
 	<column name="contact" not-null="true">
@@ -2761,177 +2761,227 @@ END;]]></definition>
 	</constraint>
 </table>
 
+<table name="user_emergency_contacts">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="4991.43" y="1768.58"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="login" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="contact" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="relationship">
+		<type name="text"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_user_emergency_contacts" type="pk-constr" table="public.user_emergency_contacts">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<index name="uidx_user_emergency_contacts" table="public.user_emergency_contacts"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="login"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="contact"/>
+		</idxelement>
+</index>
+
 <constraint name="fk_modules_modules" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.modules" table="public.modules">
-	<columns names="parent_id" ref-type="src-columns"/>
+	<columns names="parent" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_tenant_parent" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.tenants">
-	<columns names="parent_id" ref-type="src-columns"/>
+	<columns names="parent" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_tenants_users_users" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.tenants_users">
-	<columns names="user_id" ref-type="src-columns"/>
+	<columns names="login" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_tenants_users_tenants" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.tenants_users">
-	<columns names="tenant_id" ref-type="src-columns"/>
+	<columns names="tenant" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_tenants_users_locations" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenant_locations" table="public.tenants_users">
-	<columns names="tenant_id,location_id" ref-type="src-columns"/>
-	<columns names="tenant_id,id" ref-type="dst-columns"/>
+	<columns names="tenant,location" ref-type="src-columns"/>
+	<columns names="tenant,id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_tenants_users_job_titles" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenant_job_titles" table="public.tenants_users">
-	<columns names="tenant_id,job_title_id" ref-type="src-columns"/>
-	<columns names="id,tenant_id" ref-type="dst-columns"/>
+	<columns names="tenant,job_title" ref-type="src-columns"/>
+	<columns names="id,tenant" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_locations_tenants" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.tenant_locations">
-	<columns names="tenant_id" ref-type="src-columns"/>
+	<columns names="tenant" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_job_titles_tenants" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.tenant_job_titles">
-	<columns names="tenant_id" ref-type="src-columns"/>
+	<columns names="tenant" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_group_tenant" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.tenant_groups">
-	<columns names="tenant_id" ref-type="src-columns"/>
+	<columns names="tenant" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_groups_groups" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenant_groups" table="public.tenant_groups">
-	<columns names="parent_id" ref-type="src-columns"/>
+	<columns names="parent" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_tenant_user_groups_groups" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenant_groups" table="public.tenants_users_groups">
-	<columns names="tenant_id,group_id" ref-type="src-columns"/>
-	<columns names="tenant_id,id" ref-type="dst-columns"/>
+	<columns names="tenant,tenant_group" ref-type="src-columns"/>
+	<columns names="tenant,id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_tenant_user_groups_tenant_users" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants_users" table="public.tenants_users_groups">
-	<columns names="tenant_id,user_id" ref-type="src-columns"/>
-	<columns names="tenant_id,user_id" ref-type="dst-columns"/>
+	<columns names="tenant,login" ref-type="src-columns"/>
+	<columns names="tenant,login" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_permissions_modules" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.modules" table="public.module_permissions">
-	<columns names="module_id" ref-type="src-columns"/>
+	<columns names="module" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_social_logins_users" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.user_social_logins">
-	<columns names="user_id" ref-type="src-columns"/>
+	<columns names="login" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_group_permissions_groups" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenant_groups" table="public.tenant_group_permissions">
-	<columns names="tenant_id,group_id" ref-type="src-columns"/>
-	<columns names="tenant_id,id" ref-type="dst-columns"/>
+	<columns names="tenant,tenant_group" ref-type="src-columns"/>
+	<columns names="tenant,id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_group_permissions_permissions" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_permissions" table="public.tenant_group_permissions">
-	<columns names="module_id,permission_id" ref-type="src-columns"/>
-	<columns names="module_id,id" ref-type="dst-columns"/>
+	<columns names="module,permission" ref-type="src-columns"/>
+	<columns names="module,id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_group_permissions_tenant_modules" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants_modules" table="public.tenant_group_permissions">
-	<columns names="tenant_id,module_id" ref-type="src-columns"/>
-	<columns names="tenant_id,module_id" ref-type="dst-columns"/>
+	<columns names="tenant,module" ref-type="src-columns"/>
+	<columns names="tenant,module" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_tenant_modules_tenants" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.tenants" table="public.tenants_modules">
-	<columns names="tenant_id" ref-type="src-columns"/>
+	<columns names="tenant" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_tenant_modules_modules" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.modules" table="public.tenants_modules">
-	<columns names="module_id" ref-type="src-columns"/>
+	<columns names="module" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_module_menus_module_menus" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_menus" table="public.module_menus">
-	<columns names="parent_id" ref-type="src-columns"/>
+	<columns names="parent" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_module_menus_modules" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.modules" table="public.module_menus">
-	<columns names="module_id" ref-type="src-columns"/>
+	<columns names="module" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_module_menus_permissions" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_permissions" table="public.module_menus">
-	<columns names="permission_id" ref-type="src-columns"/>
+	<columns names="permission" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_module_widgets_modules" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.modules" table="public.module_widgets">
-	<columns names="module_id" ref-type="src-columns"/>
+	<columns names="module" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_module_widgets_permissions" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_permissions" table="public.module_widgets">
-	<columns names="permission_id" ref-type="src-columns"/>
+	<columns names="permission" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_module_templates_modules" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.modules" table="public.module_templates">
-	<columns names="module_id" ref-type="src-columns"/>
+	<columns names="module" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_template_positions_templates" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_templates" table="public.module_template_positions">
-	<columns names="template_id" ref-type="src-columns"/>
+	<columns names="template" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_widget_template_position_module_widget" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_widgets" table="public.module_widgets_module_template_positions">
-	<columns names="module_widget_id" ref-type="src-columns"/>
+	<columns names="module_widget" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_widget_template_position_template_positions" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_template_positions" table="public.module_widgets_module_template_positions">
-	<columns names="template_position_id" ref-type="src-columns"/>
+	<columns names="template_position" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_contacts_users" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.user_contacts">
-	<columns names="user_id" ref-type="src-columns"/>
+	<columns names="login" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_user_emergency_contacts_users" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.user_emergency_contacts">
+	<columns names="login" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_user_emergency_contacts_contacts" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.user_emergency_contacts">
+	<columns names="contact" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
@@ -3006,9 +3056,9 @@ END;]]></definition>
 	 dst-table="public.tenant_groups"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="3794.24" y="823.21"/>
-	<position x="3794.24" y="729.93"/>
-	<position x="3657.65" y="729.93"/>
+		<position x="3795.66" y="827.496"/>
+	<position x="3795.66" y="734.216"/>
+	<position x="3659.08" y="734.216"/>
 	</line>
 </relationship>
 
@@ -3105,6 +3155,11 @@ END;]]></definition>
 
 <relationship name="rel_contacts_users" type="relfk"
 	 src-table="public.user_contacts"
+	 dst-table="public.users"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_user_emergency_contacts_users" type="relfk"
+	 src-table="public.user_emergency_contacts"
 	 dst-table="public.users"
 	 src-required="false" dst-required="false"/>
 

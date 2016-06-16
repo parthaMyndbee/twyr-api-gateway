@@ -26,7 +26,7 @@ var retrieveUserFromDatabase = function(userId, callback) {
 		'idAttribute': 'id',
 
 		'user': function() {
-			return this.belongsTo(User, 'user_id');
+			return this.belongsTo(User, 'login');
 		}
 	});
 
@@ -35,7 +35,7 @@ var retrieveUserFromDatabase = function(userId, callback) {
 		'idAttribute': 'id',
 
 		'social': function() {
-			return this.hasMany(UserSocialLogins, 'user_id');
+			return this.hasMany(UserSocialLogins, 'login');
 		}
 	});
 
@@ -50,7 +50,7 @@ var retrieveUserFromDatabase = function(userId, callback) {
 		var databaseUser = user.toJSON();
 		delete databaseUser.password;
 
-		return promises.all([UserSocialLogins.where({ 'user_id': userId }).fetchAll(), databaseUser]);
+		return promises.all([UserSocialLogins.where({ 'login': userId }).fetchAll(), databaseUser]);
 	})
 	.then(function(results) {
 		var user = results.pop(),
@@ -80,7 +80,7 @@ var getUserPermissionsByTenant = function(deserializedUser, callback) {
 	if(deserializedUser['tenants'] == undefined)
 		deserializedUser['tenants'] = {};
 
-	databaseSrvc.knex.raw('SELECT A.tenant_id AS tenant, B.permission_id AS permission FROM tenant_groups A INNER JOIN tenant_group_permissions B ON (A.id = B.group_id) WHERE A.id IN (SELECT group_id FROM tenants_users_groups WHERE user_id = ?)', [deserializedUser.id])
+	databaseSrvc.knex.raw('SELECT A.tenant AS tenant, B.permission AS permission FROM tenant_groups A INNER JOIN tenant_group_permissions B ON (A.id = B.tenant_group) WHERE A.id IN (SELECT tenant_group FROM tenants_users_groups WHERE login = ?)', [deserializedUser.id])
 	.then(function(tenantPermissions) {
 		tenantPermissions = tenantPermissions.rows;
 		for(var idx in tenantPermissions) {
