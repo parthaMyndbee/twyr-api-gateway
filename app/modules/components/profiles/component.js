@@ -20,7 +20,10 @@ var base = require('./../component-base').baseComponent,
 /**
  * Module dependencies, required for this module
  */
-var bcrypt = require('bcrypt-nodejs');
+var bcrypt = require('bcrypt-nodejs'),
+	filesystem = require('fs'),
+	path = require('path'),
+	uuid = require('node-uuid');
 
 var profilesComponent = prime({
 	'inherits': base,
@@ -114,13 +117,17 @@ var profilesComponent = prime({
 		this.$router.get('/emergencyContact', this._getEmergencyContact.bind(this));
 		this.$router.get('/homepages', this._getHomepages.bind(this));
 
-		this.$router.get('/:id', this._getProfile.bind(this));
-		this.$router.patch('/:id', this._updateProfile.bind(this));
+		this.$router.get('/get-image', this._getProfileImage.bind(this));
 		this.$router.post('/upload-image', this._updateProfileImage.bind(this));
 
+		this.$router.get('/:id', this._getProfile.bind(this));
+		this.$router.patch('/:id', this._updateProfile.bind(this));
+
+		this.$router.get('/profile-contacts/:id', this._getProfileContact.bind(this));
 		this.$router.post('/profile-contacts', this._addProfileContact.bind(this));
 		this.$router.delete('/profile-contacts/:id', this._deleteProfileContact.bind(this));
 
+		this.$router.get('/profile-emergency-contacts/:id', this._getProfileEmergencyContact.bind(this));
 		this.$router.post('/profile-emergency-contacts', this._addProfileEmergencyContact.bind(this));
 		this.$router.delete('/profile-emergency-contacts/:id', this._deleteProfileEmergencyContact.bind(this));
 
@@ -275,38 +282,86 @@ var profilesComponent = prime({
 		});
 	},
 
+	'_getProfileImage': function(request, response, next) {
+		var self = this,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+
+		new self.$UserModel({ 'id': request.user.id })
+		.fetch()
+		.then(function(user) {
+			var profileImageName = path.join(self.basePath, self.$config.profileImagePath, (user.get('profile_image') || 'anonymous') + '.jpg');
+			response.sendFile(profileImageName);
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			response.status(422).json({ 'code': 422, 'message': err.message || err.detail || 'Error saving profile image to the database' });
+		});
+	},
+
 	'_updateProfileImage': function(request, response, next) {
 		var self = this,
 			Busboy = require('busboy'),
 			loggerSrvc = self.dependencies['logger-service'];
 
 		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
 
-		var busboy = new Busboy({ 'headers': request.headers });
+		var busboy = new Busboy({ 'headers': request.headers }),
+			imageId = uuid.v4().toString(),
+			profileImageName = path.join(self.basePath, self.$config.profileImagePath, imageId);
+
 		busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
-			console.log('File [' + fieldname + ']: filename: ' + filename);
-
-			file.on('data', function(data) {
-				console.log('File [' + fieldname + '] got ' + data.length + ' bytes');
-			});
-
-			file.on('end', function() {
-				console.log('File [' + fieldname + '] Finished');
-			});
-		});
-
-		busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
-			console.log('Field [' + fieldname + ']: value: ' + JSON.stringify(val, null, '\t'));
+			profileImageName += path.extname(filename);
+			file.pipe(filesystem.createWriteStream(profileImageName));
 		});
 
 		busboy.on('finish', function() {
-			console.log('Done parsing form!');
-
-			response.type('application/javascript');
-			response.sendStatus(200);
+			new self.$UserModel({ 'id': request.user.id })
+			.save({ 'profile_image': imageId }, { 'patch' : true })
+			.then(function() {
+				response.status(200).json({ 'imageId': imageId });
+				return null;
+			})
+			.catch(function(err) {
+				loggerSrvc.error('Error servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+				response.status(422).json({ 'code': 422, 'message': err.message || err.detail || 'Error saving profile image to the database' });
+			});
 		});
 
 		request.pipe(busboy);
+	},
+
+	'_getProfileContact': function(request, response, next) {
+		var self = this,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		new self.$ContactModel({ 'id': request.params.id })
+		.fetch({ 'withRelated': ['login'] })
+		.then(function(profileContactData) {
+			profileContactData = self['$jsonApiMapper'].map(profileContactData, 'profile-contacts');
+			profileContactData.data.relationships.login.data.type = 'profiles';
+			delete profileContactData.included;
+
+			response.status(200).json(profileContactData);
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body, '\nError: ', err);
+			response.status(422).json({
+				'errors': [{
+					'status': 422,
+					'source': { 'pointer': '/data/id' },
+					'title': 'Get profile error',
+					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+				}]
+			});
+		});
 	},
 
 	'_addProfileContact': function(request, response, next) {
@@ -377,6 +432,37 @@ var profilesComponent = prime({
 					'status': 422,
 					'source': { 'pointer': '/data/id' },
 					'title': 'Add profile contact error',
+					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+				}]
+			});
+		});
+	},
+
+	'_getProfileEmergencyContact': function(request, response, next) {
+		var self = this,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		new self.$EmergencyContactModel({ 'id': request.params.id })
+		.fetch({ 'withRelated': ['login', 'contact'] })
+		.then(function(profileEmergencyContactData) {
+			profileEmergencyContactData = self['$jsonApiMapper'].map(profileEmergencyContactData, 'profile-emergency-contacts');
+			profileEmergencyContactData.data.relationships.login.data.type = 'profiles';
+			profileEmergencyContactData.data.relationships.contact.data.type = 'profiles';
+			delete profileEmergencyContactData.included;
+
+			response.status(200).json(profileEmergencyContactData);
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body, '\nError: ', err);
+			response.status(422).json({
+				'errors': [{
+					'status': 422,
+					'source': { 'pointer': '/data/id' },
+					'title': 'Get profile error',
 					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
 				}]
 			});
