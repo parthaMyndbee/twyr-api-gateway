@@ -291,7 +291,7 @@ var profilesComponent = prime({
 		new self.$UserModel({ 'id': request.user.id })
 		.fetch()
 		.then(function(user) {
-			var profileImageName = path.join(self.basePath, self.$config.profileImagePath, (user.get('profile_image') || 'anonymous') + '.jpg');
+			var profileImageName = path.join(self.basePath, self.$config.profileImagePath, (user.get('profile_image') || 'anonymous') + '.png');
 			response.sendFile(profileImageName);
 			return null;
 		})

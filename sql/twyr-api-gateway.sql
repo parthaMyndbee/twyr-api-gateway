@@ -415,7 +415,7 @@ CREATE TABLE public.users(
 	profile_image uuid,
 	gender public.gender NOT NULL DEFAULT 'male'::gender,
 	dob date,
-	home_route uuid,
+	home_module_menu uuid,
 	enabled boolean NOT NULL DEFAULT true::boolean,
 	created_at timestamptz NOT NULL DEFAULT now(),
 	updated_at timestamptz NOT NULL DEFAULT now(),
