@@ -59,6 +59,7 @@
 		"knex": "*",
 		"lodash": "*",
 		"method-override": "*",
+		"moment": "*",
 		"morgan": "*",
 		"node-print": "*",
 		"node-uuid": "*",

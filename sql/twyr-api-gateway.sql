@@ -2398,6 +2398,30 @@ CREATE UNIQUE INDEX uidx_user_emergency_contacts ON public.user_emergency_contac
 	);
 -- ddl-end --
 
+-- object: public.page_publish_status | type: TYPE --
+-- DROP TYPE IF EXISTS public.page_publish_status CASCADE;
+CREATE TYPE public.page_publish_status AS
+ ENUM ('draft','published');
+-- ddl-end --
+ALTER TYPE public.page_publish_status OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.pages | type: TABLE --
+-- DROP TABLE IF EXISTS public.pages CASCADE;
+CREATE TABLE public.pages(
+	id uuid NOT NULL DEFAULT uuid_generate_v4(),
+	author uuid NOT NULL,
+	title text NOT NULL,
+	status public.page_publish_status NOT NULL DEFAULT 'draft'::page_publish_status,
+	created_at timestamptz NOT NULL DEFAULT now(),
+	updated_at timestamptz NOT NULL DEFAULT now(),
+	CONSTRAINT pk_pages PRIMARY KEY (id)
+
+);
+-- ddl-end --
+ALTER TABLE public.pages OWNER TO postgres;
+-- ddl-end --
+
 -- object: fk_modules_modules | type: CONSTRAINT --
 -- ALTER TABLE public.modules DROP CONSTRAINT IF EXISTS fk_modules_modules CASCADE;
 ALTER TABLE public.modules ADD CONSTRAINT fk_modules_modules FOREIGN KEY (parent)
@@ -2611,6 +2635,13 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 -- object: fk_user_emergency_contacts_contacts | type: CONSTRAINT --
 -- ALTER TABLE public.user_emergency_contacts DROP CONSTRAINT IF EXISTS fk_user_emergency_contacts_contacts CASCADE;
 ALTER TABLE public.user_emergency_contacts ADD CONSTRAINT fk_user_emergency_contacts_contacts FOREIGN KEY (contact)
+REFERENCES public.users (id) MATCH FULL
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: fk_pages_user | type: CONSTRAINT --
+-- ALTER TABLE public.pages DROP CONSTRAINT IF EXISTS fk_pages_user CASCADE;
+ALTER TABLE public.pages ADD CONSTRAINT fk_pages_user FOREIGN KEY (author)
 REFERENCES public.users (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --

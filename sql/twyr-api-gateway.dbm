@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="2184,193" last-zoom="0.7"
+<dbmodel pgmodeler-ver="0.8.1" last-position="1505,414" last-zoom="0.7"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -2799,6 +2799,39 @@ END;]]></definition>
 		</idxelement>
 </index>
 
+<usertype name="page_publish_status" configuration="enumeration">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<enumeration values="draft,published"/>
+</usertype>
+
+<table name="pages">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="2450" y="1227.14"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="author" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="title" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="status" not-null="true" default-value="'draft'::page_publish_status">
+		<type name="public.page_publish_status"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_pages" type="pk-constr" table="public.pages">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
 <constraint name="fk_modules_modules" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.modules" table="public.modules">
 	<columns names="parent" ref-type="src-columns"/>
@@ -2985,6 +3018,12 @@ END;]]></definition>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
+<constraint name="fk_pages_user" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.pages">
+	<columns names="author" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
 <relationship name="rel_modules_modules" type="relfk"
 	 src-table="public.modules"
 	 dst-table="public.modules"
@@ -3160,6 +3199,11 @@ END;]]></definition>
 
 <relationship name="rel_user_emergency_contacts_users" type="relfk"
 	 src-table="public.user_emergency_contacts"
+	 dst-table="public.users"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_pages_users" type="relfk"
+	 src-table="public.pages"
 	 dst-table="public.users"
 	 src-required="false" dst-required="false"/>
 

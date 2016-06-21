@@ -32,6 +32,9 @@ var twyrComponentBase = prime({
 		if(this.dependencies.indexOf('logger-service') < 0)
 			this.dependencies.push('logger-service');
 
+		if(this.dependencies.indexOf('configuration-service') < 0)
+			this.dependencies.push('configuration-service');
+
 		if(this.dependencies.indexOf('database-service') < 0)
 			this.dependencies.push('database-service');
 
