@@ -50,6 +50,7 @@ var profilesComponent = prime({
 				'value': dbSrvc.Model.extend({
 					'tableName': 'users',
 					'idAttribute': 'id',
+					'hasTimestamps': true,
 
 					'profileSocialLogins': function() {
 						return this.hasMany(self.$SocialLoginModel, 'login');
@@ -74,6 +75,7 @@ var profilesComponent = prime({
 				'value': dbSrvc.Model.extend({
 					'tableName': 'user_social_logins',
 					'idAttribute': 'id',
+					'hasTimestamps': true,
 
 					'login': function() {
 						return this.belongsTo(self.$UserModel, 'login');
@@ -86,6 +88,7 @@ var profilesComponent = prime({
 				'value': dbSrvc.Model.extend({
 					'tableName': 'user_contacts',
 					'idAttribute': 'id',
+					'hasTimestamps': true,
 
 					'login': function() {
 						return this.belongsTo(self.$UserModel, 'login');
@@ -98,6 +101,7 @@ var profilesComponent = prime({
 				'value': dbSrvc.Model.extend({
 					'tableName': 'user_emergency_contacts',
 					'idAttribute': 'id',
+					'hasTimestamps': true,
 
 					'login': function() {
 						return this.belongsTo(self.$UserModel, 'login');
