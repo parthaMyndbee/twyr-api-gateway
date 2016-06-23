@@ -32,6 +32,7 @@ var masterdataComponent = prime({
 		this.$router.get('/contactTypes', this._getContactTypes.bind(this));
 		this.$router.get('/emergencyContactTypes', this._getEmergencyContactTypes.bind(this));
 		this.$router.get('/genders', this._getGenders.bind(this));
+		this.$router.get('/server-permissions', this._getServerPermissions.bind(this));
 	},
 
 	'_getContactTypes': function(request, response, next) {
@@ -92,6 +93,36 @@ var masterdataComponent = prime({
 			var responseData = [];
 			for(var idx in genders.rows) {
 				responseData.push(genders.rows[idx]['genders']);
+			}
+
+			response.status(200).json(responseData);
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			response.status(422).json({ 'code': 422, 'message': err.message || err.detail || 'Error fetching genders from the database' });
+		});
+	},
+
+	'_getServerPermissions': function(request, response, next) {
+		var self = this,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.silly('Servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params);
+		response.type('application/javascript');
+
+		var rootModule = self;
+		while(rootModule.$module)
+			rootModule = rootModule.$module;
+
+		self.dependencies['database-service'].knex.raw('SELECT id, display_name FROM module_permissions WHERE module = (SELECT id FROM modules WHERE name = ?);', [rootModule.name])
+		.then(function(permissions) {
+			var responseData = [];
+			for(var idx in permissions.rows) {
+				responseData.push({
+					'id': permissions.rows[idx].id,
+					'name': permissions.rows[idx].display_name
+				});
 			}
 
 			response.status(200).json(responseData);

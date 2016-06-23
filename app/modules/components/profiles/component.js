@@ -260,6 +260,7 @@ var profilesComponent = prime({
 			return self.$UserModel
 			.forge()
 			.save(jsonDeserializedData, {
+				'method': 'update',
 				'patch': true
 			});
 		})

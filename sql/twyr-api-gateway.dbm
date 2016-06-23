@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="1505,414" last-zoom="0.7"
+<dbmodel pgmodeler-ver="0.8.1" last-position="0,446" last-zoom="0.7"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -2017,7 +2017,7 @@ END;]]></definition>
 	<column name="ember_route" not-null="true">
 		<type name="text"/>
 	</column>
-	<column name="icon_class">
+	<column name="icon_class" not-null="true">
 		<type name="text"/>
 	</column>
 	<column name="display_name" not-null="true">
@@ -2808,7 +2808,7 @@ END;]]></definition>
 <table name="pages">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="2450" y="1227.14"/>
+	<position x="3424.29" y="1798.57"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>

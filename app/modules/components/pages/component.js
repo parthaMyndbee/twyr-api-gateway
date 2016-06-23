@@ -67,7 +67,7 @@ var pagesComponent = prime({
 						'idAttribute': 'id',
 						'hasTimestamps': true,
 
-						'profile': function() {
+						'author': function() {
 							return this.belongsTo(self.$UserModel, 'author');
 						}
 					})
@@ -85,131 +85,15 @@ var pagesComponent = prime({
 	},
 
 	'_addRoutes': function() {
-		this.$router.get('/', this._getPages.bind(this));
-		this.$router.post('/', this._addPage.bind(this));
-
-		this.$router.delete('/:id', this._deletePage.bind(this));
-
 		this.$router.get('/list', this._getPageList.bind(this));
-	},
+		this.$router.get('/publish-status-list', this._getPublishStatusList.bind(this));
 
-	'_getPages': function(request, response, next) {
-		var self = this,
-			loggerSrvc = self.dependencies['logger-service'];
+		this.$router.get('/pages-defaults/:id', this._getPage.bind(this));
+		this.$router.post('/pages-defaults/', this._addPage.bind(this));
+		this.$router.patch('/pages-defaults/:id', this._updatePage.bind(this));
+		this.$router.delete('/pages-defaults/:id', this._deletePage.bind(this));
 
-		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
-		response.type('application/javascript');
-
-		self._checkPermissionAsync(request.user, self['$pageAuthorPermissionId'])
-		.then(function(hasPermission) {
-			if(!hasPermission) {
-				throw new Error('Unauthorized Access');
-				return null;
-			}
-
-			return new self.$PageModel().fetchAll({ 'withRelated': ['profile'] });
-		})
-		.then(function(pagesData) {
-			pagesData = self['$jsonApiMapper'].map(pagesData, 'pages');
-			delete pagesData.included;
-
-			response.status(200).json(pagesData);
-			return null;
-		})
-		.catch(function(err) {
-			loggerSrvc.error('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body, '\nError: ', err);
-			response.status(422).json({
-				'errors': [{
-					'status': 422,
-					'source': { 'pointer': '/data/id' },
-					'title': 'Get pages error',
-					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
-				}]
-			});
-		});
-	},
-
-	'_addPage': function(request, response, next) {
-		var self = this,
-			loggerSrvc = self.dependencies['logger-service'];
-
-		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
-		response.type('application/javascript');
-
-		self._checkPermissionAsync(request.user, self['$pageAuthorPermissionId'])
-		.then(function(hasPermission) {
-			if(!hasPermission) {
-				throw new Error('Unauthorized Access');
-				return null;
-			}
-
-			return self['$jsonApiDeserializer'].deserializeAsync(request.body);
-		})
-		.then(function(jsonDeserializedData) {
-			jsonDeserializedData.author = request.user.id;
-			delete jsonDeserializedData.content;
-
-			return self.$PageModel
-			.forge()
-			.save(jsonDeserializedData, {
-				'method': 'insert',
-				'patch': false
-			});
-		})
-		.then(function(savedRecord) {
-			response.status(200).json({
-				'data': {
-					'type': request.body.data.type,
-					'id': savedRecord.get('id')
-				}
-			});
-
-			return null;
-		})
-		.catch(function(err) {
-			loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
-			response.status(422).json({
-				'errors': [{
-					'status': 422,
-					'source': { 'pointer': '/data/id' },
-					'title': 'Add page error',
-					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
-				}]
-			});
-		});
-	},
-
-	'_deletePage': function(request, response, next) {
-		var self = this,
-			loggerSrvc = self.dependencies['logger-service'];
-
-		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
-		response.type('application/javascript');
-
-		self._checkPermissionAsync(request.user, self['$pageAuthorPermissionId'])
-		.then(function(hasPermission) {
-			if(!hasPermission) {
-				throw new Error('Unauthorized Access');
-				return null;
-			}
-
-			return new self.$PageModel({ 'id': request.params.id }).destroy();
-		})
-		.then(function() {
-			response.status(204).json({});
-			return null;
-		})
-		.catch(function(err) {
-			loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
-			response.status(422).json({
-				'errors': [{
-					'status': 422,
-					'source': { 'pointer': '/data/id' },
-					'title': 'Delete page error',
-					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
-				}]
-			});
-		});
+		this.$router.get('/page-views/:id', this._getReadonlyPage.bind(this));
 	},
 
 	'_getPageList': function(request, response, next) {
@@ -247,6 +131,337 @@ var pagesComponent = prime({
 		.catch(function(err) {
 			self.dependencies['logger-service'].error(self.name + '::_selectTemplates Error: ', err);
 			response.sendStatus(500);
+		});
+	},
+
+	'_getPublishStatusList': function(request, response, next) {
+		var self = this,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.silly('Servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params);
+		response.type('application/javascript');
+
+		self.dependencies['database-service'].knex.raw('SELECT unnest(enum_range(NULL::page_publish_status)) AS status;')
+		.then(function(statuses) {
+			var responseData = [];
+			for(var idx in statuses.rows) {
+				responseData.push(statuses.rows[idx]['status']);
+			}
+
+			response.status(200).json(responseData);
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			response.status(422).json({ 'code': 422, 'message': err.message || err.detail || 'Error fetching publish statuses from the database' });
+		});
+	},
+
+	'_getPage': function(request, response, next) {
+		var self = this,
+			moduleId = null,
+			configSrvc = self.dependencies['configuration-service'],
+			dbSrvc = self.dependencies['database-service'].knex,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		configSrvc.getModuleIdAsync(self)
+		.then(function(id) {
+			moduleId = id;
+			return self._checkPermissionAsync(request.user, self['$pageAuthorPermissionId']);
+		})
+		.then(function(hasPermission) {
+			if(!hasPermission) {
+				throw new Error('Unauthorized Access');
+				return null;
+			}
+
+			return new self.$PageModel({ 'id': request.params.id }).fetch({ 'withRelated': ['author'] });
+		})
+		.then(function(pagesData) {
+			pagesData = self['$jsonApiMapper'].map(pagesData, 'pages-default');
+			pagesData.data.relationships.author.data.type = 'profiles';
+			delete pagesData.included;
+
+			var promiseResolutions = [];
+			promiseResolutions.push(pagesData);
+			promiseResolutions.push(dbSrvc.raw('SELECT permission FROM module_menus WHERE module = ? AND ember_route = ?', [moduleId, 'page-view "' + request.params.id + '"']));
+
+			return promises.all(promiseResolutions);
+		})
+		.then(function(results) {
+			var pagesData = results[0],
+				permRow = results[1].rows[0];
+
+			pagesData.data.attributes.permission = permRow ? permRow.permission : null;
+			response.status(200).json(pagesData);
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body, '\nError: ', err);
+			response.status(422).json({
+				'errors': [{
+					'status': 422,
+					'source': { 'pointer': '/data/id' },
+					'title': 'Get pages error',
+					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+				}]
+			});
+		});
+	},
+
+	'_addPage': function(request, response, next) {
+		var self = this,
+			moduleId = null,
+			permission = null,
+			configSrvc = self.dependencies['configuration-service'],
+			dbSrvc = self.dependencies['database-service'].knex,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		configSrvc.getModuleIdAsync(self)
+		.then(function(id) {
+			moduleId = id;
+			return self._checkPermissionAsync(request.user, self['$pageAuthorPermissionId']);
+		})
+		.then(function(hasPermission) {
+			if(!hasPermission) {
+				throw new Error('Unauthorized Access');
+				return null;
+			}
+
+			return self['$jsonApiDeserializer'].deserializeAsync(request.body);
+		})
+		.then(function(jsonDeserializedData) {
+			jsonDeserializedData.author = request.user.id;
+			permission = jsonDeserializedData.permission;
+
+			delete jsonDeserializedData.content;
+			delete jsonDeserializedData.permission;
+
+			return self.$PageModel
+			.forge()
+			.save(jsonDeserializedData, {
+				'method': 'insert',
+				'patch': false
+			});
+		})
+		.then(function(savedRecord) {
+			var promiseResolutions = [];
+
+			promiseResolutions.push(savedRecord);
+			promiseResolutions.push(dbSrvc.raw('INSERT INTO module_menus(module, permission, ember_route, icon_class, display_name) VALUES(?, ?, ?, ?, ?)', [moduleId, permission, '"page-view", "' + savedRecord.get('id') + '"', 'fa fa-edit', savedRecord.get('title')]));
+
+			return promises.all(promiseResolutions);
+		})
+		.then(function(results) {
+			response.status(200).json({
+				'data': {
+					'type': request.body.data.type,
+					'id': results[0].get('id')
+				}
+			});
+
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			response.status(422).json({
+				'errors': [{
+					'status': 422,
+					'source': { 'pointer': '/data/id' },
+					'title': 'Add page error',
+					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+				}]
+			});
+		});
+	},
+
+	'_updatePage': function(request, response, next) {
+		var self = this,
+			dbSrvc = self.dependencies['database-service'].knex,
+			loggerSrvc = self.dependencies['logger-service'],
+			permission = null;
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		self._checkPermissionAsync(request.user, self['$pageAuthorPermissionId'])
+		.then(function(hasPermission) {
+			if(!hasPermission) {
+				throw new Error('Unauthorized Access');
+				return null;
+			}
+
+			return self['$jsonApiDeserializer'].deserializeAsync(request.body);
+		})
+		.then(function(jsonDeserializedData) {
+			permission = jsonDeserializedData.permission;
+
+			delete jsonDeserializedData.content;
+			delete jsonDeserializedData.permission;
+			delete jsonDeserializedData.created_at;
+			delete jsonDeserializedData.updated_at;
+
+			return self.$PageModel
+			.forge()
+			.save(jsonDeserializedData, {
+				'method': 'update',
+				'patch': true
+			});
+		})
+		.then(function(savedRecord) {
+			return promises.all([savedRecord, dbSrvc.raw('UPDATE module_menus SET permission = ? WHERE ember_route = ?', [permission, '"page-view", "' + request.params.id + '"'])]);
+		})
+		.then(function(result) {
+			response.status(200).json({
+				'data': {
+					'type': request.body.data.type,
+					'id': result[0].get('id')
+				}
+			});
+
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			response.status(422).json({
+				'errors': [{
+					'status': 422,
+					'source': { 'pointer': '/data/id' },
+					'title': 'Delete page error',
+					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+				}]
+			});
+		});
+	},
+
+	'_deletePage': function(request, response, next) {
+		var self = this,
+			moduleId = null,
+			configSrvc = self.dependencies['configuration-service'],
+			dbSrvc = self.dependencies['database-service'].knex,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		configSrvc.getModuleIdAsync(self)
+		.then(function(id) {
+			moduleId = id;
+			return self._checkPermissionAsync(request.user, self['$pageAuthorPermissionId']);
+		})
+		.then(function(hasPermission) {
+			if(!hasPermission) {
+				throw new Error('Unauthorized Access');
+				return null;
+			}
+
+			return dbSrvc.raw('DELETE FROM module_menus WHERE module = ? AND ember_route = ?', [moduleId, '"page-view", "' + request.params.id + '"']);
+		})
+		.then(function() {
+			return new self.$PageModel({ 'id': request.params.id }).destroy();
+		})
+		.then(function() {
+			response.status(204).json({});
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			response.status(422).json({
+				'errors': [{
+					'status': 422,
+					'source': { 'pointer': '/data/id' },
+					'title': 'Delete page error',
+					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+				}]
+			});
+		});
+	},
+
+	'_getReadonlyPage': function(request, response, next) {
+		var self = this,
+			moduleId = null,
+			configSrvc = self.dependencies['configuration-service'],
+			dbSrvc = self.dependencies['database-service'].knex,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		configSrvc.getModuleIdAsync(self)
+		.then(function(id) {
+			moduleId = id;
+			return new self.$PageModel({ 'id': request.params.id }).fetch({ 'withRelated': ['author'] });
+		})
+		.then(function(pagesData) {
+			pagesData = self['$jsonApiMapper'].map(pagesData, 'page-views');
+			pagesData.data.attributes.author = pagesData.included[0].attributes.first_name + ' ' + pagesData.included[0].attributes.last_name;
+
+			delete pagesData.data.relationships;
+			delete pagesData.included;
+
+			var promiseResolutions = [];
+			promiseResolutions.push(pagesData);
+			promiseResolutions.push(dbSrvc.raw('SELECT id, name FROM module_permissions WHERE id = (SELECT permission FROM module_menus WHERE module = ? AND ember_route = ?)', [moduleId, '"page-view", "' + request.params.id + '"']));
+
+			if(request.user)
+				promiseResolutions.push(self._checkPermissionAsync(request.user, self['$pageAuthorPermissionId']));
+			else
+				promiseResolutions.push(false);
+
+			return promises.all(promiseResolutions);
+		})
+		.then(function(results) {
+			var pagesData = results[0],
+				pagePermission = results[1].rows[0],
+				hasPermission = results[2];
+
+			if(hasPermission) {
+				return [pagesData, true];
+			}
+
+			if(pagesData.data.attributes.status !== 'published') {
+				throw new Error('Unauthorized access!');
+				return null;
+			}
+
+			if(pagePermission.name == 'public') {
+				return [pagesData, true];
+			}
+
+			if(request.user && (pagePermission.name == 'registered')) {
+				return [pagesData, true];
+			}
+
+			return promises.all([pagesData, self._checkPermissionAsync(request.user, pagePermission.id)]);
+		})
+		.then(function(results) {
+			var pagesData = results[0],
+				hasPermission = results[1];
+
+			if(hasPermission) {
+				response.status(200).json(pagesData);
+				return null;
+			}
+
+			throw new Error(pagesData.data.attributes.title + ' is not accessible to ' + (request.user ? (request.user.first_name + ' ' + request.suer.last_name) : 'the Public'));
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body, '\nError: ', err);
+			response.status(422).json({
+				'errors': [{
+					'status': 422,
+					'source': { 'pointer': '/data/id' },
+					'title': 'Get pages error',
+					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+				}]
+			});
 		});
 	},
 

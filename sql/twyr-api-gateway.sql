@@ -1730,7 +1730,7 @@ CREATE TABLE public.module_menus(
 	module uuid NOT NULL,
 	permission uuid NOT NULL,
 	ember_route text NOT NULL,
-	icon_class text,
+	icon_class text NOT NULL,
 	display_name text NOT NULL,
 	description text,
 	tooltip text,
