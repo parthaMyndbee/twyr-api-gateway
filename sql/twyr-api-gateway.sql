@@ -2412,6 +2412,7 @@ CREATE TABLE public.pages(
 	id uuid NOT NULL DEFAULT uuid_generate_v4(),
 	author uuid NOT NULL,
 	title text NOT NULL,
+	content text,
 	status public.page_publish_status NOT NULL DEFAULT 'draft'::page_publish_status,
 	created_at timestamptz NOT NULL DEFAULT now(),
 	updated_at timestamptz NOT NULL DEFAULT now(),

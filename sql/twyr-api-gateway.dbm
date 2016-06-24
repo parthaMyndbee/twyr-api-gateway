@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="0,446" last-zoom="0.7"
+<dbmodel pgmodeler-ver="0.8.1" last-position="2110,471" last-zoom="0.7"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -2816,6 +2816,9 @@ END;]]></definition>
 		<type name="uuid"/>
 	</column>
 	<column name="title" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="content">
 		<type name="text"/>
 	</column>
 	<column name="status" not-null="true" default-value="'draft'::page_publish_status">

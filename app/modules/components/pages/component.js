@@ -187,7 +187,7 @@ var pagesComponent = prime({
 
 			var promiseResolutions = [];
 			promiseResolutions.push(pagesData);
-			promiseResolutions.push(dbSrvc.raw('SELECT permission FROM module_menus WHERE module = ? AND ember_route = ?', [moduleId, 'page-view "' + request.params.id + '"']));
+			promiseResolutions.push(dbSrvc.raw('SELECT permission FROM module_menus WHERE module = ? AND ember_route = ?', [moduleId, '"page-view", "' + request.params.id + '"']));
 
 			return promises.all(promiseResolutions);
 		})
@@ -240,7 +240,6 @@ var pagesComponent = prime({
 			jsonDeserializedData.author = request.user.id;
 			permission = jsonDeserializedData.permission;
 
-			delete jsonDeserializedData.content;
 			delete jsonDeserializedData.permission;
 
 			return self.$PageModel
@@ -302,7 +301,6 @@ var pagesComponent = prime({
 		.then(function(jsonDeserializedData) {
 			permission = jsonDeserializedData.permission;
 
-			delete jsonDeserializedData.content;
 			delete jsonDeserializedData.permission;
 			delete jsonDeserializedData.created_at;
 			delete jsonDeserializedData.updated_at;
