@@ -160,6 +160,7 @@ var websocketService = prime({
 		self.$websocketServer.on('disconnection', self._websocketServerDisconnection.bind(self));
 
 		if(callback) callback(null, true);
+		return null;
 	},
 
 	'_teardownPrimus': function(callback) {
@@ -175,6 +176,7 @@ var websocketService = prime({
 		}
 
 		if(callback) callback(null, true);
+		return null;
 	},
 
 	'_authorizeWebsocketConnection': function(request, done) {

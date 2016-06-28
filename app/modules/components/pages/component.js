@@ -20,7 +20,10 @@ var base = require('./../component-base').baseComponent,
 /**
  * Module dependencies, required for this module
  */
-var moment = require('moment');
+var moment = require('moment'),
+	filesystem = require('fs'),
+	path = require('path'),
+	uuid = require('node-uuid');
 
 var pagesComponent = prime({
 	'inherits': base,
@@ -47,6 +50,7 @@ var pagesComponent = prime({
 			})
 			.then(function(pageAuthorPermissionId) {
 				self['$pageAuthorPermissionId'] = pageAuthorPermissionId.rows[0].id;
+				self['$mediaLibraryPath'] = path.isAbsolute(self.$config.mediaLibraryPath) ? self.$config.mediaLibraryPath : path.join(self.basePath, self.$config.mediaLibraryPath);
 
 				// Define the models....
 				var dbSrvc = self.dependencies['database-service'];
@@ -88,8 +92,16 @@ var pagesComponent = prime({
 		this.$router.get('/list', this._getPageList.bind(this));
 		this.$router.get('/publish-status-list', this._getPublishStatusList.bind(this));
 
+		this.$router.get('/getImage/:id', this._getImage.bind(this));
+
+		this.$router.post('/uploadImage', this._uploadImage.bind(this));
+		this.$router.post('/uploadFile', this._uploadImage.bind(this));
+
+		this.$router.post('/uploadDroppedFile', this._uploadDroppedImage.bind(this));
+		this.$router.post('/uploadDroppedImage', this._uploadDroppedImage.bind(this));
+
 		this.$router.get('/pages-defaults/:id', this._getPage.bind(this));
-		this.$router.post('/pages-defaults/', this._addPage.bind(this));
+		this.$router.post('/pages-defaults', this._addPage.bind(this));
 		this.$router.patch('/pages-defaults/:id', this._updatePage.bind(this));
 		this.$router.delete('/pages-defaults/:id', this._deletePage.bind(this));
 
@@ -107,11 +119,10 @@ var pagesComponent = prime({
 		self._checkPermissionAsync(request.user, self['$pageAuthorPermissionId'])
 		.then(function(hasPermission) {
 			if(hasPermission) {
-				return dbSrvc.raw('SELECT A.id, A.title, A.created_at, B.first_name || \' \' || B.last_name AS author, A.status, A.created_at AS created FROM pages A INNER JOIN users B ON (A.author = B.id)');
+				return dbSrvc.raw('SELECT A.id, A.title, B.first_name || \' \' || B.last_name AS author, A.status, A.created_at AS created, A.updated_at AS updated FROM pages A INNER JOIN users B ON (A.author = B.id)');
 			}
 
 			throw new Error('Unauthorized Access');
-			return null;
 		})
 		.then(function(pageList) {
 			var responseData = { 'data': [] };
@@ -121,7 +132,8 @@ var pagesComponent = prime({
 					'title': page.title,
 					'author': page.author,
 					'status': page.status,
-					'created': moment(page.created).format('DD/MMM/YYYY hh:mm A')
+					'created': moment(page.created).format('DD/MMM/YYYY hh:mm A'),
+					'updated': moment(page.updated).format('DD/MMM/YYYY hh:mm A')
 				})
 			});
 
@@ -157,6 +169,81 @@ var pagesComponent = prime({
 		});
 	},
 
+	'_getImage': function(request, response, next) {
+		var self = this,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+
+		var imagePath = path.join(self.$mediaLibraryPath, request.params.id);
+		response.sendFile(imagePath);
+	},
+
+	'_uploadImage': function(request, response, next) {
+		var self = this,
+			Busboy = require('busboy'),
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+
+		var busboy = new Busboy({ 'headers': request.headers }),
+			fileName = null,
+			imageId = uuid.v4().toString(),
+			imageName = path.join(self.$mediaLibraryPath, imageId);
+
+		busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
+			fileName = filename;
+			imageName += path.extname(filename);
+			file.pipe(filesystem.createWriteStream(imageName));
+		});
+
+		busboy.on('finish', function() {
+			var html = '';
+			html += '<script type="text/javascript">';
+			html += '    var funcNum = ' + request.query.CKEditorFuncNum + ';\n';
+			html += '    var url     = "' + request.protocol + '://' + request.hostname + ':' + request.app.get('port') + '/pages/getImage/' + imageId + path.extname(fileName) + '";\n';
+			html += '    var message = "' + fileName + ' was uploaded successfully";\n\n';
+
+			html += '    window.parent.CKEDITOR.tools.callFunction(funcNum, url, message);\n';
+			html += '</script>';
+
+			response.set('Access-Control-Allow-Origin', request.get('Origin'));
+			response.set('Access-Control-Allow-Credentials', true);
+			response.status(200).send(html);
+		});
+
+		request.pipe(busboy);
+	},
+
+	'_uploadDroppedImage': function(request, response, next) {
+		var self = this,
+			Busboy = require('busboy'),
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+
+		var busboy = new Busboy({ 'headers': request.headers }),
+			fileName = null,
+			imageId = uuid.v4().toString(),
+			imageName = path.join(self.$mediaLibraryPath, imageId);
+
+		busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
+			fileName = filename;
+			imageName += path.extname(filename);
+			file.pipe(filesystem.createWriteStream(imageName));
+		});
+
+		busboy.on('finish', function() {
+			response.status(200).send({
+				'uploaded': 1,
+				'fileName': fileName,
+				'url': request.protocol + '://' + request.hostname + ':' + request.app.get('port') + '/pages/getImage/' + imageId + path.extname(fileName)
+			});
+		});
+
+		request.pipe(busboy);
+	},
+
 	'_getPage': function(request, response, next) {
 		var self = this,
 			moduleId = null,
@@ -175,7 +262,6 @@ var pagesComponent = prime({
 		.then(function(hasPermission) {
 			if(!hasPermission) {
 				throw new Error('Unauthorized Access');
-				return null;
 			}
 
 			return new self.$PageModel({ 'id': request.params.id }).fetch({ 'withRelated': ['author'] });
@@ -231,7 +317,6 @@ var pagesComponent = prime({
 		.then(function(hasPermission) {
 			if(!hasPermission) {
 				throw new Error('Unauthorized Access');
-				return null;
 			}
 
 			return self['$jsonApiDeserializer'].deserializeAsync(request.body);

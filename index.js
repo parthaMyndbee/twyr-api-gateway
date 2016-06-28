@@ -242,12 +242,12 @@ else {
 	});
 
 	serverDomain.on('error', function(err) {
-		console.error('Twyr API Gateway #' + cluster.worker.id + '::Domain Error:\n', JSON.stringify(err, null, '\t'));
+		console.error('Twyr API Gateway #' + cluster.worker.id + '::Domain Error:\n', err);
 		shutdownFn();
 	});
 
 	process.on('uncaughtException', function(err) {
-		console.error('Twyr API Gateway #' + cluster.worker.id + '::Process Error: ', JSON.stringify(err, null, '\t'));
+		console.error('Twyr API Gateway #' + cluster.worker.id + '::Process Error: ', err);
 		shutdownFn();
 	});
 
