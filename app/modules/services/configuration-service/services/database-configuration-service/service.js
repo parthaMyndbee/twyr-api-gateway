@@ -226,7 +226,7 @@ var databaseConfigurationService = prime({
 		while(currentModule.$module)
 			currentModule = currentModule.$module;
 
-		var pathSegments = path.join(currentModule.name, configUpdateModule).split(path.sep);
+		var pathSegments = path.join(currentModule.$application, configUpdateModule).split(path.sep);
 
 		// Iterate down the cached config objects
 		var cachedModule = this['$cachedConfigTree'][pathSegments.shift()];
@@ -254,7 +254,7 @@ var databaseConfigurationService = prime({
 		while(currentModule.$module)
 			currentModule = currentModule.$module;
 
-		var pathSegments = path.join(currentModule.name, configUpdateModule).split(path.sep);
+		var pathSegments = path.join(currentModule.application, configUpdateModule).split(path.sep);
 
 		// Iterate down the cached config objects
 		var cachedModule = this['$cachedConfigTree'][pathSegments.shift()];
@@ -289,7 +289,7 @@ var databaseConfigurationService = prime({
 			var serverModule = self;
 			while(serverModule.$module) serverModule = serverModule.$module;
 
-			return self.$database.queryAsync('SELECT id FROM modules WHERE name = $1 AND parent IS NULL', [serverModule.name]);
+			return self.$database.queryAsync('SELECT id FROM modules WHERE name = $1 AND parent IS NULL', [serverModule.$application]);
 		})
 		.then(function(result) {
 			if(!result.rows.length) {
@@ -314,7 +314,7 @@ var databaseConfigurationService = prime({
 			pathSegments = [];
 
 		do {
-			pathSegments.unshift(currentModule.name);
+			pathSegments.unshift(currentModule.$application || currentModule.name);
 
 			if(currentModule.$module) {
 				var moduleType = '';

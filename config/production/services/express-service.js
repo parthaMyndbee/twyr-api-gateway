@@ -1,7 +1,10 @@
 exports.config = ({
 	"protocol": "http",
-	"port": 8080,
-	"poweredBy": "Twyr Portal",
+	"port": {
+		'twyr-api-gateway': 80,
+		'twyr-portal': 80,
+	},
+	"poweredBy": "Twyr Web Application",
 	"cookieParser": {
 		"path": "/",
 		"domain": ".twyrframework.com",
@@ -9,12 +12,12 @@ exports.config = ({
 		"httpOnly": false
 	},
 	"session": {
-		"key": "twyr-portal",
+		"key": "twyr-webapp",
 		"secret": "Th1s!sTheTwyrP0rta1Framew0rk",
 		"ttl": 86400,
 		"store": {
 			"media": "redis",
-			"prefix": "twyr!portal!session!"
+			"prefix": "twyr!webapp!session!"
 		}
 	},
 	"ssl": {

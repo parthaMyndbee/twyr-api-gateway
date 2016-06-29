@@ -101,7 +101,13 @@ if (cluster.isMaster) {
 	});
 
 	// Setup listener for online counts
-	cluster.on('message', function(msg) {
+	cluster.on('message', function(worker, msg) {
+		if (arguments.length === 2) {
+			handle = message;
+			message = worker;
+			worker = undefined;
+		}
+
 		if(msg != 'worker-online')
 			return;
 
@@ -155,7 +161,7 @@ else {
 	// domain so that the rest of the process is not infected on error
 	var serverDomain = domain.create(),
 		TwyrAPIGateway = require(config['main']).twyrAPIGateway,
-		twyrAPIGateway = promises.promisifyAll(new TwyrAPIGateway(null, clusterId, cluster.worker.id));
+		twyrAPIGateway = promises.promisifyAll(new TwyrAPIGateway(config['application'], clusterId, cluster.worker.id));
 
 	var startupFn = function () {
 		var allStatuses = [];

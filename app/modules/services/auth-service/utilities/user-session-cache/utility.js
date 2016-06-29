@@ -122,7 +122,7 @@ exports.utility = {
 		getUserPermissionsByTenant = promises.promisify(getUserPermissionsByTenant.bind(this));
 
 		// Check if the cache already has the data...
-		cacheSrvc.getAsync('twyr!portal!user!' + userId)
+		cacheSrvc.getAsync('twyr!webapp!user!' + userId)
 		.then(function(cachedData) {
 			// Step 1: If User's data is already cached, simply return it....
 			if(cachedData) {
@@ -143,8 +143,8 @@ exports.utility = {
 			.then(function(databaseUser) {
 				var cacheMulti = promises.promisifyAll(cacheSrvc.multi());
 
-				cacheMulti.setAsync('twyr!portal!user!' + databaseUser.id, JSON.stringify(databaseUser));
-				cacheMulti.expireAsync('twyr!portal!user!' + databaseUser.id, 86400);
+				cacheMulti.setAsync('twyr!webapp!user!' + databaseUser.id, JSON.stringify(databaseUser));
+				cacheMulti.expireAsync('twyr!webapp!user!' + databaseUser.id, 86400);
 
 				return promises.all([cacheMulti.execAsync(), databaseUser]);
 			})

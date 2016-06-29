@@ -78,7 +78,7 @@ exports.socialAuthenticate = (function(request, profile, token, done) {
 					'first_name': profile.name.givenName,
 					'last_name': profile.name.familyName,
 					'email': profile.emails[0].value,
-					'password': bcrypt.hashSync('twyrportal')
+					'password': bcrypt.hashSync('twyrwebapp')
 				}).save();
 			})
 			.then(function(userRecord) {

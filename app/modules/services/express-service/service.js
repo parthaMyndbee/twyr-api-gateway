@@ -244,7 +244,7 @@ var expressService = prime({
 
 		// Step 8: Start listening...
 		self['$express'].set('port', self.$config.port);
-		self.$server.listen(self.$config.port || 8000);
+		self.$server.listen(self.$config.port[self.$module.name] || 9090);
 
 		// Miscellaneous...
 		self['$express']['$server'] =  self['$server'];

@@ -19,5 +19,6 @@ exports.config = ({
 	},
 
 	'main' : './app/server',
+	'application': 'twyr-webapp',
 	'title': 'twyr-api-gateway'
 });

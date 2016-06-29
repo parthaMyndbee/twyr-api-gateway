@@ -10,12 +10,12 @@ SET check_function_bodies = false;
 
 -- Database creation must be done outside an multicommand file.
 -- These commands were put in this file only for convenience.
--- -- object: "twyr-api-gateway" | type: DATABASE --
+-- -- object: "twyr-webapp" | type: DATABASE --
 -- -- DROP DATABASE IF EXISTS "twyr-api-gateway";
 -- CREATE DATABASE "twyr-api-gateway"
 -- ;
 -- -- ddl-end --
--- 
+--
 
 -- object: public.module_type | type: TYPE --
 -- DROP TYPE IF EXISTS public.module_type CASCADE;
@@ -36,7 +36,7 @@ CREATE EXTENSION "uuid-ossp"
 CREATE FUNCTION public.fn_assign_module_to_tenant ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -88,7 +88,7 @@ ALTER FUNCTION public.fn_assign_module_to_tenant() OWNER TO postgres;
 CREATE FUNCTION public.fn_get_module_ancestors (IN moduleid uuid)
 	RETURNS TABLE ( level integer,  id uuid,  parent uuid,  name text,  type public.module_type)
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -143,7 +143,7 @@ ALTER FUNCTION public.fn_get_module_ancestors(IN uuid) OWNER TO postgres;
 CREATE FUNCTION public.fn_get_module_descendants (IN moduleid uuid)
 	RETURNS TABLE ( level integer,  id uuid,  parent uuid,  name text,  type public.module_type,  enabled boolean)
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -201,7 +201,7 @@ ALTER FUNCTION public.fn_get_module_descendants(IN uuid) OWNER TO postgres;
 CREATE FUNCTION public.fn_is_module_enabled (IN moduleid uuid)
 	RETURNS boolean
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -233,7 +233,7 @@ ALTER FUNCTION public.fn_is_module_enabled(IN uuid) OWNER TO postgres;
 CREATE FUNCTION public.fn_check_module_upsert_is_valid ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -318,7 +318,7 @@ ALTER FUNCTION public.fn_check_module_upsert_is_valid() OWNER TO postgres;
 CREATE FUNCTION public.fn_notify_config_change ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -609,7 +609,7 @@ ALTER TABLE public.module_permissions OWNER TO postgres;
 CREATE FUNCTION public.fn_get_tenant_ancestors (IN tenantid uuid)
 	RETURNS TABLE ( level integer,  id uuid,  parent uuid,  name text,  type public.tenant_type)
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -664,7 +664,7 @@ ALTER FUNCTION public.fn_get_tenant_ancestors(IN uuid) OWNER TO postgres;
 CREATE FUNCTION public.fn_is_tenant_enabled (IN tenantid uuid)
 	RETURNS boolean
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -696,7 +696,7 @@ ALTER FUNCTION public.fn_is_tenant_enabled(IN uuid) OWNER TO postgres;
 CREATE FUNCTION public.fn_get_tenant_descendants (IN tenantid uuid)
 	RETURNS TABLE ( level integer,  id uuid,  parent uuid,  name text,  type public.tenant_type,  enabled boolean)
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -754,7 +754,7 @@ ALTER FUNCTION public.fn_get_tenant_descendants(IN uuid) OWNER TO postgres;
 CREATE FUNCTION public.fn_check_tenant_upsert_is_valid ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -831,7 +831,7 @@ CREATE TRIGGER trigger_check_tenant_upsert_is_valid
 CREATE FUNCTION public.fn_get_group_ancestors (IN groupid uuid)
 	RETURNS TABLE ( level integer,  id uuid,  parent uuid,  name text)
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -883,7 +883,7 @@ ALTER FUNCTION public.fn_get_group_ancestors(IN uuid) OWNER TO postgres;
 CREATE FUNCTION public.fn_get_group_descendants (IN groupid uuid)
 	RETURNS TABLE ( level integer,  id uuid,  parent uuid,  name text)
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -935,7 +935,7 @@ ALTER FUNCTION public.fn_get_group_descendants(IN uuid) OWNER TO postgres;
 CREATE FUNCTION public.fn_check_group_update_is_valid ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -968,7 +968,7 @@ CREATE TRIGGER trigger_check_group_update_is_valid
 CREATE FUNCTION public.fn_assign_default_group_to_tenant_user ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -1014,7 +1014,7 @@ ALTER FUNCTION public.fn_assign_default_group_to_tenant_user() OWNER TO postgres
 -- object: trigger_assign_default_group_to_tenant_user | type: TRIGGER --
 -- DROP TRIGGER IF EXISTS trigger_assign_default_group_to_tenant_user ON public.tenants_users  ON public.tenants_users CASCADE;
 CREATE TRIGGER trigger_assign_default_group_to_tenant_user
-	AFTER INSERT 
+	AFTER INSERT
 	ON public.tenants_users
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_assign_default_group_to_tenant_user();
@@ -1025,7 +1025,7 @@ CREATE TRIGGER trigger_assign_default_group_to_tenant_user
 CREATE FUNCTION public.fn_remove_group_permission_from_descendants ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -1095,7 +1095,7 @@ ALTER TABLE public.tenant_group_permissions OWNER TO postgres;
 CREATE FUNCTION public.fn_assign_defaults_to_tenant ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -1158,7 +1158,7 @@ ALTER FUNCTION public.fn_assign_defaults_to_tenant() OWNER TO postgres;
 -- object: trigger_assign_defaults_to_tenant | type: TRIGGER --
 -- DROP TRIGGER IF EXISTS trigger_assign_defaults_to_tenant ON public.tenants  ON public.tenants CASCADE;
 CREATE TRIGGER trigger_assign_defaults_to_tenant
-	AFTER INSERT 
+	AFTER INSERT
 	ON public.tenants
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_assign_defaults_to_tenant();
@@ -1169,7 +1169,7 @@ CREATE TRIGGER trigger_assign_defaults_to_tenant
 CREATE FUNCTION public.fn_check_permission_insert_is_valid ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -1204,7 +1204,7 @@ ALTER FUNCTION public.fn_check_permission_insert_is_valid() OWNER TO postgres;
 -- object: trigger_check_permission_insert_is_valid | type: TRIGGER --
 -- DROP TRIGGER IF EXISTS trigger_check_permission_insert_is_valid ON public.module_permissions  ON public.module_permissions CASCADE;
 CREATE TRIGGER trigger_check_permission_insert_is_valid
-	BEFORE INSERT 
+	BEFORE INSERT
 	ON public.module_permissions
 	FOR EACH STATEMENT
 	EXECUTE PROCEDURE public.fn_check_permission_insert_is_valid();
@@ -1215,7 +1215,7 @@ CREATE TRIGGER trigger_check_permission_insert_is_valid
 CREATE FUNCTION public.fn_check_permission_update_is_valid ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -1270,7 +1270,7 @@ ALTER TABLE public.tenants_modules OWNER TO postgres;
 CREATE FUNCTION public.fn_check_tenant_module_upsert_is_valid ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -1397,7 +1397,7 @@ CREATE TRIGGER trigger_check_module_upsert_is_valid
 -- object: trigger_assign_module_to_tenant | type: TRIGGER --
 -- DROP TRIGGER IF EXISTS trigger_assign_module_to_tenant ON public.modules  ON public.modules CASCADE;
 CREATE TRIGGER trigger_assign_module_to_tenant
-	AFTER INSERT 
+	AFTER INSERT
 	ON public.modules
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_assign_module_to_tenant();
@@ -1426,7 +1426,7 @@ CREATE UNIQUE INDEX uidx_permissions ON public.module_permissions
 -- object: trigger_remove_group_permission_from_descendants | type: TRIGGER --
 -- DROP TRIGGER IF EXISTS trigger_remove_group_permission_from_descendants ON public.tenant_group_permissions  ON public.tenant_group_permissions CASCADE;
 CREATE TRIGGER trigger_remove_group_permission_from_descendants
-	BEFORE DELETE 
+	BEFORE DELETE
 	ON public.tenant_group_permissions
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_remove_group_permission_from_descendants();
@@ -1457,7 +1457,7 @@ CREATE UNIQUE INDEX uidx_permissions_modules ON public.module_permissions
 CREATE FUNCTION public.fn_assign_permission_to_tenant_group ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -1529,7 +1529,7 @@ CREATE UNIQUE INDEX uidx_group_permissions ON public.tenant_group_permissions
 CREATE FUNCTION public.fn_assign_permission_to_tenants ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -1562,7 +1562,7 @@ ALTER FUNCTION public.fn_assign_permission_to_tenants() OWNER TO postgres;
 -- object: trigger_assign_permission_to_tenants | type: TRIGGER --
 -- DROP TRIGGER IF EXISTS trigger_assign_permission_to_tenants ON public.module_permissions  ON public.module_permissions CASCADE;
 CREATE TRIGGER trigger_assign_permission_to_tenants
-	AFTER INSERT 
+	AFTER INSERT
 	ON public.module_permissions
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_assign_permission_to_tenants();
@@ -1584,7 +1584,7 @@ CREATE UNIQUE INDEX uidx_tenant_user_groups ON public.tenants_users_groups
 CREATE FUNCTION public.fn_remove_descendant_group_from_tenant_user ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -1618,7 +1618,7 @@ CREATE TRIGGER trigger_remove_descendant_group_from_tenant_user
 CREATE FUNCTION public.fn_check_group_permission_insert_is_valid ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -1680,7 +1680,7 @@ CREATE TRIGGER trigger_check_group_permission_insert_is_valid
 CREATE FUNCTION public.fn_check_tenant_user_group_upsert_is_valid ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -1768,7 +1768,7 @@ CREATE UNIQUE INDEX uidx_module_menus_module_name ON public.module_menus
 CREATE FUNCTION public.fn_check_module_menu_upsert_is_valid ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -1907,7 +1907,7 @@ CREATE UNIQUE INDEX uidx_module_widgets ON public.module_widgets
 CREATE FUNCTION public.fn_check_module_widget_upsert_is_valid ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -1962,7 +1962,7 @@ ALTER FUNCTION public.fn_check_module_widget_upsert_is_valid() OWNER TO postgres
 CREATE FUNCTION public.fn_get_module_menu_ancestors (IN menuid uuid)
 	RETURNS TABLE ( level integer,  id uuid,  parent uuid,  ember_route text)
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -2014,7 +2014,7 @@ ALTER FUNCTION public.fn_get_module_menu_ancestors(IN uuid) OWNER TO postgres;
 CREATE FUNCTION public.fn_get_module_menu_descendants ()
 	RETURNS TABLE ( level integer,  id uuid,  parent uuid,  ember_route text)
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -2113,7 +2113,7 @@ CREATE UNIQUE INDEX uidx_module_templates ON public.module_templates
 CREATE FUNCTION public.fn_get_user_permissions (IN userid uuid)
 	RETURNS TABLE ( tenant uuid,  permission uuid)
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -2138,7 +2138,7 @@ ALTER FUNCTION public.fn_get_user_permissions(IN uuid) OWNER TO postgres;
 CREATE FUNCTION public.fn_check_user_upsert_is_valid ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -2211,7 +2211,7 @@ ALTER TABLE public.module_widgets_module_template_positions OWNER TO postgres;
 CREATE FUNCTION public.fn_check_widget_template_position_upsert_is_valid ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1
@@ -2307,7 +2307,7 @@ CREATE TRIGGER trigger_check_user_upsert_is_valid
 CREATE FUNCTION public.fn_check_module_template_upsert_is_valid ()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	VOLATILE 
+	VOLATILE
 	CALLED ON NULL INPUT
 	SECURITY INVOKER
 	COST 1

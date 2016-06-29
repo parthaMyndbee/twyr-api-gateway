@@ -115,7 +115,7 @@ var masterdataComponent = prime({
 		while(rootModule.$module)
 			rootModule = rootModule.$module;
 
-		self.dependencies['database-service'].knex.raw('SELECT id, display_name FROM module_permissions WHERE module = (SELECT id FROM modules WHERE name = ?);', [rootModule.name])
+		self.dependencies['database-service'].knex.raw('SELECT id, display_name FROM module_permissions WHERE module = (SELECT id FROM modules WHERE name = ?);', [rootModule.$application])
 		.then(function(permissions) {
 			var responseData = [];
 			for(var idx in permissions.rows) {
