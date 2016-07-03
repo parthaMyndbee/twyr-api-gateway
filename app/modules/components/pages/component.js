@@ -35,7 +35,7 @@ var pagesComponent = prime({
 	'start': function(dependencies, callback) {
 		var self = this,
 			configSrvc = dependencies['configuration-service'],
-			dbSrvc = (dependencies['database-service']).knex,
+			dbSrvc = dependencies['database-service'],
 			loggerSrvc = dependencies['logger-service'];
 
 		pagesComponent.parent.start.call(self, dependencies, function(err, status) {
@@ -46,17 +46,17 @@ var pagesComponent = prime({
 
 			configSrvc.getModuleIdAsync(self)
 			.then(function(id) {
-				return dbSrvc.raw('SELECT id FROM module_permissions WHERE module = ? AND name = ?', [id, 'page-author']);
+				return dbSrvc.knex.raw('SELECT id FROM module_permissions WHERE module = ? AND name = ?', [id, 'page-author']);
 			})
 			.then(function(pageAuthorPermissionId) {
 				self['$pageAuthorPermissionId'] = pageAuthorPermissionId.rows[0].id;
 				self['$mediaLibraryPath'] = path.isAbsolute(self.$config.mediaLibraryPath) ? self.$config.mediaLibraryPath : path.join(self.basePath, self.$config.mediaLibraryPath);
 
 				// Define the models....
-				var dbSrvc = self.dependencies['database-service'];
-
 				Object.defineProperty(self, '$UserModel', {
 					'__proto__': null,
+					'writable': true,
+
 					'value': dbSrvc.Model.extend({
 						'tableName': 'users',
 						'idAttribute': 'id',
@@ -66,6 +66,8 @@ var pagesComponent = prime({
 
 				Object.defineProperty(self, '$PageModel', {
 					'__proto__': null,
+					'writable': true,
+
 					'value': dbSrvc.Model.extend({
 						'tableName': 'pages',
 						'idAttribute': 'id',
@@ -77,14 +79,13 @@ var pagesComponent = prime({
 					})
 				});
 
+				if(callback) callback(null, status);
 				return null;
 			})
 			.catch(function(startErr) {
 				loggerSrvc.error(self.name + '::start Error: ', startErr);
 				if(callback) callback(startErr);
 			});
-
-			if(callback) callback(null, status);
 		});
 	},
 
@@ -209,6 +210,7 @@ var pagesComponent = prime({
 
 			response.set('Access-Control-Allow-Origin', request.get('Origin'));
 			response.set('Access-Control-Allow-Credentials', true);
+			response.set('Connection', 'close');
 			response.status(200).send(html);
 		});
 
@@ -378,7 +380,6 @@ var pagesComponent = prime({
 		.then(function(hasPermission) {
 			if(!hasPermission) {
 				throw new Error('Unauthorized Access');
-				return null;
 			}
 
 			return self['$jsonApiDeserializer'].deserializeAsync(request.body);

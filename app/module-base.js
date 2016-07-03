@@ -94,6 +94,7 @@ var twyrModuleBase = prime({
 	'start': function(dependencies, callback) {
 		// console.log(this.name + ' Start');
 		var self = this;
+
 		if(!self['$enabled']) {
 			self['dependencies'] = null;
 			self['disabled-dependencies'] = dependencies;
@@ -107,7 +108,6 @@ var twyrModuleBase = prime({
 		this.$loader.startAsync()
 		.then(function(status) {
 			if(!status) throw status;
-
 			if(callback) callback(null, status);
 			return null;
 		})
@@ -129,8 +129,6 @@ var twyrModuleBase = prime({
 		.then(function(status) {
 			if(!status) throw status;
 			if(callback) callback(null, status);
-
-			self['dependencies'] = null;
 			return null;
 		})
 		.catch(function(err) {

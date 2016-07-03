@@ -33,9 +33,11 @@ var profilesComponent = prime({
 	},
 
 	'start': function(dependencies, callback) {
-		// console.log(this.name + ' Start');
+		var self = this,
+			configSrvc = dependencies['configuration-service'],
+			dbSrvc = dependencies['database-service'],
+			loggerSrvc = dependencies['logger-service'];
 
-		var self = this;
 		profilesComponent.parent.start.call(self, dependencies, function(err, status) {
 			if(err) {
 				if(callback) callback(err);
@@ -43,10 +45,10 @@ var profilesComponent = prime({
 			}
 
 			// Define the models....
-			var dbSrvc = self.dependencies['database-service'];
-
 			Object.defineProperty(self, '$UserModel', {
 				'__proto__': null,
+				'writable': true,
+
 				'value': dbSrvc.Model.extend({
 					'tableName': 'users',
 					'idAttribute': 'id',
@@ -72,6 +74,8 @@ var profilesComponent = prime({
 
 			Object.defineProperty(self, '$SocialLoginModel', {
 				'__proto__': null,
+				'writable': true,
+
 				'value': dbSrvc.Model.extend({
 					'tableName': 'user_social_logins',
 					'idAttribute': 'id',
@@ -85,6 +89,8 @@ var profilesComponent = prime({
 
 			Object.defineProperty(self, '$ContactModel', {
 				'__proto__': null,
+				'writable': true,
+
 				'value': dbSrvc.Model.extend({
 					'tableName': 'user_contacts',
 					'idAttribute': 'id',
@@ -98,6 +104,8 @@ var profilesComponent = prime({
 
 			Object.defineProperty(self, '$EmergencyContactModel', {
 				'__proto__': null,
+				'writable': true,
+
 				'value': dbSrvc.Model.extend({
 					'tableName': 'user_emergency_contacts',
 					'idAttribute': 'id',
@@ -208,7 +216,7 @@ var profilesComponent = prime({
 			return;
 		}
 
-		new self.$UserModel({ 'id': request.user.id })
+		return new self.$UserModel({ 'id': request.user.id })
 		.fetch({ 'withRelated': ['profileContacts', 'profileEmergencyContacts', 'profileOthersEmergencyContacts', 'profileSocialLogins'] })
 		.then(function(profileData) {
 			profileData = self['$jsonApiMapper'].map(profileData, 'profiles');

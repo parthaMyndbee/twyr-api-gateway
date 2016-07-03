@@ -96,6 +96,21 @@ var authService = prime({
 		});
 	},
 
+	'_dependencyReconfigure': function(dependency) {
+		var self = this;
+
+		self._teardownPassportAsync()
+		.then(function() {
+			return self._setupPassportAsync();
+		})
+		.then(function() {
+			return authService.parent._dependencyReconfigure.call(self, dependency);
+		})
+		.catch(function(err) {
+			self.dependencies['logger-service'].error(self.name + '::_reconfigure:\n', err);
+		});
+	},
+
 	'_setupPassport': function(callback) {
 		var authStrategyPath = path.resolve(path.join(this.basePath, this.$config.strategies.path)),
 			self = this;

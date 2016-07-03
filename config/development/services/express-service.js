@@ -19,7 +19,7 @@ exports.config = ({
 		"secret": "Th1s!sTheTwyrP0rta1Framew0rk"
 	},
 	"protocol": "http",
-	"poweredBy": "Twyr Web Application",
+	"poweredBy": "Twy'r Web App",
 	"cookieParser": {
 		"path": "/",
 		"domain": ".twyrframework.com",
@@ -31,7 +31,7 @@ exports.config = ({
 	"templateEngine": "ejs",
 	"connectionTimeout": 30,
 	"corsAllowedDomains": [
-		"http://local-api.twyrframework.com:9090",
-		"http://local-portal.twyrframework.com:8080"
+		"http://local-portal.twyrframework.com:8080",
+		"http://local-api.twyrframework.com:9090"
 	]
 });

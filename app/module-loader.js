@@ -416,6 +416,11 @@ var moduleLoader = prime({
 			parentDeps = [],
 			self = this;
 
+		if(!Object.keys(this.$module.$services).length) {
+			if(callback) callback(null, { 'self': self.$module.name, 'type': 'services', 'status': null });
+			return null;
+		}
+
 		// Step 2: Note parents dependencies, and DON'T add them to this modules' service start order
 		if(this.$module.dependencies) {
 			if(Array.isArray(this.$module.dependencies)) {
@@ -527,6 +532,11 @@ var moduleLoader = prime({
 		var promiseResolutions = [],
 			componentNames = [],
 			self = this;
+
+		if(!Object.keys(this.$module.$components).length) {
+			if(callback) callback(null, { 'self': self.$module.name, 'type': 'components', 'status': null });
+			return null;
+		}
 
 		// Start each component
 		Object.keys(this.$module.$components).forEach(function(thisComponentName) {

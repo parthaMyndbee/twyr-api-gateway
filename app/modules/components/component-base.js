@@ -218,10 +218,23 @@ var twyrComponentBase = prime({
 		});
 	},
 
-	'_dependencyStateChange': function(dependency, state) {
-		if((process.env.NODE_ENV || 'development') == 'development') console.log(this.name + '::_dependencyStateChange: ' + dependency + ' is now ' + (state ? 'enabled' : 'disabled'));
-		if(dependency != 'express-service') return;
-		this._changeState(state);
+	'_dependencyReconfigure': function(dependency) {
+		if((process.env.NODE_ENV || 'development') == 'development') console.log(this.name + '::_dependencyReconfigure: ' + dependency);
+
+		var self = this;
+		self['disabled-dependencies'] = self['dependencies'];
+
+		self.stopAsync()
+		.then(function() {
+			return self.startAsync(self['disabled-dependencies']);
+		})
+		.then(function() {
+			twyrComponentBase.parent._dependencyReconfigure.call(self, dependency);
+			return null;
+		})
+		.catch(function(err) {
+			console.error(self.name + '::_dependencyReconfigure[' + dependency + ']::error: ', err);
+		});
 	},
 
 	'name': 'twyr-component-base',

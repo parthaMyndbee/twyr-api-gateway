@@ -1,15 +1,15 @@
 exports.config = ({
-	"client": "pg",
+	"pool": {
+		"max": 4,
+		"min": 1
+	},
 	"debug": true,
+	"client": "pg",
 	"connection": {
 		"host": "127.0.0.1",
 		"port": "5432",
 		"user": "postgres",
-		"password": "postgres",
-		"database": "twyr"
-	},
-	"pool": {
-		"min": 0,
-		"max": 9
+		"database": "twyr",
+		"password": "postgres"
 	}
 });
