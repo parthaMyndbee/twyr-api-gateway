@@ -17,10 +17,10 @@ exports.seed = function(knex, Promise) {
 		if(existingComponentId.rows.length)
 			return null;
 
-		return knex("modules").insert({ 'parent': webappId, 'type': 'component', 'name': 'profiles', 'display_name': 'Profile Manager', 'description': 'The Twy\'r Web Application User Profile Management Component', 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id')
+		return knex("modules").insert({ 'parent': webappId, 'type': 'component', 'name': 'profiles', 'display_name': 'Profile Manager', 'description': 'The Twy\'r Web Application User Profile Management Component', 'admin_only': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id')
 		.then(function(sessionComponentId) {
 			componentId = sessionComponentId[0];
-			return knex("module_templates").insert({ 'module': componentId, 'name': 'profiles-default', 'description': 'The default Profile Management Template', 'media_type': 'all', 'user_type': 'registered', 'is_default': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id');
+			return knex("module_templates").insert({ 'module': componentId, 'name': 'profiles-default', 'description': 'The default Profile Management Template', 'media': 'all', 'role': 'registered', 'is_default': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id');
 		})
 		.then(function(templateId) {
 			templateId = templateId[0];
@@ -35,7 +35,7 @@ exports.seed = function(knex, Promise) {
 		})
 		.then(function(profileWidgetId) {
 			widgetId = profileWidgetId[0];
-			return knex.raw('SELECT id FROM module_template_positions WHERE template = (SELECT id FROM module_templates WHERE module = ? AND user_type = \'registered\') AND name = \'settings\'', [webappId]);
+			return knex.raw('SELECT id FROM module_template_positions WHERE template = (SELECT id FROM module_templates WHERE module = ? AND role = \'registered\') AND name = \'settings\'', [webappId]);
 		})
 		.then(function(tmplPositionId) {
 			tmplPositionId = tmplPositionId.rows[0].id;

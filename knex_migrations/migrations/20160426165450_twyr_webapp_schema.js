@@ -30,6 +30,7 @@ exports.up = function(knex, Promise) {
 				modTbl.text('description').notNullable().defaultTo('Another Twyr Module');
 				modTbl.jsonb('metadata').notNullable().defaultTo('{}');
 				modTbl.jsonb('configuration').notNullable().defaultTo('{}');
+				modTbl.jsonb('configuration_schema').notNullable().defaultTo('{}');
 				modTbl.boolean('admin_only').notNullable().defaultTo(false);
 				modTbl.boolean('enabled').notNullable().defaultTo(true);
 				modTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
@@ -101,11 +102,12 @@ exports.up = function(knex, Promise) {
 				modTmplTbl.uuid('module').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
 				modTmplTbl.text('name').notNullable();
 				modTmplTbl.text('description').notNullable().defaultTo('Another Module Template');
-				modTmplTbl.specificType('media_type', 'public.template_media_type').notNullable().defaultTo('all');
-				modTmplTbl.specificType('user_type', 'public.template_user_type').notNullable().defaultTo('all');
+				modTmplTbl.specificType('media', 'public.template_media_type').notNullable().defaultTo('all');
+				modTmplTbl.specificType('role', 'public.template_user_type').notNullable().defaultTo('all');
 				modTmplTbl.boolean('is_default').notNullable().defaultTo(false);
-				modTmplTbl.jsonb('configuration').notNullable().defaultTo('{}');
 				modTmplTbl.jsonb('metadata').notNullable().defaultTo('{}');
+				modTmplTbl.jsonb('configuration').notNullable().defaultTo('{}');
+				modTmplTbl.jsonb('configuration_schema').notNullable().defaultTo('{}');
 				modTmplTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				modTmplTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
 				modTmplTbl.unique(['module', 'name']);

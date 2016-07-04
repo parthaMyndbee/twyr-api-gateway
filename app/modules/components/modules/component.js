@@ -63,6 +63,10 @@ var modulesComponent = prime({
 						return this.hasMany(self.$ModuleMenuModel, 'module');
 					},
 
+					'templates': function() {
+						return this.hasMany(self.$ModuleTemplateModel, 'module');
+					},
+
 					'parent': function() {
 						return this.belongsTo(self.$ModuleModel, 'parent');
 					},
@@ -142,6 +146,21 @@ var modulesComponent = prime({
 				})
 			});
 
+			Object.defineProperty(self, '$ModuleTemplateModel', {
+				'__proto__': null,
+				'writable': true,
+
+				'value': dbSrvc.Model.extend({
+					'tableName': 'module_templates',
+					'idAttribute': 'id',
+					'hasTimestamps': true,
+
+					'module': function() {
+						return this.belongsTo(self.$ModuleModel, 'module');
+					}
+				})
+			});
+
 			configSrvc.getModuleIdAsync(self)
 			.then(function(id) {
 				return dbSrvc.knex.raw('SELECT id FROM module_permissions WHERE module = ? AND name = ?', [id, 'module-manager']);
@@ -173,6 +192,7 @@ var modulesComponent = prime({
 		this.$router.get('/module-permissions/:id', this._getModulePermission.bind(this));
 		this.$router.get('/module-widgets/:id', this._getModuleWidget.bind(this));
 		this.$router.get('/module-menus/:id', this._getModuleMenu.bind(this));
+		this.$router.get('/module-templates/:id', this._getModuleTemplate.bind(this));
 
 		this.$router.get('/:id', this._getModule.bind(this));
 		this.$router.patch('/:id', this._updateModule.bind(this));
@@ -362,6 +382,43 @@ var modulesComponent = prime({
 		});
 	},
 
+	'_getModuleTemplate': function(request, response, next) {
+		var self = this,
+			dbSrvc = self.dependencies['database-service'],
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		self._checkPermissionAsync(request.user, self['$moduleManagerPermissionId'])
+		.then(function(hasPermission) {
+			if(!hasPermission) {
+				throw new Error('Unauthorized Access');
+			}
+
+			return new self.$ModuleTemplateModel({ 'id': request.params.id })
+			.fetch({ 'withRelated': ['module'] });
+		})
+		.then(function(moduleTemplate) {
+			moduleTemplate = self['$jsonApiMapper'].map(moduleTemplate, 'module-templates');
+			delete moduleTemplate.included;
+
+			response.status(200).json(moduleTemplate);
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body, '\nError: ', err);
+			response.status(422).json({
+				'errors': [{
+					'status': 422,
+					'source': { 'pointer': '/data/id' },
+					'title': 'Get module error',
+					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+				}]
+			});
+		});
+	},
+
 	'_getModule': function(request, response, next) {
 		var self = this,
 			dbSrvc = self.dependencies['database-service'],
@@ -377,17 +434,19 @@ var modulesComponent = prime({
 			}
 
 			return new self.$ModuleModel({ 'id': request.params.id })
-			.fetch({ 'withRelated': ['permissions', 'widgets', 'menus'] });
+			.fetch({ 'withRelated': ['permissions', 'widgets', 'menus', 'templates'] });
 		})
 		.then(function(moduleData) {
 			var configuration = JSON.stringify(moduleData.get('configuration')),
+				configurationSchema = JSON.stringify(moduleData.get('configuration_schema')),
 				metadata = JSON.stringify(moduleData.get('metadata'));
 
 			moduleData = self['$jsonApiMapper'].map(moduleData, 'modules');
 			delete moduleData.included;
 
-			moduleData.data.attributes.configuration = configuration;
 			moduleData.data.attributes.metadata = metadata;
+			moduleData.data.attributes.configuration = configuration;
+			moduleData.data.attributes.configuration_schema = configurationSchema;
 
 			moduleData.data.relationships.permissions.data.forEach(function(modulePermission) {
 				modulePermission.type = 'module-permissions';
@@ -399,6 +458,10 @@ var modulesComponent = prime({
 
 			moduleData.data.relationships.menus.data.forEach(function(moduleMenu) {
 				moduleMenu.type = 'module-menus';
+			});
+
+			moduleData.data.relationships.templates.data.forEach(function(moduleTmpl) {
+				moduleTmpl.type = 'module-templates';
 			});
 
 			response.status(200).json(moduleData);

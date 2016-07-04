@@ -17,10 +17,10 @@ exports.seed = function(knex, Promise) {
 		if(existingComponentId.rows.length)
 			return null;
 
-		return knex("modules").insert({ 'parent': webappId, 'type': 'component', 'name': 'homepage', 'display_name': 'Homepage Manager', 'description': 'The Twy\'r Web Application Homepage Management Component', 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id')
+		return knex("modules").insert({ 'parent': webappId, 'type': 'component', 'name': 'homepage', 'display_name': 'Homepage Manager', 'description': 'The Twy\'r Web Application Homepage Management Component', 'admin_only': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id')
 		.then(function(sessionComponentId) {
 			componentId = sessionComponentId[0];
-			return knex("module_templates").insert({ 'module': componentId, 'name': 'homepage-home', 'description': 'The default Homepage Management Template', 'media_type': 'all', 'user_type': 'all', 'is_default': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id');
+			return knex("module_templates").insert({ 'module': componentId, 'name': 'homepage-home', 'description': 'The default Homepage Template', 'media': 'all', 'role': 'all', 'is_default': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id');
 		})
 		.then(function() {
 			return knex.raw('SELECT id FROM module_permissions WHERE module = ? AND name = ?', [webappId, 'public']);

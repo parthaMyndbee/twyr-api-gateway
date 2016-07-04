@@ -20,8 +20,8 @@ exports.seed = function(knex, Promise) {
 		.then(function(pagesComponentId) {
 			componentId = pagesComponentId[0];
 			return Promise.all([
-				knex("module_templates").insert({ 'module': componentId, 'name': 'pages-default', 'description': 'The default Page Management Template', 'media_type': 'all', 'user_type': 'registered', 'is_default': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }),
-				knex("module_templates").insert({ 'module': componentId, 'name': 'page-view', 'description': 'The default Page View Template', 'media_type': 'all', 'user_type': 'all', 'is_default': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } })
+				knex("module_templates").insert({ 'module': componentId, 'name': 'pages-default', 'description': 'The default Page Management Template', 'media': 'all', 'role': 'registered', 'is_default': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }),
+				knex("module_templates").insert({ 'module': componentId, 'name': 'page-view', 'description': 'The default Page View Template', 'media': 'all', 'role': 'all', 'is_default': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } })
 			]);
 		})
 		.then(function() {

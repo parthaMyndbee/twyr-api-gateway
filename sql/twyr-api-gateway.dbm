@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="1700,296" last-zoom="0.7"
+<dbmodel pgmodeler-ver="0.8.1" last-position="0,471" last-zoom="0.7"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -409,6 +409,9 @@ END;]]></definition>
 		<type name="jsonb"/>
 	</column>
 	<column name="configuration" not-null="true" default-value="'{}'::jsonb">
+		<type name="jsonb"/>
+	</column>
+	<column name="configuration_schema" not-null="true" default-value="'{}'::jsonb">
 		<type name="jsonb"/>
 	</column>
 	<column name="admin_only" default-value="false::boolean">
@@ -2439,10 +2442,13 @@ END;
 	<column name="is_default" not-null="true" default-value="false::boolean">
 		<type name="boolean"/>
 	</column>
+	<column name="metadata" not-null="true" default-value="'{}'::jsonb">
+		<type name="jsonb"/>
+	</column>
 	<column name="configuration" not-null="true" default-value="'{}'::jsonb">
 		<type name="jsonb"/>
 	</column>
-	<column name="metadata" not-null="true" default-value="'{}'::jsonb">
+	<column name="configuration_schema" not-null="true" default-value="'{}'::jsonb">
 		<type name="jsonb"/>
 	</column>
 	<column name="created_at" not-null="true" default-value="now()">
@@ -3032,7 +3038,7 @@ END;]]></definition>
 	 dst-table="public.modules"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="1521.16" y="383.613"/>
+		<position x="1521.16" y="389.613"/>
 	<position x="1521.16" y="266.333"/>
 	<position x="1366.22" y="266.333"/>
 	</line>
