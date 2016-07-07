@@ -188,11 +188,14 @@ var modulesComponent = prime({
 
 	'_addRoutes': function() {
 		this.$router.get('/tree', this._getModuleTree.bind(this));
+		this.$router.get('/availableWidgets/:templateId', this._getAvailableWidgets.bind(this));
 
 		this.$router.get('/module-permissions/:id', this._getModulePermission.bind(this));
 		this.$router.get('/module-widgets/:id', this._getModuleWidget.bind(this));
 		this.$router.get('/module-menus/:id', this._getModuleMenu.bind(this));
+
 		this.$router.get('/module-templates/:id', this._getModuleTemplate.bind(this));
+		this.$router.patch('/module-templates/:id', this._updateModuleTemplate.bind(this));
 
 		this.$router.get('/:id', this._getModule.bind(this));
 		this.$router.patch('/:id', this._updateModule.bind(this));
@@ -259,6 +262,35 @@ var modulesComponent = prime({
 			});
 
 			response.status(200).json(modules);
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body, '\nError: ', err);
+			response.sendStatus(500);
+		});
+	},
+
+	'_getAvailableWidgets': function(request, response, next) {
+		var self = this,
+			dbSrvc = self.dependencies['database-service'],
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		self._checkPermissionAsync(request.user, self['$moduleManagerPermissionId'])
+		.then(function(hasPermission) {
+			if(!hasPermission) {
+				throw new Error('Unauthorized Access');
+			}
+
+			return dbSrvc.knex.raw('SELECT module FROM module_templates WHERE id = ?', [request.params.templateId]);
+		})
+		.then(function(templateModuleId) {
+			return dbSrvc.knex.raw('SELECT id, display_name AS name, description FROM module_widgets WHERE module IN (SELECT id FROM fn_get_module_descendants(?) WHERE level <= 2)', [templateModuleId.rows[0].module]);
+		})
+		.then(function(availableWidgets) {
+			response.status(200).json(availableWidgets.rows);
 			return null;
 		})
 		.catch(function(err) {
@@ -400,8 +432,16 @@ var modulesComponent = prime({
 			.fetch({ 'withRelated': ['module'] });
 		})
 		.then(function(moduleTemplate) {
+			var configuration = JSON.stringify(moduleTemplate.get('configuration')),
+				configurationSchema = JSON.stringify(moduleTemplate.get('configuration_schema')),
+				metadata = JSON.stringify(moduleTemplate.get('metadata'));
+
 			moduleTemplate = self['$jsonApiMapper'].map(moduleTemplate, 'module-templates');
 			delete moduleTemplate.included;
+
+			moduleTemplate.data.attributes.metadata = metadata;
+			moduleTemplate.data.attributes.configuration = configuration;
+			moduleTemplate.data.attributes.configuration_schema = configurationSchema;
 
 			response.status(200).json(moduleTemplate);
 			return null;
@@ -413,6 +453,53 @@ var modulesComponent = prime({
 					'status': 422,
 					'source': { 'pointer': '/data/id' },
 					'title': 'Get module error',
+					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+				}]
+			});
+		});
+	},
+
+	'_updateModuleTemplate': function(request, response, next) {
+		var self = this,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+
+		self._checkPermissionAsync(request.user, self['$moduleManagerPermissionId'])
+		.then(function(hasPermission) {
+			if(!hasPermission) {
+				throw new Error('Unauthorized Access');
+			}
+
+			return self['$jsonApiDeserializer'].deserializeAsync(request.body);
+		})
+		.then(function(jsonDeserializedData) {
+			return self.$ModuleTemplateModel
+			.forge()
+			.save(jsonDeserializedData, {
+				'method': 'update',
+				'patch': true
+			});
+		})
+		.then(function(savedRecord) {
+			response.status(200).json({
+				'data': {
+					'type': request.body.data.type,
+					'id': savedRecord.get('id')
+				}
+			});
+
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			response.status(422).json({
+				'errors': [{
+					'status': 422,
+					'source': { 'pointer': '/data/id' },
+					'title': 'Update profile error',
 					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
 				}]
 			});
