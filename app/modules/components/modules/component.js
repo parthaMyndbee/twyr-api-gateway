@@ -209,7 +209,6 @@ var modulesComponent = prime({
 		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
 		response.type('application/javascript');
 
-
 		self._checkPermissionAsync(request.user, self['$moduleManagerPermissionId'])
 		.then(function(hasPermission) {
 			if(!hasPermission) {
@@ -287,7 +286,7 @@ var modulesComponent = prime({
 			return dbSrvc.knex.raw('SELECT module FROM module_templates WHERE id = ?', [request.params.templateId]);
 		})
 		.then(function(templateModuleId) {
-			return dbSrvc.knex.raw('SELECT id, display_name AS name, description FROM module_widgets WHERE module IN (SELECT id FROM fn_get_module_descendants(?) WHERE level <= 2)', [templateModuleId.rows[0].module]);
+			return dbSrvc.knex.raw('SELECT id, ember_component AS name, display_name AS displayname, description FROM module_widgets WHERE module IN (SELECT id FROM fn_get_module_descendants(?) WHERE level <= 2)', [templateModuleId.rows[0].module]);
 		})
 		.then(function(availableWidgets) {
 			response.status(200).json(availableWidgets.rows);

@@ -43,7 +43,7 @@ var twyrComponentBase = prime({
 
 		this['$router'] = require('express').Router();
 
-		this._checkPermissionAsync = promises.promisify(this._checkPermission);
+		this._checkPermissionAsync = promises.promisify(this._checkPermission.bind(this));
 		base.call(this, module, loader);
 	},
 
