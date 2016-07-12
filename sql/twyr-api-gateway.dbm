@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="0,471" last-zoom="0.7"
+<dbmodel pgmodeler-ver="0.8.1" last-position="0,158" last-zoom="0.7"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -2574,7 +2574,7 @@ END;]]></definition>
 	</constraint>
 </table>
 
-<table name="module_widgets_module_template_positions">
+<table name="module_widget_module_template_positions">
 	<schema name="public"/>
 	<role name="postgres"/>
 	<position x="118.15" y="1199.82"/>
@@ -2596,7 +2596,7 @@ END;]]></definition>
 	<column name="updated_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
 	</column>
-	<constraint name="pk_widget_template_position" type="pk-constr" table="public.module_widgets_module_template_positions">
+	<constraint name="pk_widget_template_position" type="pk-constr" table="public.module_widget_module_template_positions">
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
 </table>
@@ -2661,7 +2661,7 @@ BEGIN
 END;]]></definition>
 </function>
 
-<index name="uidx_widget_template_position" table="public.module_widgets_module_template_positions"
+<index name="uidx_widget_template_position" table="public.module_widget_module_template_positions"
 	 concurrent="false" unique="true" fast-update="false" buffering="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
@@ -2674,7 +2674,7 @@ END;]]></definition>
 
 <trigger name="trigger_check_widget_template_position_upsert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
 	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
-	 table="public.module_widgets_module_template_positions">
+	 table="public.module_widget_module_template_positions">
 		<function signature="public.fn_check_widget_template_position_upsert_is_valid()"/>
 </trigger>
 
@@ -2998,13 +2998,13 @@ END;]]></definition>
 </constraint>
 
 <constraint name="fk_widget_template_position_module_widget" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_widgets" table="public.module_widgets_module_template_positions">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_widgets" table="public.module_widget_module_template_positions">
 	<columns names="module_widget" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="fk_widget_template_position_template_positions" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_template_positions" table="public.module_widgets_module_template_positions">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_template_positions" table="public.module_widget_module_template_positions">
 	<columns names="template_position" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
@@ -3192,12 +3192,12 @@ END;]]></definition>
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_widget_template_position_module_widgets" type="relfk"
-	 src-table="public.module_widgets_module_template_positions"
+	 src-table="public.module_widget_module_template_positions"
 	 dst-table="public.module_widgets"
 	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_widget_template_position_template_positions" type="relfk"
-	 src-table="public.module_widgets_module_template_positions"
+	 src-table="public.module_widget_module_template_positions"
 	 dst-table="public.module_template_positions"
 	 src-required="false" dst-required="false"/>
 

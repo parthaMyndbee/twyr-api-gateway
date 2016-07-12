@@ -2192,9 +2192,9 @@ CREATE TABLE public.module_template_positions(
 ALTER TABLE public.module_template_positions OWNER TO postgres;
 -- ddl-end --
 
--- object: public.module_widgets_module_template_positions | type: TABLE --
--- DROP TABLE IF EXISTS public.module_widgets_module_template_positions CASCADE;
-CREATE TABLE public.module_widgets_module_template_positions(
+-- object: public.module_widget_module_template_positions | type: TABLE --
+-- DROP TABLE IF EXISTS public.module_widget_module_template_positions CASCADE;
+CREATE TABLE public.module_widget_module_template_positions(
 	id uuid NOT NULL DEFAULT uuid_generate_v4(),
 	template_position uuid NOT NULL,
 	module_widget uuid NOT NULL,
@@ -2205,7 +2205,7 @@ CREATE TABLE public.module_widgets_module_template_positions(
 
 );
 -- ddl-end --
-ALTER TABLE public.module_widgets_module_template_positions OWNER TO postgres;
+ALTER TABLE public.module_widget_module_template_positions OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.fn_check_widget_template_position_upsert_is_valid | type: FUNCTION --
@@ -2269,7 +2269,7 @@ ALTER FUNCTION public.fn_check_widget_template_position_upsert_is_valid() OWNER 
 
 -- object: uidx_widget_template_position | type: INDEX --
 -- DROP INDEX IF EXISTS public.uidx_widget_template_position CASCADE;
-CREATE UNIQUE INDEX uidx_widget_template_position ON public.module_widgets_module_template_positions
+CREATE UNIQUE INDEX uidx_widget_template_position ON public.module_widget_module_template_positions
 	USING btree
 	(
 	  template_position ASC NULLS LAST,
@@ -2278,10 +2278,10 @@ CREATE UNIQUE INDEX uidx_widget_template_position ON public.module_widgets_modul
 -- ddl-end --
 
 -- object: trigger_check_widget_template_position_upsert_is_valid | type: TRIGGER --
--- DROP TRIGGER IF EXISTS trigger_check_widget_template_position_upsert_is_valid ON public.module_widgets_module_template_positions  ON public.module_widgets_module_template_positions CASCADE;
+-- DROP TRIGGER IF EXISTS trigger_check_widget_template_position_upsert_is_valid ON public.module_widget_module_template_positions  ON public.module_widget_module_template_positions CASCADE;
 CREATE TRIGGER trigger_check_widget_template_position_upsert_is_valid
 	BEFORE INSERT OR UPDATE
-	ON public.module_widgets_module_template_positions
+	ON public.module_widget_module_template_positions
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_check_widget_template_position_upsert_is_valid();
 -- ddl-end --
@@ -2608,15 +2608,15 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_widget_template_position_module_widget | type: CONSTRAINT --
--- ALTER TABLE public.module_widgets_module_template_positions DROP CONSTRAINT IF EXISTS fk_widget_template_position_module_widget CASCADE;
-ALTER TABLE public.module_widgets_module_template_positions ADD CONSTRAINT fk_widget_template_position_module_widget FOREIGN KEY (module_widget)
+-- ALTER TABLE public.module_widget_module_template_positions DROP CONSTRAINT IF EXISTS fk_widget_template_position_module_widget CASCADE;
+ALTER TABLE public.module_widget_module_template_positions ADD CONSTRAINT fk_widget_template_position_module_widget FOREIGN KEY (module_widget)
 REFERENCES public.module_widgets (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: fk_widget_template_position_template_positions | type: CONSTRAINT --
--- ALTER TABLE public.module_widgets_module_template_positions DROP CONSTRAINT IF EXISTS fk_widget_template_position_template_positions CASCADE;
-ALTER TABLE public.module_widgets_module_template_positions ADD CONSTRAINT fk_widget_template_position_template_positions FOREIGN KEY (template_position)
+-- ALTER TABLE public.module_widget_module_template_positions DROP CONSTRAINT IF EXISTS fk_widget_template_position_template_positions CASCADE;
+ALTER TABLE public.module_widget_module_template_positions ADD CONSTRAINT fk_widget_template_position_template_positions FOREIGN KEY (template_position)
 REFERENCES public.module_template_positions (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
