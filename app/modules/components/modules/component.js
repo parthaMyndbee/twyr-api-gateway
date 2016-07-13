@@ -188,7 +188,9 @@ var modulesComponent = prime({
 
 	'_addRoutes': function() {
 		this.$router.get('/tree', this._getModuleTree.bind(this));
+
 		this.$router.get('/availableWidgets/:templateId', this._getAvailableWidgets.bind(this));
+		this.$router.patch('/templatePositionModuleWidgets', this._updatePositionWidgets.bind(this));
 
 		this.$router.get('/module-permissions/:id', this._getModulePermission.bind(this));
 		this.$router.get('/module-widgets/:id', this._getModuleWidget.bind(this));
@@ -295,6 +297,48 @@ var modulesComponent = prime({
 		.catch(function(err) {
 			loggerSrvc.error('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body, '\nError: ', err);
 			response.sendStatus(500);
+		});
+	},
+
+	'_updatePositionWidgets': function(request, response, next) {
+		var self = this,
+			dbSrvc = self.dependencies['database-service'],
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		dbSrvc.knex
+		.transaction(function(trx) {
+			trx.raw('DELETE FROM module_widget_module_template_positions WHERE template_position = ?', [request.body.position])
+			.then(function() {
+				if(!request.body.widgets)
+					return null;
+
+				var promiseResolutions = [];
+				request.body.widgets.forEach(function(widgetId, index) {
+					promiseResolutions.push(trx.raw('INSERT INTO module_widget_module_template_positions(template_position, module_widget, display_order) VALUES (?, ?, ?) ON CONFLICT (template_position, module_widget) DO UPDATE SET display_order = ?', [request.body.position, widgetId, index, index]));
+				});
+
+				return promises.all(promiseResolutions);
+			})
+			.then(trx.commit)
+			.catch(trx.rollback);
+		})
+		.then(function() {
+			response.status(200).json({
+				'status': true,
+				'responseText': 'Updated Widget Poistions'
+			});
+
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body, '\nError: ', err);
+			response.status(500).json({
+				'status': false,
+				'responseText': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+			});
 		});
 	},
 
