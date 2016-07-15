@@ -48,6 +48,7 @@ exports.up = function(knex, Promise) {
 				userTbl.text('last_name').notNullable();
 				userTbl.text('nickname');
 				userTbl.uuid('profile_image');
+				userTbl.jsonb('profile_image_metadata');
 				userTbl.specificType('gender', 'public.gender').notNullable().defaultTo('other');
 				userTbl.timestamp('dob');
 				userTbl.uuid('home_module_menu');
@@ -1778,22 +1779,25 @@ exports.up = function(knex, Promise) {
 					'COST 1 ' +
 					'AS $$ ' +
 				'DECLARE ' +
-					'template_module 	UUID; ' +
-					'widget_module		UUID; ' +
-					'is_child_component		INTEGER; ' +
+					'template_module 			UUID; ' +
+					'template_module_parent 	UUID; ' +
+					'widget_module				UUID; ' +
+					'is_child_component			INTEGER; ' +
 				'BEGIN ' +
 					'template_module := NULL; ' +
+					'template_module_parent := NULL; ' +
 					'widget_module := NULL; ' +
 					'is_child_component := 0; ' +
 
 					'SELECT ' +
-						'module ' +
+						'id, parent ' +
 					'FROM ' +
-						'module_templates ' +
+						'modules ' +
 					'WHERE ' +
-						'id = (SELECT template FROM module_template_positions WHERE id = NEW.template_position) ' +
+						'id = (SELECT module FROM module_templates WHERE id = (SELECT template FROM module_template_positions WHERE id = NEW.template_position)) ' +
 					'INTO ' +
-						'template_module; ' +
+						'template_module, ' +
+						'template_module_parent; ' +
 
 					'SELECT ' +
 						'module ' +
@@ -1804,10 +1808,28 @@ exports.up = function(knex, Promise) {
 					'INTO ' +
 						'widget_module; ' +
 
+					'IF template_module_parent IS NOT NULL ' +
+					'THEN ' +
+						'SELECT ' +
+							'count(A.id) ' +
+						'FROM ' +
+							'(SELECT id FROM fn_get_module_descendants(template_module_parent) WHERE level = 2 AND type = \'component\') A ' +
+						'WHERE ' +
+							'A.id = widget_module ' +
+						'INTO ' +
+							'is_child_component; ' +
+
+						'IF is_child_component > 0 ' +
+						'THEN ' +
+							'RETURN NEW; ' +
+						'END IF; ' +
+					'END IF; ' +
+
+					'is_child_component := 0; ' +
 					'SELECT ' +
 						'count(A.id) ' +
 					'FROM ' +
-						'(SELECT id FROM fn_get_module_descendants(template_module) WHERE level <= 2) A ' +
+						'(SELECT id FROM fn_get_module_descendants(template_module) WHERE level <= 2 AND type = \'component\') A ' +
 					'WHERE ' +
 						'A.id = widget_module ' +
 					'INTO ' +
@@ -1815,7 +1837,7 @@ exports.up = function(knex, Promise) {
 
 					'IF is_child_component <= 0 ' +
 					'THEN ' +
-						'RAISE SQLSTATE \'2F003\' USING MESSAGE = \'Only widgets belonging to the same component or one of its children can be assigned to a components template\'; ' +
+						'RAISE SQLSTATE \'2F003\' USING MESSAGE = \'Only widgets belonging to the same component or one of its children or a sibling can be assigned to a components template\'; ' +
 						'RETURN NULL; ' +
 					'END IF; ' +
 

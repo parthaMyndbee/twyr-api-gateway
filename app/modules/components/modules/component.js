@@ -285,13 +285,32 @@ var modulesComponent = prime({
 				throw new Error('Unauthorized Access');
 			}
 
-			return dbSrvc.knex.raw('SELECT module FROM module_templates WHERE id = ?', [request.params.templateId]);
+			return dbSrvc.knex.raw('SELECT id, parent FROM modules WHERE id = (SELECT module FROM module_templates WHERE id = ?)', [request.params.templateId]);
 		})
 		.then(function(templateModuleId) {
-			return dbSrvc.knex.raw('SELECT id, ember_component AS name, display_name AS displayname, description FROM module_widgets WHERE module IN (SELECT id FROM fn_get_module_descendants(?) WHERE level <= 2)', [templateModuleId.rows[0].module]);
+			var promiseResolutions = [];
+			promiseResolutions.push(dbSrvc.knex.raw('SELECT id, ember_component AS name, display_name AS displayname, description FROM module_widgets WHERE module IN (SELECT id FROM fn_get_module_descendants(?) WHERE level <= 2 AND type = \'component\')', [templateModuleId.rows[0].id]));
+			if(templateModuleId.rows[0].parent) {
+				promiseResolutions.push(dbSrvc.knex.raw('SELECT id, ember_component AS name, display_name AS displayname, description FROM module_widgets WHERE module IN (SELECT id FROM fn_get_module_descendants(?) WHERE level = 2 AND type = \'component\')', [templateModuleId.rows[0].parent]));
+			}
+
+			return promises.all(promiseResolutions);
 		})
-		.then(function(availableWidgets) {
-			response.status(200).json(availableWidgets.rows);
+		.then(function(results) {
+			var availableWidgets = [],
+				usedIds = [];
+
+			results.forEach(function(widgets) {
+				widgets.rows.forEach(function(widget) {
+					if(usedIds.indexOf(widget.id) >= 0)
+						return;
+
+					usedIds.push(widget.id);
+					availableWidgets.push(widget);
+				});
+			});
+
+			response.status(200).json(availableWidgets);
 			return null;
 		})
 		.catch(function(err) {

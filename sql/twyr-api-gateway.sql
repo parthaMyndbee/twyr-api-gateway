@@ -414,6 +414,7 @@ CREATE TABLE public.users(
 	last_name text NOT NULL,
 	nickname text,
 	profile_image uuid,
+	profile_image_metadata jsonb,
 	gender public.gender NOT NULL DEFAULT 'male'::gender,
 	dob date,
 	home_module_menu uuid,
@@ -2219,22 +2220,27 @@ CREATE FUNCTION public.fn_check_widget_template_position_upsert_is_valid ()
 	COST 1
 	AS $$
 DECLARE
-	template_module 	UUID;
-	widget_module	UUID;
-	is_child_component	INTEGER;
+	template_module 		UUID;
+	template_module_parent	UUID;
+	widget_module		UUID;
+	is_child_component		INTEGER;
 BEGIN
 	template_module := NULL;
+	template_module_parent := NULL;
 	widget_module := NULL;
 	is_child_component := 0;
 
-	SELECT
-		module
+
+	SELECT 
+		id,
+		parent
 	FROM
-		module_templates
+		modules
 	WHERE
-		id = (SELECT template FROM module_template_positions WHERE id = NEW.template_position)
+		id = (SELECT module FROM module_templates WHERE id = (SELECT template FROM module_template_positions WHERE id = NEW.template_position))
 	INTO
-		template_module;
+		template_module,
+		template_module_parent;
 
 	SELECT
 		module
@@ -2245,6 +2251,24 @@ BEGIN
 	INTO
 		widget_module;
 
+	IF template_module_parent IS NOT NULL
+	THEN
+		SELECT
+			count(A.id)
+		FROM
+			(SELECT id FROM fn_get_module_descendants(template_module_parent) WHERE level = 2) A
+		WHERE
+			A.id = widget_module
+		INTO
+			is_child_component;
+
+		IF is_child_component > 0
+		THEN
+			RETURN NEW;
+		END IF;
+	END IF;
+
+	is_child_component :- 0;
 	SELECT
 		count(A.id)
 	FROM
@@ -2256,7 +2280,7 @@ BEGIN
 
 	IF is_child_component <= 0
 	THEN
-		RAISE SQLSTATE '2F003' USING MESSAGE = 'Only widgets belonging to the same component or one of its children can be assigned to a components template';
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Only widgets belonging to the same component or one of its children or a sibling can be assigned to a components template';
 		RETURN NULL;
 	END IF;
 

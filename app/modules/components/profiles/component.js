@@ -22,8 +22,7 @@ var base = require('./../component-base').baseComponent,
  */
 var bcrypt = require('bcrypt-nodejs'),
 	filesystem = require('fs'),
-	path = require('path'),
-	uuid = require('node-uuid');
+	path = require('path');
 
 var profilesComponent = prime({
 	'inherits': base,
@@ -129,9 +128,6 @@ var profilesComponent = prime({
 		this.$router.get('/emergencyContact', this._getEmergencyContact.bind(this));
 		this.$router.get('/homepages', this._getHomepages.bind(this));
 
-		this.$router.get('/get-image', this._getProfileImage.bind(this));
-		this.$router.post('/upload-image', this._updateProfileImage.bind(this));
-
 		this.$router.get('/:id', this._getProfile.bind(this));
 		this.$router.patch('/:id', this._updateProfile.bind(this));
 
@@ -220,6 +216,8 @@ var profilesComponent = prime({
 		.fetch({ 'withRelated': ['profileContacts', 'profileEmergencyContacts', 'profileOthersEmergencyContacts', 'profileSocialLogins'] })
 		.then(function(profileData) {
 			profileData = self['$jsonApiMapper'].map(profileData, 'profiles');
+			profileData.data.attributes['profile_image_metadata'] = JSON.stringify(profileData.data.attributes['profile_image_metadata']);
+
 			delete profileData.data.attributes.password;
 			delete profileData.included;
 
@@ -262,6 +260,7 @@ var profilesComponent = prime({
 		self['$jsonApiDeserializer'].deserializeAsync(request.body)
 		.then(function(jsonDeserializedData) {
 			delete jsonDeserializedData.email;
+			delete jsonDeserializedData.profile_image_metadata;
 			delete jsonDeserializedData.created_at;
 			delete jsonDeserializedData.updated_at;
 
@@ -293,58 +292,6 @@ var profilesComponent = prime({
 				}]
 			});
 		});
-	},
-
-	'_getProfileImage': function(request, response, next) {
-		var self = this,
-			loggerSrvc = self.dependencies['logger-service'];
-
-		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
-
-		new self.$UserModel({ 'id': request.user.id })
-		.fetch()
-		.then(function(user) {
-			var profileImageName = path.join(self.basePath, self.$config.profileImagePath, (user.get('profile_image') || 'anonymous') + '.png');
-			response.sendFile(profileImageName);
-			return null;
-		})
-		.catch(function(err) {
-			loggerSrvc.error('Error servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
-			response.status(422).json({ 'code': 422, 'message': err.message || err.detail || 'Error saving profile image to the database' });
-		});
-	},
-
-	'_updateProfileImage': function(request, response, next) {
-		var self = this,
-			Busboy = require('busboy'),
-			loggerSrvc = self.dependencies['logger-service'];
-
-		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
-		response.type('application/javascript');
-
-		var busboy = new Busboy({ 'headers': request.headers }),
-			imageId = uuid.v4().toString(),
-			profileImageName = path.join(self.basePath, self.$config.profileImagePath, imageId);
-
-		busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
-			profileImageName += path.extname(filename);
-			file.pipe(filesystem.createWriteStream(profileImageName));
-		});
-
-		busboy.on('finish', function() {
-			new self.$UserModel({ 'id': request.user.id })
-			.save({ 'profile_image': imageId }, { 'patch' : true })
-			.then(function() {
-				response.status(200).json({ 'imageId': imageId });
-				return null;
-			})
-			.catch(function(err) {
-				loggerSrvc.error('Error servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
-				response.status(422).json({ 'code': 422, 'message': err.message || err.detail || 'Error saving profile image to the database' });
-			});
-		});
-
-		request.pipe(busboy);
 	},
 
 	'_getProfileContact': function(request, response, next) {
