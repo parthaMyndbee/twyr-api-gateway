@@ -33,6 +33,7 @@ var masterdataComponent = prime({
 		this.$router.get('/emergencyContactTypes', this._getEmergencyContactTypes.bind(this));
 		this.$router.get('/genders', this._getGenders.bind(this));
 		this.$router.get('/server-permissions', this._getServerPermissions.bind(this));
+		this.$router.get('/publish-status-list', this._getPublishStatusList.bind(this));
 	},
 
 	'_getContactTypes': function(request, response, next) {
@@ -131,6 +132,29 @@ var masterdataComponent = prime({
 		.catch(function(err) {
 			loggerSrvc.error('Error servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
 			response.status(422).json({ 'code': 422, 'message': err.message || err.detail || 'Error fetching genders from the database' });
+		});
+	},
+
+	'_getPublishStatusList': function(request, response, next) {
+		var self = this,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.silly('Servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params);
+		response.type('application/javascript');
+
+		self.dependencies['database-service'].knex.raw('SELECT unnest(enum_range(NULL::publish_status)) AS status;')
+		.then(function(statuses) {
+			var responseData = [];
+			for(var idx in statuses.rows) {
+				responseData.push(statuses.rows[idx]['status']);
+			}
+
+			response.status(200).json(responseData);
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			response.status(422).json({ 'code': 422, 'message': err.message || err.detail || 'Error fetching publish statuses from the database' });
 		});
 	},
 

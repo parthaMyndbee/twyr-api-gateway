@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="2293,446" last-zoom="0.7"
+<dbmodel pgmodeler-ver="0.8.1" last-position="180,446" last-zoom="0.7"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -2796,7 +2796,7 @@ END;]]></definition>
 <table name="user_emergency_contacts">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="4991.43" y="1768.58"/>
+	<position x="5388.57" y="1774.29"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2831,7 +2831,7 @@ END;]]></definition>
 		</idxelement>
 </index>
 
-<usertype name="page_publish_status" configuration="enumeration">
+<usertype name="publish_status" configuration="enumeration">
 	<schema name="public"/>
 	<role name="postgres"/>
 	<enumeration values="draft,published"/>
@@ -2840,7 +2840,7 @@ END;]]></definition>
 <table name="pages">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="3424.29" y="1798.57"/>
+	<position x="4674.29" y="1780"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2854,7 +2854,7 @@ END;]]></definition>
 		<type name="text"/>
 	</column>
 	<column name="status" not-null="true" default-value="'draft'::page_publish_status">
-		<type name="public.page_publish_status"/>
+		<type name="public.publish_status"/>
 	</column>
 	<column name="created_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
@@ -2863,6 +2863,42 @@ END;]]></definition>
 		<type name="timestamptz"/>
 	</column>
 	<constraint name="pk_pages" type="pk-constr" table="public.pages">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<usertype name="menu_type" configuration="enumeration">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<enumeration values="horizontal,vertical"/>
+</usertype>
+
+<table name="menus">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1067.14" y="1818.57"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="type" not-null="true" default-value="'horizontal'::menu_type">
+		<type name="public.menu_type"/>
+	</column>
+	<column name="status" not-null="true" default-value="'draft'::publish_status">
+		<type name="public.publish_status"/>
+	</column>
+	<column name="module_widget" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_menus" type="pk-constr" table="public.menus">
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
 </table>
@@ -3059,6 +3095,12 @@ END;]]></definition>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
+<constraint name="fk_menus_module_widgets" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.module_widgets" table="public.menus">
+	<columns names="module_widget" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
 <relationship name="rel_modules_modules" type="relfk"
 	 src-table="public.modules"
 	 dst-table="public.modules"
@@ -3240,6 +3282,11 @@ END;]]></definition>
 <relationship name="rel_pages_users" type="relfk"
 	 src-table="public.pages"
 	 dst-table="public.users"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_menus_module_widgets" type="relfk"
+	 src-table="public.menus"
+	 dst-table="public.module_widgets"
 	 src-required="false" dst-required="false"/>
 
 </dbmodel>

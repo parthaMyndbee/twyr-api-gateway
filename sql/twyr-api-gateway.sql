@@ -2424,12 +2424,12 @@ CREATE UNIQUE INDEX uidx_user_emergency_contacts ON public.user_emergency_contac
 	);
 -- ddl-end --
 
--- object: public.page_publish_status | type: TYPE --
--- DROP TYPE IF EXISTS public.page_publish_status CASCADE;
-CREATE TYPE public.page_publish_status AS
+-- object: public.publish_status | type: TYPE --
+-- DROP TYPE IF EXISTS public.publish_status CASCADE;
+CREATE TYPE public.publish_status AS
  ENUM ('draft','published');
 -- ddl-end --
-ALTER TYPE public.page_publish_status OWNER TO postgres;
+ALTER TYPE public.publish_status OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.pages | type: TABLE --
@@ -2439,7 +2439,7 @@ CREATE TABLE public.pages(
 	author uuid NOT NULL,
 	title text NOT NULL,
 	content text,
-	status public.page_publish_status NOT NULL DEFAULT 'draft'::page_publish_status,
+	status public.publish_status NOT NULL DEFAULT 'draft'::page_publish_status,
 	created_at timestamptz NOT NULL DEFAULT now(),
 	updated_at timestamptz NOT NULL DEFAULT now(),
 	CONSTRAINT pk_pages PRIMARY KEY (id)
@@ -2447,6 +2447,31 @@ CREATE TABLE public.pages(
 );
 -- ddl-end --
 ALTER TABLE public.pages OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.menu_type | type: TYPE --
+-- DROP TYPE IF EXISTS public.menu_type CASCADE;
+CREATE TYPE public.menu_type AS
+ ENUM ('horizontal','vertical');
+-- ddl-end --
+ALTER TYPE public.menu_type OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.menus | type: TABLE --
+-- DROP TABLE IF EXISTS public.menus CASCADE;
+CREATE TABLE public.menus(
+	id uuid NOT NULL DEFAULT uuid_generate_v4(),
+	name text NOT NULL,
+	type public.menu_type NOT NULL DEFAULT 'horizontal'::menu_type,
+	status public.publish_status NOT NULL DEFAULT 'draft'::publish_status,
+	module_widget uuid NOT NULL,
+	created_at timestamptz NOT NULL DEFAULT now(),
+	updated_at timestamptz NOT NULL DEFAULT now(),
+	CONSTRAINT pk_menus PRIMARY KEY (id)
+
+);
+-- ddl-end --
+ALTER TABLE public.menus OWNER TO postgres;
 -- ddl-end --
 
 -- object: fk_modules_modules | type: CONSTRAINT --
@@ -2671,6 +2696,13 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE public.pages ADD CONSTRAINT fk_pages_user FOREIGN KEY (author)
 REFERENCES public.users (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: fk_menus_module_widgets | type: CONSTRAINT --
+-- ALTER TABLE public.menus DROP CONSTRAINT IF EXISTS fk_menus_module_widgets CASCADE;
+ALTER TABLE public.menus ADD CONSTRAINT fk_menus_module_widgets FOREIGN KEY (module_widget)
+REFERENCES public.module_widgets (id) MATCH FULL
+ON DELETE NO ACTION ON UPDATE NO ACTION;
 -- ddl-end --
 
 

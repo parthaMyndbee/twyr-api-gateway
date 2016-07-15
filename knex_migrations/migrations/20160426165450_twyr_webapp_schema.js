@@ -14,7 +14,8 @@ exports.up = function(knex, Promise) {
 			knex.schema.raw("CREATE TYPE public.module_type AS ENUM ('component','middleware','service')"),
 			knex.schema.raw("CREATE TYPE public.tenant_type AS ENUM ('department','organization')"),
 			knex.schema.raw("CREATE TYPE public.template_media_type AS ENUM ('all','desktop', 'tablet', 'mobile', 'other')"),
-			knex.schema.raw("CREATE TYPE public.template_user_type AS ENUM ('all','public', 'registered', 'administrator', 'other')")
+			knex.schema.raw("CREATE TYPE public.template_user_type AS ENUM ('all','public', 'registered', 'administrator', 'other')"),
+			knex.schema.raw("CREATE TYPE public.publish_status AS ENUM ('draft','published')")
 		]);
 	})
 	// Step 3: Setup primary tables  - those that aren't dependent on other tables (i.e. no foreign keys to other tables)

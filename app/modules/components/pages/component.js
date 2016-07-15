@@ -90,7 +90,6 @@ var pagesComponent = prime({
 
 	'_addRoutes': function() {
 		this.$router.get('/list', this._getPageList.bind(this));
-		this.$router.get('/publish-status-list', this._getPublishStatusList.bind(this));
 
 		this.$router.get('/pages-defaults/:id', this._getPage.bind(this));
 		this.$router.post('/pages-defaults', this._addPage.bind(this));
@@ -135,29 +134,6 @@ var pagesComponent = prime({
 		.catch(function(err) {
 			self.dependencies['logger-service'].error(self.name + '::_selectTemplates Error: ', err);
 			response.sendStatus(500);
-		});
-	},
-
-	'_getPublishStatusList': function(request, response, next) {
-		var self = this,
-			loggerSrvc = self.dependencies['logger-service'];
-
-		loggerSrvc.silly('Servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params);
-		response.type('application/javascript');
-
-		self.dependencies['database-service'].knex.raw('SELECT unnest(enum_range(NULL::page_publish_status)) AS status;')
-		.then(function(statuses) {
-			var responseData = [];
-			for(var idx in statuses.rows) {
-				responseData.push(statuses.rows[idx]['status']);
-			}
-
-			response.status(200).json(responseData);
-			return null;
-		})
-		.catch(function(err) {
-			loggerSrvc.error('Error servicing request "' + request.path + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
-			response.status(422).json({ 'code': 422, 'message': err.message || err.detail || 'Error fetching publish statuses from the database' });
 		});
 	},
 
@@ -332,7 +308,7 @@ var pagesComponent = prime({
 				'errors': [{
 					'status': 422,
 					'source': { 'pointer': '/data/id' },
-					'title': 'Delete page error',
+					'title': 'Update page error',
 					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
 				}]
 			});
@@ -357,7 +333,6 @@ var pagesComponent = prime({
 		.then(function(hasPermission) {
 			if(!hasPermission) {
 				throw new Error('Unauthorized Access');
-				return null;
 			}
 
 			return dbSrvc.raw('DELETE FROM module_menus WHERE module = ? AND ember_route = ?', [moduleId, '"page-view", "' + request.params.id + '"']);
