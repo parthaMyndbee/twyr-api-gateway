@@ -325,7 +325,12 @@ var twyrModuleBase = prime({
 	},
 
 	'_exists': function (path, mode, callback) {
-		filesystem.access(path, mode || filesystem.F_OK, function (err) {
+		if(!callback) {
+			callback = mode;
+			mode = filesystem.constants.F_OK;
+		}
+
+		filesystem.access(path, mode || filesystem.constants.F_OK, function (err) {
 			if(callback) callback(null, !err);
 		});
 	},
