@@ -26,7 +26,7 @@ exports.config = ({
 		"secure": false,
 		"httpOnly": false
 	},
-	"maxRequestSize": 1000000,
+	"maxRequestSize": 5242880,
 	"requestTimeout": 25,
 	"templateEngine": "ejs",
 	"connectionTimeout": 30,

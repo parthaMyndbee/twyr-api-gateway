@@ -217,7 +217,6 @@ var pagesComponent = prime({
 		.then(function(jsonDeserializedData) {
 			jsonDeserializedData.author = request.user.id;
 			permission = jsonDeserializedData.permission;
-
 			delete jsonDeserializedData.permission;
 
 			return self.$PageModel
@@ -231,7 +230,7 @@ var pagesComponent = prime({
 			var promiseResolutions = [];
 
 			promiseResolutions.push(savedRecord);
-			promiseResolutions.push(dbSrvc.raw('INSERT INTO module_menus(module, permission, ember_route, icon_class, display_name) VALUES(?, ?, ?, ?, ?)', [moduleId, permission, '"page-view", "' + savedRecord.get('id') + '"', 'fa fa-edit', savedRecord.get('title')]));
+			promiseResolutions.push(dbSrvc.raw('INSERT INTO module_menus(module, permission, category, ember_route, icon_class, display_name) VALUES(?, ?, ?, ?, ?, ?)', [moduleId, permission, 'Pages', '"page-view", "' + savedRecord.get('id') + '"', 'fa fa-edit', savedRecord.get('title')]));
 
 			return promises.all(promiseResolutions);
 		})

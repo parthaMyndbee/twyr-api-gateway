@@ -1731,6 +1731,7 @@ CREATE TABLE public.module_menus(
 	parent uuid,
 	module uuid NOT NULL,
 	permission uuid NOT NULL,
+	category text NOT NULL DEFAULT 'Component',
 	ember_route text NOT NULL,
 	icon_class text NOT NULL,
 	display_name text NOT NULL,

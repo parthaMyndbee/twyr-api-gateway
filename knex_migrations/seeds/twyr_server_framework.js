@@ -108,7 +108,7 @@ exports.seed = function(knex, Promise) {
 			return [ userId.rows[0]['id'] ];
 		}
 
-		return knex("users").insert({ 'email': 'root@twyr.com', 'password': '$2a$10$P7Vl27zD8grTPiocNj5U2eU5X7/9Vyy/tBVI3PO5KNR3tWkHhtM4S', 'first_name': 'Root', 'last_name': 'Twyr', 'nickname': 'root' }).returning('id');
+		return knex("users").insert({ 'email': 'root@twyr.com', 'password': '$2a$10$P7Vl27zD8grTPiocNj5U2eU5X7/9Vyy/tBVI3PO5KNR3tWkHhtM4S', 'first_name': 'Root', 'last_name': 'Twyr', 'nickname': 'root', 'dob': '2014-06-02 12:00:00' }).returning('id');
 	})
 	.then(function(userId) {
 		rootUserId = userId[0];

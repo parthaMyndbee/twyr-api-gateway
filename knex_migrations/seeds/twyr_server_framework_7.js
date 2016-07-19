@@ -27,6 +27,12 @@ exports.seed = function(knex, Promise) {
 		.then(function(permId) {
 			menuPermId = permId[0];
 			return knex("module_menus").insert({ 'parent': null, 'module': componentId, 'permission': menuPermId, 'ember_route': 'menus-default', 'icon_class': 'fa fa-bars', 'display_name': 'Menu Manager', 'description': 'The default Menus Manager that ships with the Web Application', 'tooltip': 'Default Menu Manager', 'is_default_home': false });
+		})
+		.then(function() {
+			return Promise.all([
+				knex("modules").insert({ 'parent': componentId, 'type': 'component', 'name': 'horizontal', 'display_name': 'Horizontal Menu Designer', 'description': 'The Twy\'r Web Application Horizontal Menu Designer Component', 'admin_only': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }),
+				knex("modules").insert({ 'parent': componentId, 'type': 'component', 'name': 'vertical', 'display_name': 'Vertical Menu Designer', 'description': 'The Twy\'r Web Application Vertical Menu Designer Component', 'admin_only': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } })
+			]);
 		});
 	});
 };

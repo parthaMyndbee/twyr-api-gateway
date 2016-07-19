@@ -177,12 +177,28 @@ var profilesComponent = prime({
 		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
 		response.type('application/javascript');
 
-		dbSrvc.knex.raw('SELECT id, display_name, description FROM module_menus WHERE permission IN (SELECT DISTINCT permission FROM fn_get_user_permissions(?)) ORDER BY display_name', [request.user.id])
+		dbSrvc.knex.raw('SELECT id, category, display_name, description FROM module_menus WHERE permission IN (SELECT DISTINCT permission FROM fn_get_user_permissions(?)) ORDER BY display_name', [request.user.id])
 		.then(function(availHomepages) {
-			var responseData = [];
+			var categoryData = {},
+				responseData = [];
+
 			for(var idx in availHomepages.rows) {
-				responseData.push(availHomepages.rows[idx]);
+				if(!categoryData[availHomepages.rows[idx].category]) {
+					categoryData[availHomepages.rows[idx].category] = {
+						'text': availHomepages.rows[idx].category,
+						'children': []
+					};
+				}
+
+				categoryData[availHomepages.rows[idx].category].children.push({
+					'id': availHomepages.rows[idx].id,
+					'text': availHomepages.rows[idx].display_name
+				});
 			}
+
+			Object.keys(categoryData).forEach(function(category) {
+				responseData.push(categoryData[category]);
+			});
 
 			response.status(200).json(responseData);
 			return null;

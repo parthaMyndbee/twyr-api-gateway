@@ -29,7 +29,7 @@ exports.config = ({
 		'https://portal.twyrframework.com'
 	],
 	"templateEngine": "ejs",
-	"maxRequestSize": 1000000,
+	"maxRequestSize": 5242880,
 	"requestTimeout": 25,
 	"connectionTimeout": 30
 });

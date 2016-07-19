@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="180,446" last-zoom="0.7"
+<dbmodel pgmodeler-ver="0.8.1" last-position="0,471" last-zoom="0.7"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -2020,6 +2020,9 @@ END;]]></definition>
 	<column name="permission" not-null="true">
 		<type name="uuid"/>
 	</column>
+	<column name="category" not-null="true" default-value="'Components'">
+		<type name="text"/>
+	</column>
 	<column name="ember_route" not-null="true">
 		<type name="text"/>
 	</column>
@@ -3223,7 +3226,7 @@ END;]]></definition>
 	 dst-table="public.module_menus"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="1816.85" y="1277.37"/>
+		<position x="1816.85" y="1283.37"/>
 	<position x="1816.85" y="1166.09"/>
 	<position x="1663.71" y="1166.09"/>
 	</line>

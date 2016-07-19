@@ -218,6 +218,7 @@ exports.up = function(knex, Promise) {
 				modMenusTbl.uuid('parent').references('id').inTable('module_menus').onDelete('CASCADE').onUpdate('CASCADE');
 				modMenusTbl.uuid('module').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
 				modMenusTbl.uuid('permission').notNullable().references('id').inTable('module_permissions').onDelete('CASCADE').onUpdate('CASCADE');
+				modMenusTbl.text('category').notNullable().defaultTo('Components');
 				modMenusTbl.text('ember_route').notNullable();
 				modMenusTbl.text('icon_class').notNullable();
 				modMenusTbl.text('display_name').notNullable();
