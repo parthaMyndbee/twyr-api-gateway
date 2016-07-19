@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="0,471" last-zoom="0.7"
+<dbmodel pgmodeler-ver="0.8.1" last-position="471,471" last-zoom="0.7"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -2879,7 +2879,7 @@ END;]]></definition>
 <table name="menus">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1067.14" y="1818.57"/>
+	<position x="907.14" y="1807.14"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2905,6 +2905,290 @@ END;]]></definition>
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
 </table>
+
+<table name="menu_items">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1388.57" y="1772.86"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="menu" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="parent">
+		<type name="uuid"/>
+	</column>
+	<column name="module_menu">
+		<type name="uuid"/>
+	</column>
+	<column name="icon_class">
+		<type name="text"/>
+	</column>
+	<column name="display_name">
+		<type name="text"/>
+	</column>
+	<column name="description">
+		<type name="text"/>
+	</column>
+	<column name="tooltip">
+		<type name="text"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_menu_items" type="pk-constr" table="public.menu_items">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<function name="fn_get_menu_item_ancestors"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<parameter name="level">
+		<type name="integer"/>
+	</parameter>
+	<parameter name="id">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="parent">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="module_menu">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="icon_class">
+		<type name="text"/>
+	</parameter>
+	<parameter name="display_name">
+		<type name="text"/>
+	</parameter>
+	<parameter name="tooltip">
+		<type name="text"/>
+	</parameter>
+	</return-type>
+	<parameter name="menuitemid" in="true">
+		<type name="uuid"/>
+	</parameter>
+	<definition><![CDATA[
+BEGIN
+	RETURN QUERY
+	WITH RECURSIVE q AS (
+		SELECT
+			1 AS level,
+			A.id,
+			A.parent,
+			A.module_menu,
+			A.icon_class,
+			A.display_name,
+			A.tooltip
+		FROM
+			menu_items A
+		WHERE
+			A.id = menuitemid
+		UNION ALL
+		SELECT
+			q.level + 1,
+			B.id,
+			B.parent,
+			B.module_menu,
+			B.icon_class,
+			B.display_name,
+			B.tooltip
+		FROM
+			q,
+			menu_items B
+		WHERE
+			B.id = q.parent
+	)
+	SELECT DISTINCT
+		q.level,
+		q.id,
+		q.parent,
+		q.module_menu,
+		q.icon_class,
+		q.display_name,
+		q.tooltip
+	FROM
+		q
+	ORDER BY
+		q.level,
+		q.parent;
+END;
+]]></definition>
+</function>
+
+<function name="fn_get_menu_item_descendants"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<parameter name="level">
+		<type name="integer"/>
+	</parameter>
+	<parameter name="id">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="parent">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="module_menu">
+		<type name="uuid"/>
+	</parameter>
+	<parameter name="icon_class">
+		<type name="text"/>
+	</parameter>
+	<parameter name="display_name">
+		<type name="text"/>
+	</parameter>
+	<parameter name="tooltip">
+		<type name="text"/>
+	</parameter>
+	</return-type>
+	<parameter name="new_object" in="true" default-value="menuitemid">
+		<type name="uuid"/>
+	</parameter>
+	<definition><![CDATA[
+BEGIN
+	RETURN QUERY
+	WITH RECURSIVE q AS (
+		SELECT
+			1 AS level,
+			A.id,
+			A.parent,
+			A.module_menu,
+			A.icon_class,
+			A.display_name,
+			A.tooltip
+		FROM
+			menu_items A
+		WHERE
+			A.id = menuitemid
+		UNION ALL
+		SELECT
+			q.level + 1,
+			B.id,
+			B.parent,
+			B.module_menu,
+			B.icon_class,
+			B.display_name,
+			B.tooltip
+		FROM
+			q,
+			menu_items B
+		WHERE
+			B.parent = q.id
+	)
+	SELECT DISTINCT
+		q.level,
+		q.id,
+		q.parent,
+		q.module_menu,
+		q.icon_class,
+		q.display_name,
+		q.tooltip
+	FROM
+		q
+	ORDER BY
+		q.level,
+		q.parent;
+END;
+]]></definition>
+</function>
+
+<function name="fn_check_menu_item_upsert_is_valid"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[
+DECLARE
+	is_menu_item_in_tree	INTEGER;
+BEGIN
+	IF NEW.parent IS NULL
+	THEN
+		RETURN NEW;
+	END IF;
+
+	IF NEW.id = NEW.parent
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Menu Item cannot be its own parent';
+		RETURN NULL;
+	END IF;
+
+	/* Check if the menu item is its own ancestor */
+	is_menu_item_in_tree := 0;
+	SELECT
+		COUNT(id)
+	FROM
+		fn_get_menu_item_ancestors(NEW.parent)
+	WHERE
+		id = NEW.id
+	INTO
+		is_menu_item_in_tree;
+
+	IF is_menu_item_in_tree > 0
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Menu Item cannot be its own ancestor';
+		RETURN NULL;
+	END IF;
+
+	/* Check if the menu item is its own descendant */
+	is_menu_item_in_tree := 0;
+	SELECT
+		COUNT(id)
+	FROM
+		fn_get_menu_item_descendants(NEW.id)
+	WHERE
+		id = NEW.id AND
+		level > 1
+	INTO
+		is_menu_item_in_tree;
+
+	IF is_menu_item_in_tree > 0
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Menu Item cannot be its own descendant';
+		RETURN NULL;
+	END IF;
+
+	RETURN NEW;
+END;
+]]></definition>
+</function>
+
+<trigger name="trigger_check_menu_item_upsert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.menu_items">
+		<function signature="public.fn_check_menu_item_upsert_is_valid()"/>
+</trigger>
 
 <constraint name="fk_modules_modules" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.modules" table="public.modules">
@@ -3104,6 +3388,24 @@ END;]]></definition>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
+<constraint name="fk_menu_items_menus" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.menus" table="public.menu_items">
+	<columns names="menu" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_menu_items_module_menus" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_menus" table="public.menu_items">
+	<columns names="module_menu" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_menu_items_menu_items" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.menu_items" table="public.menu_items">
+	<columns names="parent" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
 <relationship name="rel_modules_modules" type="relfk"
 	 src-table="public.modules"
 	 dst-table="public.modules"
@@ -3291,5 +3593,26 @@ END;]]></definition>
 	 src-table="public.menus"
 	 dst-table="public.module_widgets"
 	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_menu_items_menus" type="relfk"
+	 src-table="public.menu_items"
+	 dst-table="public.menus"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_menu_items_module_menus" type="relfk"
+	 src-table="public.menu_items"
+	 dst-table="public.module_menus"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_menu_items_menu_items" type="relfk"
+	 src-table="public.menu_items"
+	 dst-table="public.menu_items"
+	 src-required="false" dst-required="false">
+	<line>
+		<position x="1810.17" y="1850.14"/>
+	<position x="1810.17" y="1762.86"/>
+	<position x="1662.97" y="1762.86"/>
+	</line>
+</relationship>
 
 </dbmodel>

@@ -13,5 +13,5 @@ exports.up = function(knex, Promise) {
 };
 
 exports.down = function(knex, Promise) {
-	return knex.schema.raw("DROP TABLE IF EXISTS pages");
+	return knex.schema.raw("DROP TABLE IF EXISTS pages CASCADE");
 };

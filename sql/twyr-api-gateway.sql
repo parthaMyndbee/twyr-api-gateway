@@ -1731,7 +1731,7 @@ CREATE TABLE public.module_menus(
 	parent uuid,
 	module uuid NOT NULL,
 	permission uuid NOT NULL,
-	category text NOT NULL DEFAULT 'Component',
+	category text NOT NULL DEFAULT 'Components',
 	ember_route text NOT NULL,
 	icon_class text NOT NULL,
 	display_name text NOT NULL,
@@ -2475,6 +2475,225 @@ CREATE TABLE public.menus(
 ALTER TABLE public.menus OWNER TO postgres;
 -- ddl-end --
 
+-- object: public.menu_items | type: TABLE --
+-- DROP TABLE IF EXISTS public.menu_items CASCADE;
+CREATE TABLE public.menu_items(
+	id uuid NOT NULL DEFAULT uuid_generate_v4(),
+	menu uuid NOT NULL,
+	parent uuid,
+	module_menu uuid,
+	icon_class text,
+	display_name text,
+	description text,
+	tooltip text,
+	created_at timestamptz NOT NULL DEFAULT now(),
+	updated_at timestamptz NOT NULL DEFAULT now(),
+	CONSTRAINT pk_menu_items PRIMARY KEY (id)
+
+);
+-- ddl-end --
+ALTER TABLE public.menu_items OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.fn_get_menu_item_ancestors | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_get_menu_item_ancestors(IN uuid) CASCADE;
+CREATE FUNCTION public.fn_get_menu_item_ancestors (IN menuitemid uuid)
+	RETURNS TABLE ( level integer,  id uuid,  parent uuid,  module_menu uuid,  icon_class text,  display_name text,  tooltip text)
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+
+BEGIN
+	RETURN QUERY
+	WITH RECURSIVE q AS (
+		SELECT
+			1 AS level,
+			A.id,
+			A.parent,
+			A.module_menu,
+			A.icon_class,
+			A.display_name,
+			A.tooltip
+		FROM
+			menu_items A
+		WHERE
+			A.id = menuitemid
+		UNION ALL
+		SELECT
+			q.level + 1,
+			B.id,
+			B.parent,
+			B.module_menu,
+			B.icon_class,
+			B.display_name,
+			B.tooltip
+		FROM
+			q,
+			menu_items B
+		WHERE
+			B.id = q.parent
+	)
+	SELECT DISTINCT
+		q.level,
+		q.id,
+		q.parent,
+		q.module_menu,
+		q.icon_class,
+		q.display_name,
+		q.tooltip
+	FROM
+		q
+	ORDER BY
+		q.level,
+		q.parent;
+END;
+
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_get_menu_item_ancestors(IN uuid) OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.fn_get_menu_item_descendants | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_get_menu_item_descendants(IN uuid) CASCADE;
+CREATE FUNCTION public.fn_get_menu_item_descendants (IN new_object uuid DEFAULT menuitemid)
+	RETURNS TABLE ( level integer,  id uuid,  parent uuid,  module_menu uuid,  icon_class text,  display_name text,  tooltip text)
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+
+BEGIN
+	RETURN QUERY
+	WITH RECURSIVE q AS (
+		SELECT
+			1 AS level,
+			A.id,
+			A.parent,
+			A.module_menu,
+			A.icon_class,
+			A.display_name,
+			A.tooltip
+		FROM
+			menu_items A
+		WHERE
+			A.id = menuitemid
+		UNION ALL
+		SELECT
+			q.level + 1,
+			B.id,
+			B.parent,
+			B.module_menu,
+			B.icon_class,
+			B.display_name,
+			B.tooltip
+		FROM
+			q,
+			menu_items B
+		WHERE
+			B.parent = q.id
+	)
+	SELECT DISTINCT
+		q.level,
+		q.id,
+		q.parent,
+		q.module_menu,
+		q.icon_class,
+		q.display_name,
+		q.tooltip
+	FROM
+		q
+	ORDER BY
+		q.level,
+		q.parent;
+END;
+
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_get_menu_item_descendants(IN uuid) OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.fn_check_menu_item_upsert_is_valid | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_check_menu_item_upsert_is_valid() CASCADE;
+CREATE FUNCTION public.fn_check_menu_item_upsert_is_valid ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+
+DECLARE
+	is_menu_item_in_tree	INTEGER;
+BEGIN
+	IF NEW.parent IS NULL
+	THEN
+		RETURN NEW;
+	END IF;
+
+	IF NEW.id = NEW.parent
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Menu Item cannot be its own parent';
+		RETURN NULL;
+	END IF;
+
+	/* Check if the menu item is its own ancestor */
+	is_menu_item_in_tree := 0;
+	SELECT
+		COUNT(id)
+	FROM
+		fn_get_menu_item_ancestors(NEW.parent)
+	WHERE
+		id = NEW.id
+	INTO
+		is_menu_item_in_tree;
+
+	IF is_menu_item_in_tree > 0
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Menu Item cannot be its own ancestor';
+		RETURN NULL;
+	END IF;
+
+	/* Check if the menu item is its own descendant */
+	is_menu_item_in_tree := 0;
+	SELECT
+		COUNT(id)
+	FROM
+		fn_get_menu_item_descendants(NEW.id)
+	WHERE
+		id = NEW.id AND
+		level > 1
+	INTO
+		is_menu_item_in_tree;
+
+	IF is_menu_item_in_tree > 0
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Menu Item cannot be its own descendant';
+		RETURN NULL;
+	END IF;
+
+	RETURN NEW;
+END;
+
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_check_menu_item_upsert_is_valid() OWNER TO postgres;
+-- ddl-end --
+
+-- object: trigger_check_menu_item_upsert_is_valid | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_check_menu_item_upsert_is_valid ON public.menu_items  ON public.menu_items CASCADE;
+CREATE TRIGGER trigger_check_menu_item_upsert_is_valid
+	BEFORE INSERT OR UPDATE
+	ON public.menu_items
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_check_menu_item_upsert_is_valid();
+-- ddl-end --
+
 -- object: fk_modules_modules | type: CONSTRAINT --
 -- ALTER TABLE public.modules DROP CONSTRAINT IF EXISTS fk_modules_modules CASCADE;
 ALTER TABLE public.modules ADD CONSTRAINT fk_modules_modules FOREIGN KEY (parent)
@@ -2704,6 +2923,27 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE public.menus ADD CONSTRAINT fk_menus_module_widgets FOREIGN KEY (module_widget)
 REFERENCES public.module_widgets (id) MATCH FULL
 ON DELETE NO ACTION ON UPDATE NO ACTION;
+-- ddl-end --
+
+-- object: fk_menu_items_menus | type: CONSTRAINT --
+-- ALTER TABLE public.menu_items DROP CONSTRAINT IF EXISTS fk_menu_items_menus CASCADE;
+ALTER TABLE public.menu_items ADD CONSTRAINT fk_menu_items_menus FOREIGN KEY (menu)
+REFERENCES public.menus (id) MATCH FULL
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: fk_menu_items_module_menus | type: CONSTRAINT --
+-- ALTER TABLE public.menu_items DROP CONSTRAINT IF EXISTS fk_menu_items_module_menus CASCADE;
+ALTER TABLE public.menu_items ADD CONSTRAINT fk_menu_items_module_menus FOREIGN KEY (module_menu)
+REFERENCES public.module_menus (id) MATCH FULL
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: fk_menu_items_menu_items | type: CONSTRAINT --
+-- ALTER TABLE public.menu_items DROP CONSTRAINT IF EXISTS fk_menu_items_menu_items CASCADE;
+ALTER TABLE public.menu_items ADD CONSTRAINT fk_menu_items_menu_items FOREIGN KEY (parent)
+REFERENCES public.menu_items (id) MATCH FULL
+ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 
