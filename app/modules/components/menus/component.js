@@ -59,7 +59,57 @@ var menusComponent = prime({
 					'value': dbSrvc.Model.extend({
 						'tableName': 'menus',
 						'idAttribute': 'id',
-						'hasTimestamps': true
+						'hasTimestamps': true,
+
+						'menuItems': function() {
+							return this.hasMany(self.$MenuItemModel, 'menu');
+						}
+					})
+				});
+
+				Object.defineProperty(self, '$MenuItemModel', {
+					'__proto__': null,
+					'writable': true,
+
+					'value': dbSrvc.Model.extend({
+						'tableName': 'menu_items',
+						'idAttribute': 'id',
+						'hasTimestamps': true,
+
+						'menu': function() {
+							return this.belongsTo(self.$MenuModel, 'menu');
+						},
+
+						'parent': function() {
+							return this.belongsTo(self.$MenuItemModel, 'parent');
+						},
+
+						'children': function() {
+							return this.hasMany(self.$MenuItemModel, 'parent');
+						},
+
+						'componentMenus': function() {
+							return this.belongsTo(self.$ComponentMenuModel, 'module_menu');
+						}
+					})
+				});
+
+				Object.defineProperty(self, '$ComponentMenuModel', {
+					'__proto__': null,
+					'writable': true,
+
+					'value': dbSrvc.Model.extend({
+						'tableName': 'module_menus',
+						'idAttribute': 'id',
+						'hasTimestamps': true,
+
+						'parent': function() {
+							return this.belongsTo(self.$ComponentMenuModel, 'parent');
+						},
+
+						'children': function() {
+							return this.hasMany(self.$ComponentMenuModel, 'parent');
+						}
 					})
 				});
 
@@ -76,6 +126,7 @@ var menusComponent = prime({
 	'_addRoutes': function() {
 		this.$router.get('/type-list', this._getMenuTypeList.bind(this));
 		this.$router.get('/list', this._getMenuList.bind(this));
+		this.$router.get('/component-menus', this._getComponentMenuList.bind(this));
 
 		this.$router.get('/menus-defaults/:id', this._getMenu.bind(this));
 		this.$router.post('/menus-defaults', this._addMenu.bind(this));
@@ -143,6 +194,43 @@ var menusComponent = prime({
 		});
 	},
 
+	'_getComponentMenuList': function(request, response, next) {
+		var self = this,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		self._checkPermissionAsync(request.user, self['$menuAuthorPermissionId'])
+		.then(function(hasPermission) {
+			if(!hasPermission) {
+				throw new Error('Unauthorized Access');
+			}
+
+			return self.$ComponentMenuModel
+			.forge({ 'parent': null })
+			.fetchAll();
+		})
+		.then(function(componentMenus) {
+			componentMenus = self['$jsonApiMapper'].map(componentMenus, 'component-menu');
+			delete componentMenus.included;
+
+			response.status(200).json(componentMenus);
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body, '\nError: ', err);
+			response.status(422).json({
+				'errors': [{
+					'status': 422,
+					'source': { 'pointer': '/data/id' },
+					'title': 'Get menus error',
+					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+				}]
+			});
+		});
+	},
+
 	'_getMenu': function(request, response, next) {
 		var self = this,
 			moduleId = null,
@@ -163,7 +251,8 @@ var menusComponent = prime({
 				throw new Error('Unauthorized Access');
 			}
 
-			return new self.$MenuModel({ 'id': request.params.id }).fetch();
+			return new self.$MenuModel({ 'id': request.params.id })
+			.fetch({ 'withRelated': ['menuItems'] });
 		})
 		.then(function(menusData) {
 			menusData = self['$jsonApiMapper'].map(menusData, 'menus-default');

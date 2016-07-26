@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="471,471" last-zoom="0.7"
+<dbmodel pgmodeler-ver="0.8.1" last-position="60,471" last-zoom="0.7"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -2879,7 +2879,7 @@ END;]]></definition>
 <table name="menus">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="907.14" y="1807.14"/>
+	<position x="911.426" y="1807.14"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -3609,8 +3609,8 @@ END;
 	 dst-table="public.menu_items"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="1810.17" y="1850.14"/>
-	<position x="1810.17" y="1762.86"/>
+		<position x="1810.16" y="1850.14"/>
+	<position x="1810.16" y="1762.86"/>
 	<position x="1662.97" y="1762.86"/>
 	</line>
 </relationship>
