@@ -20,8 +20,8 @@ var base = require('./../component-base').baseComponent,
 /**
  * Module dependencies, required for this module
  */
-var moment = require('moment'),
-	filesystem = require('fs'),
+var inflection = require('inflection'),
+	moment = require('moment'),
 	path = require('path'),
 	uuid = require('node-uuid');
 
@@ -109,11 +109,11 @@ var pagesComponent = prime({
 
 		self._checkPermissionAsync(request.user, self['$pageAuthorPermissionId'])
 		.then(function(hasPermission) {
-			if(hasPermission) {
-				return dbSrvc.raw('SELECT A.id, A.title, B.first_name || \' \' || B.last_name AS author, A.status, A.created_at AS created, A.updated_at AS updated FROM pages A INNER JOIN users B ON (A.author = B.id)');
+			if(!hasPermission) {
+				throw new Error('Unauthorized Access');
 			}
 
-			throw new Error('Unauthorized Access');
+			return dbSrvc.raw('SELECT A.id, A.title, B.first_name || \' \' || B.last_name AS author, A.status, D.display_name AS permission, A.created_at AS created, A.updated_at AS updated FROM pages A INNER JOIN users B ON (A.author = B.id) INNER JOIN module_menus C ON (C.ember_route = \'"page-view", "\' || A.id || \'"\') INNER JOIN module_permissions D ON (D.id = C.permission)');
 		})
 		.then(function(pageList) {
 			var responseData = { 'data': [] };
@@ -122,7 +122,8 @@ var pagesComponent = prime({
 					'id': page.id,
 					'title': page.title,
 					'author': page.author,
-					'status': page.status,
+					'status': inflection.capitalize(page.status),
+					'permission': inflection.capitalize(page.permission),
 					'created': moment(page.created).format('DD/MMM/YYYY hh:mm A'),
 					'updated': moment(page.updated).format('DD/MMM/YYYY hh:mm A')
 				})

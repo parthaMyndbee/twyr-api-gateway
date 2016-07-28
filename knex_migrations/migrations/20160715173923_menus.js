@@ -22,6 +22,7 @@ exports.up = function(knex, Promise) {
 			menuItemsTbl.uuid('module_menu').references('id').inTable('module_menus').onDelete('CASCADE').onUpdate('CASCADE');
 			menuItemsTbl.text('icon_class');
 			menuItemsTbl.text('display_name');
+			menuItemsTbl.integer('display_order');
 			menuItemsTbl.text('description');
 			menuItemsTbl.text('tooltip');
 			menuItemsTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());

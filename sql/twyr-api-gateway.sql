@@ -2232,7 +2232,7 @@ BEGIN
 	is_child_component := 0;
 
 
-	SELECT 
+	SELECT
 		id,
 		parent
 	FROM
@@ -2440,7 +2440,7 @@ CREATE TABLE public.pages(
 	author uuid NOT NULL,
 	title text NOT NULL,
 	content text,
-	status public.publish_status NOT NULL DEFAULT 'draft'::page_publish_status,
+	status public.publish_status NOT NULL DEFAULT 'draft'::publish_status,
 	created_at timestamptz NOT NULL DEFAULT now(),
 	updated_at timestamptz NOT NULL DEFAULT now(),
 	CONSTRAINT pk_pages PRIMARY KEY (id)
@@ -2484,6 +2484,7 @@ CREATE TABLE public.menu_items(
 	module_menu uuid,
 	icon_class text,
 	display_name text,
+	display_order integer NOT NULL DEFAULT 1,
 	description text,
 	tooltip text,
 	created_at timestamptz NOT NULL DEFAULT now(),
@@ -2558,7 +2559,7 @@ ALTER FUNCTION public.fn_get_menu_item_ancestors(IN uuid) OWNER TO postgres;
 
 -- object: public.fn_get_menu_item_descendants | type: FUNCTION --
 -- DROP FUNCTION IF EXISTS public.fn_get_menu_item_descendants(IN uuid) CASCADE;
-CREATE FUNCTION public.fn_get_menu_item_descendants (IN new_object uuid DEFAULT menuitemid)
+CREATE FUNCTION public.fn_get_menu_item_descendants (IN menuitemid uuid)
 	RETURNS TABLE ( level integer,  id uuid,  parent uuid,  module_menu uuid,  icon_class text,  display_name text,  tooltip text)
 	LANGUAGE plpgsql
 	VOLATILE 

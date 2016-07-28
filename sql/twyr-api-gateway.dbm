@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="60,471" last-zoom="0.7"
+<dbmodel pgmodeler-ver="0.8.1" last-position="1617,296" last-zoom="0.7"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -2633,7 +2633,7 @@ BEGIN
 	is_child_component := 0;
 
 
-	SELECT 
+	SELECT
 		id,
 		parent
 	FROM
@@ -2856,7 +2856,7 @@ END;]]></definition>
 	<column name="content">
 		<type name="text"/>
 	</column>
-	<column name="status" not-null="true" default-value="'draft'::page_publish_status">
+	<column name="status" not-null="true" default-value="'draft'::publish_status">
 		<type name="public.publish_status"/>
 	</column>
 	<column name="created_at" not-null="true" default-value="now()">
@@ -2927,6 +2927,9 @@ END;]]></definition>
 	</column>
 	<column name="display_name">
 		<type name="text"/>
+	</column>
+	<column name="display_order" not-null="true" default-value="1">
+		<type name="integer"/>
 	</column>
 	<column name="description">
 		<type name="text"/>
@@ -3064,7 +3067,7 @@ END;
 		<type name="text"/>
 	</parameter>
 	</return-type>
-	<parameter name="new_object" in="true" default-value="menuitemid">
+	<parameter name="menuitemid" in="true">
 		<type name="uuid"/>
 	</parameter>
 	<definition><![CDATA[
@@ -3609,7 +3612,7 @@ END;
 	 dst-table="public.menu_items"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="1810.16" y="1850.14"/>
+		<position x="1810.16" y="1856.14"/>
 	<position x="1810.16" y="1762.86"/>
 	<position x="1662.97" y="1762.86"/>
 	</line>
