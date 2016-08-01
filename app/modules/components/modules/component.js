@@ -379,10 +379,14 @@ var modulesComponent = prime({
 			.fetch({ 'withRelated': ['module'] });
 		})
 		.then(function(modulePermission) {
-			modulePermission = self['$jsonApiMapper'].map(modulePermission, 'module-permissions');
-			delete modulePermission.included;
+			modulePermission = self['$jsonApiMapper'].map(modulePermission, 'module-permissions', {
+				'relations': true,
+				'disableLinks': true
+			});
 
+			delete modulePermission.included;
 			response.status(200).json(modulePermission);
+
 			return null;
 		})
 		.catch(function(err) {
@@ -416,12 +420,16 @@ var modulesComponent = prime({
 			.fetch({ 'withRelated': ['module', 'permission'] });
 		})
 		.then(function(moduleWidget) {
-			moduleWidget = self['$jsonApiMapper'].map(moduleWidget, 'module-widgets');
+			moduleWidget = self['$jsonApiMapper'].map(moduleWidget, 'module-widgets', {
+				'relations': true,
+				'disableLinks': true
+			});
 
 			moduleWidget.data.relationships.permission.data.type = 'module-permissions';
-			delete moduleWidget.included;
 
+			delete moduleWidget.included;
 			response.status(200).json(moduleWidget);
+
 			return null;
 		})
 		.catch(function(err) {
@@ -455,12 +463,16 @@ var modulesComponent = prime({
 			.fetch({ 'withRelated': ['module', 'permission'] });
 		})
 		.then(function(moduleMenu) {
-			moduleMenu = self['$jsonApiMapper'].map(moduleMenu, 'module-menus');
+			moduleMenu = self['$jsonApiMapper'].map(moduleMenu, 'module-menus', {
+				'relations': true,
+				'disableLinks': true
+			});
 
 			moduleMenu.data.relationships.permission.data.type = 'module-permissions';
-			delete moduleMenu.included;
 
+			delete moduleMenu.included;
 			response.status(200).json(moduleMenu);
+
 			return null;
 		})
 		.catch(function(err) {
@@ -498,14 +510,18 @@ var modulesComponent = prime({
 				configurationSchema = JSON.stringify(moduleTemplate.get('configuration_schema')),
 				metadata = JSON.stringify(moduleTemplate.get('metadata'));
 
-			moduleTemplate = self['$jsonApiMapper'].map(moduleTemplate, 'module-templates');
-			delete moduleTemplate.included;
+			moduleTemplate = self['$jsonApiMapper'].map(moduleTemplate, 'module-templates', {
+				'relations': true,
+				'disableLinks': true
+			});
 
 			moduleTemplate.data.attributes.metadata = metadata;
 			moduleTemplate.data.attributes.configuration = configuration;
 			moduleTemplate.data.attributes.configuration_schema = configurationSchema;
 
+			delete moduleTemplate.included;
 			response.status(200).json(moduleTemplate);
+
 			return null;
 		})
 		.catch(function(err) {
@@ -590,8 +606,10 @@ var modulesComponent = prime({
 				configurationSchema = JSON.stringify(moduleData.get('configuration_schema')),
 				metadata = JSON.stringify(moduleData.get('metadata'));
 
-			moduleData = self['$jsonApiMapper'].map(moduleData, 'modules');
-			delete moduleData.included;
+			moduleData = self['$jsonApiMapper'].map(moduleData, 'modules', {
+				'relations': true,
+				'disableLinks': true
+			});
 
 			moduleData.data.attributes.metadata = metadata;
 			moduleData.data.attributes.configuration = configuration;
@@ -613,7 +631,9 @@ var modulesComponent = prime({
 				moduleTmpl.type = 'module-templates';
 			});
 
+			delete moduleData.included;
 			response.status(200).json(moduleData);
+
 			return null;
 		})
 		.catch(function(err) {

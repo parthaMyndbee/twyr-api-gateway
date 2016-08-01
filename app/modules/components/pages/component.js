@@ -161,9 +161,11 @@ var pagesComponent = prime({
 			return new self.$PageModel({ 'id': request.params.id }).fetch({ 'withRelated': ['author'] });
 		})
 		.then(function(pagesData) {
-			pagesData = self['$jsonApiMapper'].map(pagesData, 'pages-default');
+			pagesData = self['$jsonApiMapper'].map(pagesData, 'pages-default', {
+				'relations': true,
+				'disableLinks': true
+			});
 			pagesData.data.relationships.author.data.type = 'profiles';
-			delete pagesData.included;
 
 			var promiseResolutions = [];
 			promiseResolutions.push(pagesData);
@@ -176,7 +178,10 @@ var pagesComponent = prime({
 				permRow = results[1].rows[0];
 
 			pagesData.data.attributes.permission = permRow ? permRow.permission : null;
+
+			delete pagesData.included;
 			response.status(200).json(pagesData);
+
 			return null;
 		})
 		.catch(function(err) {
@@ -373,11 +378,11 @@ var pagesComponent = prime({
 			return new self.$PageModel({ 'id': request.params.id }).fetch({ 'withRelated': ['author'] });
 		})
 		.then(function(pagesData) {
-			pagesData = self['$jsonApiMapper'].map(pagesData, 'page-views');
+			pagesData = self['$jsonApiMapper'].map(pagesData, 'page-views', {
+				'relations': true,
+				'disableLinks': true
+			});
 			pagesData.data.attributes.author = pagesData.included[0].attributes.first_name + ' ' + pagesData.included[0].attributes.last_name;
-
-			delete pagesData.data.relationships;
-			delete pagesData.included;
 
 			var promiseResolutions = [];
 			promiseResolutions.push(pagesData);
@@ -401,7 +406,6 @@ var pagesComponent = prime({
 
 			if(pagesData.data.attributes.status !== 'published') {
 				throw new Error('Unauthorized access!');
-				return null;
 			}
 
 			if(pagePermission.name == 'public') {
@@ -418,12 +422,14 @@ var pagesComponent = prime({
 			var pagesData = results[0],
 				hasPermission = results[1];
 
-			if(hasPermission) {
-				response.status(200).json(pagesData);
-				return null;
+			if(!hasPermission) {
+				throw new Error(pagesData.data.attributes.title + ' is not accessible to ' + (request.user ? (request.user.first_name + ' ' + request.suer.last_name) : 'the Public'));
 			}
 
-			throw new Error(pagesData.data.attributes.title + ' is not accessible to ' + (request.user ? (request.user.first_name + ' ' + request.suer.last_name) : 'the Public'));
+			delete pagesData.data.relationships;
+			delete pagesData.included;
+			response.status(200).json(pagesData);
+
 			return null;
 		})
 		.catch(function(err) {

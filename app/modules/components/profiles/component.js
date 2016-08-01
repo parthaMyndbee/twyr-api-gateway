@@ -231,13 +231,17 @@ var profilesComponent = prime({
 		return new self.$UserModel({ 'id': request.user.id })
 		.fetch({ 'withRelated': ['profileContacts', 'profileEmergencyContacts', 'profileOthersEmergencyContacts', 'profileSocialLogins'] })
 		.then(function(profileData) {
-			profileData = self['$jsonApiMapper'].map(profileData, 'profiles');
+			profileData = self['$jsonApiMapper'].map(profileData, 'profiles', {
+				'relations': true,
+				'disableLinks': true
+			});
+
 			profileData.data.attributes['profile_image_metadata'] = JSON.stringify(profileData.data.attributes['profile_image_metadata']);
 
 			delete profileData.data.attributes.password;
 			delete profileData.included;
-
 			response.status(200).json(profileData);
+
 			return null;
 		})
 		.catch(function(err) {
@@ -320,11 +324,15 @@ var profilesComponent = prime({
 		new self.$ContactModel({ 'id': request.params.id })
 		.fetch({ 'withRelated': ['login'] })
 		.then(function(profileContactData) {
-			profileContactData = self['$jsonApiMapper'].map(profileContactData, 'profile-contacts');
+			profileContactData = self['$jsonApiMapper'].map(profileContactData, 'profile-contacts', {
+				'relations': true,
+				'disableLinks': true
+			});
 			profileContactData.data.relationships.login.data.type = 'profiles';
-			delete profileContactData.included;
 
+			delete profileContactData.included;
 			response.status(200).json(profileContactData);
+
 			return null;
 		})
 		.catch(function(err) {
@@ -424,12 +432,16 @@ var profilesComponent = prime({
 		new self.$EmergencyContactModel({ 'id': request.params.id })
 		.fetch({ 'withRelated': ['login', 'contact'] })
 		.then(function(profileEmergencyContactData) {
-			profileEmergencyContactData = self['$jsonApiMapper'].map(profileEmergencyContactData, 'profile-emergency-contacts');
+			profileEmergencyContactData = self['$jsonApiMapper'].map(profileEmergencyContactData, 'profile-emergency-contacts', {
+				'relations': true,
+				'disableLinks': true
+			});
 			profileEmergencyContactData.data.relationships.login.data.type = 'profiles';
 			profileEmergencyContactData.data.relationships.contact.data.type = 'profiles';
-			delete profileEmergencyContactData.included;
 
+			delete profileEmergencyContactData.included;
 			response.status(200).json(profileEmergencyContactData);
+
 			return null;
 		})
 		.catch(function(err) {

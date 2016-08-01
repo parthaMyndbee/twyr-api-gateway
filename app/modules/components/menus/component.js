@@ -88,7 +88,7 @@ var menusComponent = prime({
 							return this.hasMany(self.$MenuItemModel, 'parent');
 						},
 
-						'componentMenus': function() {
+						'componentMenu': function() {
 							return this.belongsTo(self.$ComponentMenuModel, 'module_menu');
 						}
 					})
@@ -137,6 +137,8 @@ var menusComponent = prime({
 		this.$router.post('/menu-items', this._addMenuItem.bind(this));
 		this.$router.patch('/menu-items/:id', this._updateMenuItem.bind(this));
 		this.$router.delete('/menu-items/:id', this._deleteMenuItem.bind(this));
+
+		this.$router.get('/component-menus/:id', this._getComponentMenu.bind(this));
 	},
 
 	'_getMenuTypeList': function(request, response, next) {
@@ -219,10 +221,14 @@ var menusComponent = prime({
 			.fetchAll();
 		})
 		.then(function(componentMenus) {
-			componentMenus = self['$jsonApiMapper'].map(componentMenus, 'component-menu');
-			delete componentMenus.included;
+			componentMenus = self['$jsonApiMapper'].map(componentMenus, 'component-menu', {
+				'relations': true,
+				'disableLinks': true
+			});
 
+			delete componentMenus.included;
 			response.status(200).json(componentMenus);
+
 			return null;
 		})
 		.catch(function(err) {
@@ -240,18 +246,15 @@ var menusComponent = prime({
 
 	'_getMenu': function(request, response, next) {
 		var self = this,
-			moduleId = null,
-			configSrvc = self.dependencies['configuration-service'],
 			dbSrvc = self.dependencies['database-service'].knex,
 			loggerSrvc = self.dependencies['logger-service'];
 
 		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
 		response.type('application/javascript');
 
-		configSrvc.getModuleIdAsync(self)
-		.then(function(id) {
-			moduleId = id;
-			return self._checkPermissionAsync(request.user, self['$menuAuthorPermissionId']);
+		dbSrvc.raw('SELECT permission FROM module_widgets WHERE id = (SELECT module_widget FROM menus WHERE id = ?)', [request.params.id])
+		.then(function(permission) {
+			return self._checkPermissionAsync(request.user, permission.rows[0].permission);
 		})
 		.then(function(hasPermission) {
 			if(!hasPermission) {
@@ -262,7 +265,10 @@ var menusComponent = prime({
 			.fetch({ 'withRelated': ['menuItems'] });
 		})
 		.then(function(menusData) {
-			menusData = self['$jsonApiMapper'].map(menusData, 'menus-default');
+			menusData = self['$jsonApiMapper'].map(menusData, 'menus-default', {
+				'relations': true,
+				'disableLinks': true
+			});
 
 			var promiseResolutions = [];
 			promiseResolutions.push(menusData);
@@ -271,14 +277,28 @@ var menusComponent = prime({
 		})
 		.then(function(results) {
 			var menusData = results[0];
-			delete menusData.included;
-			delete menusData.data.attributes['module_widget'];
 
 			if(results[1].rows.length) {
 				menusData.data.attributes.permission = results[1].rows[0].permission;
 			}
 
+			if(menusData.data.relationships.menu_items) {
+				if(menusData.data.relationships.menu_items.data) {
+					if(Array.isArray(menusData.data.relationships.menu_items.data)) {
+						menusData.data.relationships.menu_items.data.forEach(function(menuItem) {
+							menuItem.type = 'menu_items';
+						});
+					}
+					else {
+						menusData.data.relationships.menu_items.data.type = 'menu_items';
+					}
+				}
+			}
+
+			delete menusData.included;
+			delete menusData.data.attributes['module_widget'];
 			response.status(200).json(menusData);
+
 			return null;
 		})
 		.catch(function(err) {
@@ -296,20 +316,14 @@ var menusComponent = prime({
 
 	'_addMenu': function(request, response, next) {
 		var self = this,
-			moduleId = null,
 			permission = null,
-			configSrvc = self.dependencies['configuration-service'],
 			dbSrvc = self.dependencies['database-service'].knex,
 			loggerSrvc = self.dependencies['logger-service'];
 
 		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
 		response.type('application/javascript');
 
-		configSrvc.getModuleIdAsync(self)
-		.then(function(id) {
-			moduleId = id;
-			return self._checkPermissionAsync(request.user, self['$menuAuthorPermissionId']);
-		})
+		self._checkPermissionAsync(request.user, self['$menuAuthorPermissionId'])
 		.then(function(hasPermission) {
 			if(!hasPermission) {
 				throw new Error('Unauthorized Access');
@@ -427,19 +441,13 @@ var menusComponent = prime({
 
 	'_deleteMenu': function(request, response, next) {
 		var self = this,
-			moduleId = null,
-			configSrvc = self.dependencies['configuration-service'],
 			dbSrvc = self.dependencies['database-service'].knex,
 			loggerSrvc = self.dependencies['logger-service'];
 
 		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
 		response.type('application/javascript');
 
-		configSrvc.getModuleIdAsync(self)
-		.then(function(id) {
-			moduleId = id;
-			return self._checkPermissionAsync(request.user, self['$menuAuthorPermissionId']);
-		})
+		self._checkPermissionAsync(request.user, self['$menuAuthorPermissionId'])
 		.then(function(hasPermission) {
 			if(!hasPermission) {
 				throw new Error('Unauthorized Access');
@@ -469,18 +477,15 @@ var menusComponent = prime({
 
 	'_getMenuItem': function(request, response, next) {
 		var self = this,
-			moduleId = null,
-			configSrvc = self.dependencies['configuration-service'],
 			dbSrvc = self.dependencies['database-service'].knex,
 			loggerSrvc = self.dependencies['logger-service'];
 
 		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
 		response.type('application/javascript');
 
-		configSrvc.getModuleIdAsync(self)
-		.then(function(id) {
-			moduleId = id;
-			return self._checkPermissionAsync(request.user, self['$menuAuthorPermissionId']);
+		dbSrvc.raw('SELECT permission FROM module_widgets WHERE id = (SELECT module_widget FROM menus WHERE id = (SELECT menu FROM menu_items WHERE id = ?))', [request.params.id])
+		.then(function(permission) {
+			return self._checkPermissionAsync(request.user, permission.rows[0].permission);
 		})
 		.then(function(hasPermission) {
 			if(!hasPermission) {
@@ -488,56 +493,62 @@ var menusComponent = prime({
 			}
 
 			return new self.$MenuItemModel({ 'id': request.params.id })
-			.fetch({ 'withRelated': ['children'] });
+			.fetch({ 'withRelated': ['menu', 'parent', 'children', 'componentMenu'] });
 		})
 		.then(function(menuItemsData) {
-			menuItemsData = self['$jsonApiMapper'].map(menuItemsData, 'menu-items');
+			var promiseResolutions = [];
+			promiseResolutions.push(menuItemsData);
+			if(menuItemsData.get('module_menu')) {
+				promiseResolutions.push(dbSrvc.raw('SELECT permission FROM module_menus WHERE id = ?', [menuItemsData.get('module_menu')]));
+			}
+			else {
+				promiseResolutions.push({
+					'rows': [{
+						'permission': true
+					}]
+				})
+			}
+			return promises.all(promiseResolutions);
+		})
+		.then(function(results) {
+			var menuItemsData = results[0],
+				hasPermission = results[1].rows[0].permission;
 
-			menuItemsData.data.relationships.menu_items = menuItemsData.data.relationships.children;
-
-			menuItemsData.data.relationships.menu = {
-				'data': {
-					'id': menuItemsData.data.attributes.menu,
-					'type': 'menus_defaults'
-				}
-			};
-
-			if(menuItemsData.data.attributes.parent) {
-				menuItemsData.data.relationships.parent = {
-					'data': {
-						'id': menuItemsData.data.attributes.parent,
-						'type': 'menu_items'
-					}
-				};
+			if(!hasPermission) {
+				throw new Error('Unauthorized Access');
 			}
 
-			if(menuItemsData.data.relationships.menu_items) {
-				if(Array.isArray(menuItemsData.data.relationships.menu_items.data)) {
-					menuItemsData.data.relationships.menu_items.data.forEach(function(menuItem) {
+			menuItemsData = self['$jsonApiMapper'].map(menuItemsData, 'menu-items', {
+				'relations': true,
+				'disableLinks': true
+			});
+
+			if(menuItemsData.data.relationships.children) {
+				if(Array.isArray(menuItemsData.data.relationships.children.data)) {
+					menuItemsData.data.relationships.children.data.forEach(function(menuItem) {
 						menuItem.type = 'menu_items';
 					});
 				}
 				else {
-					menuItemsData.data.relationships.menu_items.data.type = 'menu_items';
+					menuItemsData.data.relationships.children.data.type = 'menu_items';
 				}
 			}
 
-			if(menuItemsData.data.attributes.module_menu) {
-				menuItemsData.data.relationships.component_menu = {
-					'data': {
-						'id': menuItemsData.data.attributes.module_menu,
-						'type': 'component_menu'
-					}
-				};
+			if(menuItemsData.data.relationships.menu) {
+				menuItemsData.data.relationships.menu.data.type = 'menus_defaults';
 			}
 
-			delete menuItemsData.data.attributes.menu;
-			delete menuItemsData.data.attributes.parent;
-			delete menuItemsData.data.attributes.module_menu;
-			delete menuItemsData.data.relationships.children;
-			delete menuItemsData.included;
+			if(menuItemsData.data.relationships.component_menu) {
+				menuItemsData.data.relationships.component_menu.data.type = 'component_menus';
+			}
 
+			if(menuItemsData.data.relationships.parent) {
+				menuItemsData.data.relationships.parent.data.type = 'menu_items';
+			}
+
+			delete menuItemsData.included;
 			response.status(200).json(menuItemsData);
+
 			return null;
 		})
 		.catch(function(err) {
@@ -555,20 +566,14 @@ var menusComponent = prime({
 
 	'_addMenuItem': function(request, response, next) {
 		var self = this,
-			moduleId = null,
 			permission = null,
-			configSrvc = self.dependencies['configuration-service'],
 			dbSrvc = self.dependencies['database-service'].knex,
 			loggerSrvc = self.dependencies['logger-service'];
 
 		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
 		response.type('application/javascript');
 
-		configSrvc.getModuleIdAsync(self)
-		.then(function(id) {
-			moduleId = id;
-			return self._checkPermissionAsync(request.user, self['$menuAuthorPermissionId']);
-		})
+		self._checkPermissionAsync(request.user, self['$menuAuthorPermissionId'])
 		.then(function(hasPermission) {
 			if(!hasPermission) {
 				throw new Error('Unauthorized Access');
@@ -685,19 +690,13 @@ var menusComponent = prime({
 
 	'_deleteMenuItem': function(request, response, next) {
 		var self = this,
-			moduleId = null,
-			configSrvc = self.dependencies['configuration-service'],
 			dbSrvc = self.dependencies['database-service'].knex,
 			loggerSrvc = self.dependencies['logger-service'];
 
 		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
 		response.type('application/javascript');
 
-		configSrvc.getModuleIdAsync(self)
-		.then(function(id) {
-			moduleId = id;
-			return self._checkPermissionAsync(request.user, self['$menuAuthorPermissionId']);
-		})
+		self._checkPermissionAsync(request.user, self['$menuAuthorPermissionId'])
 		.then(function(hasPermission) {
 			if(!hasPermission) {
 				throw new Error('Unauthorized Access');
@@ -721,6 +720,67 @@ var menusComponent = prime({
 			});
 		});
 	},
+
+	'_getComponentMenu': function(request, response, next) {
+		var self = this,
+			dbSrvc = self.dependencies['database-service'].knex,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		self.$ComponentMenuModel
+		.forge({ 'id': request.params.id })
+		.fetch({ 'withRelated': ['parent', 'children'] })
+		.then(function(componentMenu) {
+			return promises.all([componentMenu, self._checkPermissionAsync(request.user, componentMenu.get('permission'))]);
+		})
+		.then(function(results) {
+			var componentMenu = results[0],
+				hasPermission = results[1];
+
+			if(!hasPermission) {
+				throw new Error('Unauthorized Access');
+			}
+
+			componentMenu = self['$jsonApiMapper'].map(componentMenu, 'component-menu', {
+				'relations': true,
+				'disableLinks': true
+			});
+
+			if(componentMenu.data.relationships.parent) {
+				componentMenu.data.relationships.parent.data.type = 'component-menu';
+			}
+
+			if(componentMenu.data.relationships.children) {
+				if(Array.isArray(componentMenu.data.relationships.children.data)) {
+					componentMenu.data.relationships.children.data.forEach(function(menuItem) {
+						menuItem.type = 'component-menu';
+					});
+				}
+				else {
+					componentMenu.data.relationships.children.data.type = 'component-menu';
+				}
+			}
+
+			delete componentMenu.included;
+			response.status(200).json(componentMenu);
+
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body, '\nError: ', err);
+			response.status(422).json({
+				'errors': [{
+					'status': 422,
+					'source': { 'pointer': '/data/id' },
+					'title': 'Get menus error',
+					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+				}]
+			});
+		});
+	},
+
 
 	'name': 'menus',
 	'basePath': __dirname,

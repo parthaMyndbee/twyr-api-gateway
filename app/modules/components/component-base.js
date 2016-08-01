@@ -100,19 +100,28 @@ var twyrComponentBase = prime({
 		.use(function(request, response, next) {
 			if(!self['$jsonApiSerializer']) {
 				self['$jsonApiSerializer'] = promises.promisifyAll(new jsonApiSerializer({
-					'keyForAttribute': 'underscore_case'
+					'keyForAttribute': 'underscore_case',
+					'included': false,
+					'relations': true,
+					'disableLinks': true
 				}));
 			}
 
 			if(!self['$jsonApiDeserializer']) {
 				self['$jsonApiDeserializer'] = promises.promisifyAll(new jsonApiDeserializer({
-					'keyForAttribute': 'underscore_case'
+					'keyForAttribute': 'underscore_case',
+					'included': false,
+					'relations': true,
+					'disableLinks': true
 				}));
 			}
 
 			if(!self['$jsonApiMapper']) {
 				self['$jsonApiMapper'] = new jsonApiMapper.Bookshelf(request.protocol + '://' + request.hostname + ':' + request.app.get('port'), {
-					'keyForAttribute': 'underscore_case'
+					'keyForAttribute': 'underscore_case',
+					'included': false,
+					'relations': true,
+					'disableLinks': true
 				});
 			}
 
