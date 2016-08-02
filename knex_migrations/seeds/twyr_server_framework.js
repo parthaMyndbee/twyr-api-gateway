@@ -170,13 +170,13 @@ exports.seed = function(knex, Promise) {
 		})
 		.then(function(groupId) {
 			publicGroupId = groupId[0];
-			return knex.raw('INSERT INTO tenant_group_permissions (tenant, tenant_group, module, permission) SELECT \'' + rootTenantId + '\', \'' + adminGroupId + '\', module, id FROM module_permissions WHERE name NOT IN (\'super-administrator\') ON CONFLICT DO NOTHING;');
+			return knex.raw('INSERT INTO tenant_group_permissions (tenant, tenant_group, module, permission) SELECT \'' + rootTenantId + '\', \'' + adminGroupId + '\', module, id FROM module_permissions WHERE name IN (\'administrator\', \'registered\', \'public\') ON CONFLICT DO NOTHING;');
 		})
 		.then(function() {
-			return knex.raw('INSERT INTO tenant_group_permissions (tenant, tenant_group, module, permission) SELECT \'' + rootTenantId + '\', \'' + registeredGroupId + '\', module, id FROM module_permissions WHERE name NOT IN (\'super-administrator\', \'administrator\') ON CONFLICT DO NOTHING;');
+			return knex.raw('INSERT INTO tenant_group_permissions (tenant, tenant_group, module, permission) SELECT \'' + rootTenantId + '\', \'' + registeredGroupId + '\', module, id FROM module_permissions WHERE name IN (\'registered\', \'public\') ON CONFLICT DO NOTHING;');
 		})
 		.then(function() {
-			return knex.raw('INSERT INTO tenant_group_permissions (tenant, tenant_group, module, permission) SELECT \'' + rootTenantId + '\', \'' + publicGroupId + '\', module, id FROM module_permissions WHERE name NOT IN (\'super-administrator\', \'administrator\', \'registered\') ON CONFLICT DO NOTHING;');
+			return knex.raw('INSERT INTO tenant_group_permissions (tenant, tenant_group, module, permission) SELECT \'' + rootTenantId + '\', \'' + publicGroupId + '\', module, id FROM module_permissions WHERE name IN (\'public\') ON CONFLICT DO NOTHING;');
 		});
 	});
 };

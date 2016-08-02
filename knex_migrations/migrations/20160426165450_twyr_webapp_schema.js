@@ -1003,9 +1003,10 @@ exports.up = function(knex, Promise) {
 						'NEW.id ' +
 					'FROM ' +
 						'tenants_modules A ' +
-						'INNER JOIN tenant_groups B ON (A.tenant = B.tenant AND B.parent IS NULL) ' +
+						'INNER JOIN tenant_groups B ON (A.tenant = B.tenant) ' +
 					'WHERE ' +
-						'A.module = NEW.module; ' +
+						'A.module = NEW.module AND ' +
+						'B.parent IS NULL; ' +
 
 					'RETURN NEW; ' +
 				'END; ' +
