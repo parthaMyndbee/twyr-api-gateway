@@ -29,6 +29,7 @@ var app = prime({
 		base.call(this);
 		this['$application'] = application;
 		this['$uuid'] = clusterId + '-' + workedId;
+
 		this._loadConfig();
 	},
 
