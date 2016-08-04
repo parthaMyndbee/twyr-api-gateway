@@ -804,9 +804,7 @@ var menusComponent = prime({
 				'disableLinks': true
 			});
 
-			delete menusData.data.attributes.status;
-			delete menusData.data.attributes.type;
-			delete menusData.data.attributes.module_widget;
+			delete menusData.data.attributes;
 			delete menusData.included;
 
 			var promiseResolutions = [];
