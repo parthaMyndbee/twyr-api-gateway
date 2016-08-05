@@ -1,6 +1,6 @@
 
 exports.up = function(knex, Promise) {
-	return knex.schema.raw("CREATE TYPE public.menu_type AS ENUM ('horizontal','vertical')")
+	return knex.schema.raw("CREATE TYPE public.menu_type AS ENUM ('footer','horizontal','vertical')")
 	.then(function() {
 		return knex.schema.withSchema('public')
 		.createTableIfNotExists('menus', function(menusTbl) {
