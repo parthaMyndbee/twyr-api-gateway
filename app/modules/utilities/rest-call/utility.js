@@ -45,7 +45,6 @@ exports.utility = {
 			});
 
 			response.on('end', function() {
-				console.log(data);
 				var errorObj = null;
 
 				if(response.statusCode != '200') {
@@ -54,8 +53,6 @@ exports.utility = {
 						'path': options.path,
 						'message': statusCodes[response.statusCode]
 					}
-
-					console.error('restCall::StatusCodeError:\nURL: ', options.path, '\nError:', errorObj);
 				}
 
 				if (callback) callback(errorObj, data);
@@ -63,8 +60,7 @@ exports.utility = {
 		});
 
 		request.on('error', function(err) {
-			console.error('restCall::RequestError:\nURL: ', options.path, '\nError:', err);
-			if (callback) callback(err, null);
+			if (callback) callback(err);
 		});
 
 		// Now that the infrastructure is setup, write the data

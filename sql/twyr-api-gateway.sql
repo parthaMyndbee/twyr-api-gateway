@@ -2072,23 +2072,15 @@ CREATE TYPE public.template_media_type AS
 ALTER TYPE public.template_media_type OWNER TO postgres;
 -- ddl-end --
 
--- object: public.template_user_type | type: TYPE --
--- DROP TYPE IF EXISTS public.template_user_type CASCADE;
-CREATE TYPE public.template_user_type AS
- ENUM ('all','public','registered','administrator','other');
--- ddl-end --
-ALTER TYPE public.template_user_type OWNER TO postgres;
--- ddl-end --
-
 -- object: public.module_templates | type: TABLE --
 -- DROP TABLE IF EXISTS public.module_templates CASCADE;
 CREATE TABLE public.module_templates(
 	id uuid NOT NULL DEFAULT uuid_generate_v4(),
 	module uuid NOT NULL,
+	permission uuid NOT NULL,
 	name text NOT NULL,
 	description text,
 	media public.template_media_type NOT NULL DEFAULT 'all'::template_media_type,
-	role public.template_user_type NOT NULL DEFAULT 'all'::template_user_type,
 	is_default boolean NOT NULL DEFAULT false::boolean,
 	metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
 	configuration jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -2341,6 +2333,7 @@ CREATE FUNCTION public.fn_check_module_template_upsert_is_valid ()
 	AS $$
 DECLARE
 	is_component	INTEGER;
+	is_permission_ok	INTEGER;
 BEGIN
 	is_component := 0;
 	SELECT
@@ -2358,6 +2351,25 @@ BEGIN
 		RAISE SQLSTATE '2F003' USING MESSAGE = 'Templates can be assigned only to Components';
 		RETURN NULL;
 	END IF;
+
+	is_permission_ok := 0;
+	SELECT
+		count(id)
+	FROM
+		module_permissions
+	WHERE
+		module IN (SELECT id FROM fn_get_module_ancestors(NEW.module)) AND
+		id = NEW.permission
+	INTO
+		is_permission_ok;
+
+	IF is_permission_ok <= 0
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Templates must use Permissions defined by the Component or one of its parents';
+		RETURN NULL;
+	END IF;
+
+	RETURN NEW;
 
 	RETURN NEW;
 END;
@@ -2867,6 +2879,13 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 -- ALTER TABLE public.module_templates DROP CONSTRAINT IF EXISTS fk_module_templates_modules CASCADE;
 ALTER TABLE public.module_templates ADD CONSTRAINT fk_module_templates_modules FOREIGN KEY (module)
 REFERENCES public.modules (id) MATCH FULL
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: fk_module_templates_permissions | type: CONSTRAINT --
+-- ALTER TABLE public.module_templates DROP CONSTRAINT IF EXISTS fk_module_templates_permissions CASCADE;
+ALTER TABLE public.module_templates ADD CONSTRAINT fk_module_templates_permissions FOREIGN KEY (permission)
+REFERENCES public.module_permissions (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 

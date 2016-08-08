@@ -20,6 +20,7 @@ var base = require('./../service-base').baseService,
 /**
  * Module dependencies, required for this module
  */
+var httpMocks = require('node-mocks-http');
 
 var websocketService = prime({
 	'inherits': base,
@@ -33,6 +34,10 @@ var websocketService = prime({
 
 	'start': function(dependencies, callback) {
 		var self = this;
+
+		self._initializedAuthService = dependencies['auth-service'].initialize();
+		self._initializedAuthSession = dependencies['auth-service'].session();
+
 		websocketService.parent.start.call(self, dependencies, function(err, status) {
 			if(err) {
 				if(callback) callback(err);
@@ -64,6 +69,9 @@ var websocketService = prime({
 
 			self._teardownPrimusAsync()
 			.then(function() {
+				self._initializedAuthService = undefined;
+				self._initializedAuthSession = undefined;
+
 				if(callback) callback(null, status);
 				return null;
 			})
@@ -121,33 +129,6 @@ var websocketService = prime({
 		self.$websocketServer.authorize(self._authorizeWebsocketConnection.bind(self));
 
 		// Step 3: Primus extensions...
-		self.$websocketServer.before('cookies', dependencies['express-service']['$cookieParser']);
-		self.$websocketServer.before('session', function (request, response, next) {
-			try {
-				var sid = request.signedCookies['connect.sid'];
-				if (!sid) { return next(); }
-
-				request.pause();
-				self.dependencies['express-service']['$sessionStore'].get(sid, function (err, session) {
-					if (err) {
-						self.$websocketServer.emit('log', 'error', err);
-						return next();
-					}
-
-					if(session) {
-						request.sessionID = sid;
-						request.session = self.dependencies['express-service']['$sessionStore'].createSession(request, session);
-						request.sessionStore = self.dependencies['express-service']['$sessionStore'];
-					}
-
-					request.resume();
-					next();
-				});
-			}
-			catch(error) {
-				console.log(error);
-			}
-		});
 		self.$websocketServer.use('rooms', PrimusRooms);
 
 		// Step 4: Attach the event handlers...
@@ -180,8 +161,33 @@ var websocketService = prime({
 	},
 
 	'_authorizeWebsocketConnection': function(request, done) {
-		console.log(this.name + '::_authorizeWebsocketConnection: ' + JSON.stringify(request.session, null, '\t'));
-		done();
+		var self = this,
+			response = httpMocks.createResponse();
+
+		self.dependencies['express-service']['$cookieParser'](request, response, function(err) {
+			if(err) {
+				done(err);
+				return;
+			}
+
+			self.dependencies['express-service']['$session'](request, response, function(err) {
+				if(err) {
+					done(err);
+					return;
+				}
+
+				self._initializedAuthService(request, response, function(err) {
+					if(err) {
+						done(err);
+						return;
+					}
+
+					self._initializedAuthSession(request, response, function(err) {
+						done(err);
+					});
+				});
+			});
+		});
 	},
 
 	'_websocketServerInitialised': function(transformer, parser, options) {
@@ -198,7 +204,11 @@ var websocketService = prime({
 	},
 
 	'_websocketServerConnection': function(spark) {
+		var username = (spark.request.user ? [spark.request.user.first_name, spark.request.user.last_name].join(' ') : 'Public');
+		console.log('Websocket Server Connection for user: ' + username);
+
 		this.emit('websocket-connect', spark);
+		spark.write({ 'channel': 'display-status-message', 'data': 'Realtime Data connection established for User: ' + username });
 	},
 
 	'_websocketServerDisconnection': function(spark) {
@@ -209,7 +219,7 @@ var websocketService = prime({
 
 	'name': 'websocket-service',
 	'basePath': __dirname,
-	'dependencies': ['configuration-service', 'express-service', 'logger-service']
+	'dependencies': ['auth-service', 'configuration-service', 'express-service', 'logger-service']
 });
 
 exports.service = websocketService;

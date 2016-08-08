@@ -20,6 +20,11 @@ var base = require('./../component-base').baseComponent,
 /**
  * Module dependencies, required for this module
  */
+var bcrypt = require('bcrypt-nodejs'),
+	emailExists = promises.promisifyAll(require('email-existence')),
+	path = require('path'),
+	uuid = require('node-uuid'),
+	validator = require('validatorjs');
 
 var sessionComponent = prime({
 	'inherits': base,
@@ -31,6 +36,9 @@ var sessionComponent = prime({
 	'_addRoutes': function() {
 		this.$router.post('/login', this._login.bind(this));
 		this.$router.get('/logout', this._logout.bind(this));
+
+		this.$router.post('/resetPassword', this._resetPassword.bind(this));
+		this.$router.post('/registerAccount', this._registerAccount.bind(this));
 
 		this.$router.get('/facebook', this._socialLoginRequest.bind(this, 'twyr-facebook'));
 		this.$router.get('/github', this._socialLoginRequest.bind(this, 'twyr-github'));
@@ -57,9 +65,9 @@ var sessionComponent = prime({
 
 			if(err) {
 				loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body, '\nError: ', err);
-				response.status(403).json({
+				response.status(200).json({
 					'status': request.isAuthenticated(),
-					'responseText': err.message
+					'responseText': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
 				});
 
 				return;
@@ -67,7 +75,7 @@ var sessionComponent = prime({
 
 			if(!user) {
 				loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body, '\nError: ', 'User not found');
-				response.status(404).json({
+				response.status(200).json({
 					'status': request.isAuthenticated(),
 					'responseText': 'Invalid credentials! Please try again!'
 				});
@@ -78,9 +86,9 @@ var sessionComponent = prime({
 			request.login(user, function(loginErr) {
 				if(loginErr) {
 					loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body, '\nError: ', loginErr);
-					response.status(500).json({
+					response.status(200).json({
 						'status': request.isAuthenticated(),
-						'responseText': 'Internal Error! Please contact us to resolve this issue!!'
+						'responseText': (loginErr.stack.split('\n', 1)[0]).replace('error: ', '').trim() || 'Internal Error! Please contact us to resolve this issue!!'
 					});
 
 					return;
@@ -118,8 +126,183 @@ var sessionComponent = prime({
 		})
 		.catch(function(err) {
 			self.$dependencies.logger.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
-			response.status(err.code || err.number || 500).json(err);
+			response.status(200).json({
+				'status': false,
+				'responseText': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+			});
 		});
+	},
+
+	'_resetPassword': function(request, response, next) {
+		var self = this,
+			cacheSrvc = self.dependencies['cache-service'],
+			dbSrvc = self.dependencies['database-service'].knex,
+			loggerSrvc = self.dependencies['logger-service'],
+			mailerSrvc = self.dependencies['mailer-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		dbSrvc.raw('SELECT id FROM users WHERE email = ?', [request.body.username])
+		.then(function(result) {
+			if(!result.rows.length) {
+				throw ({
+					'number': 404,
+					'message': 'User "' + request.body.username + '" not found!'
+				});
+			}
+
+			var randomRequestData = JSON.parse(JSON.stringify(self.$config.randomServer.options));
+			randomRequestData.data.id = uuid.v4().toString().replace(/-/g, '');
+			randomRequestData.data = JSON.stringify(randomRequestData.data);
+
+			return promises.all([result.rows[0].id, self.$module.$utilities.restCallAsync(self.$config.randomServer.protocol, randomRequestData)]);
+		})
+		.then(function(results) {
+			var userId = results[0],
+				randomData = (results[1] ? JSON.parse(results[1]) : null);
+
+			if(randomData && randomData.error) {
+				throw new Error(randomData.error.message);
+			}
+
+			var newPassword = ((randomData && randomData.result) ? randomData.result.random.data[0] : self._generateRandomPassword());
+			return promises.all([newPassword, dbSrvc.raw('UPDATE users SET password = ? WHERE id = ?', [bcrypt.hashSync(newPassword), userId])]);
+		})
+		.then(function(results) {
+			var newPassword = results[0],
+				renderOptions = {
+				'username': request.body.username,
+				'password': newPassword
+			};
+
+			var renderer = promises.promisify(response.render.bind(response));
+			return renderer(path.join(self.basePath, self.$config.resetPassword.template), renderOptions);
+		})
+		.then(function(html) {
+			return mailerSrvc.sendMailAsync({
+				'from': self.$config.from,
+				'to': request.body.username,
+				'subject': self.$config.resetPassword.subject,
+				'html': html
+			});
+		})
+		.then(function(notificationResponse) {
+			loggerSrvc.debug('Response from Email Server: ', notificationResponse);
+			response.status(200).json({
+				'status': true,
+				'responseText': 'Reset Password Successful! Please check your email for details'
+			});
+
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			response.status(200).json({
+				'status': false,
+				'responseText': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim() || 'Reset Password Failure!'
+			});
+		})
+	},
+
+	'_registerAccount': function(request, response, next) {
+		var self = this,
+			cacheSrvc = self.dependencies['cache-service'],
+			dbSrvc = self.dependencies['database-service'].knex,
+			loggerSrvc = self.dependencies['logger-service'],
+			mailerSrvc = self.dependencies['mailer-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		dbSrvc.raw('SELECT id FROM users WHERE email = ?', [request.body.username])
+		.then(function(result) {
+			if(result.rows.length) {
+				throw ({
+					'number': 404,
+					'message': 'User "' + request.body.username + '" already exists! Please use the forgot password link to access the account!!'
+				});
+			}
+
+			var validationData = {
+					'username': (request.body.username && (request.body.username.trim() == '')) ? '' : request.body.username,
+					'firstname': (request.body.firstname && (request.body.firstname.trim() == '')) ? '' : request.body.firstname,
+					'lastname': (request.body.lastname && (request.body.lastname.trim() == '')) ? '' : request.body.lastname
+				},
+				validationRules = {
+					'username': 'required|email',
+					'firstname': 'required',
+					'lastname': 'required'
+				};
+
+			var validationResult = new validator(validationData, validationRules);
+			if(validationResult.fails()) {
+				throw validationResult.errors.all();
+			}
+
+			return emailExists.checkAsync(validationData.username);
+		})
+		.then(function(emailExists) {
+			if(!emailExists) {
+				throw { 'code': 403, 'message': 'Invalid Email Id (' + ((request.body.username && (request.body.username.trim() == '')) ? '' : request.body.username) + ')' };
+			}
+
+			var randomRequestData = JSON.parse(JSON.stringify(self.$config.randomServer.options));
+			randomRequestData.data.id = uuid.v4().toString().replace(/-/g, '');
+			randomRequestData.data = JSON.stringify(randomRequestData.data);
+
+			return self.$module.$utilities.restCallAsync(self.$config.randomServer.protocol, randomRequestData);
+		})
+		.then(function(randomPassword) {
+			randomPassword = (randomPassword ? JSON.parse(randomPassword) : null);
+			if(randomPassword && randomPassword.error) {
+				throw new Error(randomPassword.error.message);
+			}
+
+			var newPassword = ((randomPassword && randomPassword.result) ? randomPassword.result.random.data[0] : self._generateRandomPassword());
+			return promises.all([ newPassword, dbSrvc.raw('INSERT INTO users (first_name, last_name, email, password) VALUES (?, ?, ?, ?) RETURNING id', [
+				(request.body.firstname && (request.body.firstname.trim() == '')) ? null : request.body.firstname,
+				(request.body.lastname && (request.body.lastname.trim() == '')) ? null : request.body.lastname,
+				(request.body.username && (request.body.username.trim() == '')) ? null : request.body.username,
+				bcrypt.hashSync(newPassword)
+			]) ]);
+		})
+		.then(function(result) {
+			var renderOptions = {
+				'username': request.body.username,
+				'password': result[0]
+			};
+
+			var renderer = promises.promisify(response.render.bind(response));
+			return promises.all([
+				renderer(path.join(self.basePath, self.$config.newAccount.template), renderOptions),
+				dbSrvc.raw('INSERT INTO tenants_users (tenant, login) SELECT id, ? FROM tenants WHERE parent IS NULL;', [result[1].rows[0].id])
+			]);
+		})
+		.then(function(result) {
+			return mailerSrvc.sendMailAsync({
+				'from': self.$config.from,
+				'to': request.body.username,
+				'subject': self.$config.newAccount.subject,
+				'html': result[0]
+			});
+		})
+		.then(function(notificationResponse) {
+			loggerSrvc.debug('Response from Email Server: ', notificationResponse);
+			response.status(200).json({
+				'status': true,
+				'responseText': 'Account registration successful! Please check your email for details'
+			});
+
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			response.status(200).json({
+				'status': false,
+				'responseText': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim() || 'Account registration failure!'
+			});
+		})
 	},
 
 	'_socialLoginRequest': function(strategy, request, response, next) {
@@ -167,9 +350,16 @@ var sessionComponent = prime({
 		}
 	},
 
+	'_generateRandomPassword': function() {
+		return 'xxxxxxxx'.replace(/[x]/g, function(c) {
+			var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+			return v.toString(16);
+		});
+	},
+
 	'name': 'session',
 	'basePath': __dirname,
-	'dependencies': ['auth-service', 'cache-service']
+	'dependencies': ['auth-service', 'cache-service', 'database-service', 'mailer-service']
 });
 
 exports.component = sessionComponent;

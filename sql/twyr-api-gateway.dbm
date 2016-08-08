@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="1617,296" last-zoom="0.7"
+<dbmodel pgmodeler-ver="0.8.1" last-position="0,71" last-zoom="0.5"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -2007,7 +2007,7 @@ END;]]></definition>
 <table name="module_menus">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1377.43" y="1176.09"/>
+	<position x="1726" y="1133.23"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2183,7 +2183,7 @@ END;]]></definition>
 <table name="module_widgets">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="853.667" y="1179.33"/>
+	<position x="1075.1" y="1156.47"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2417,20 +2417,17 @@ END;
 	<enumeration values="all,desktop,tablet,mobile,other"/>
 </usertype>
 
-<usertype name="template_user_type" configuration="enumeration">
-	<schema name="public"/>
-	<role name="postgres"/>
-	<enumeration values="all,public,registered,administrator,other"/>
-</usertype>
-
 <table name="module_templates">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="90.5597" y="298.66"/>
+	<position x="280.56" y="1144.37"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
 	<column name="module" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="permission" not-null="true">
 		<type name="uuid"/>
 	</column>
 	<column name="name" not-null="true">
@@ -2441,9 +2438,6 @@ END;
 	</column>
 	<column name="media" not-null="true" default-value="'all'::template_media_type">
 		<type name="public.template_media_type"/>
-	</column>
-	<column name="role" not-null="true" default-value="'all'::template_user_type">
-		<type name="public.template_user_type"/>
 	</column>
 	<column name="is_default" not-null="true" default-value="false::boolean">
 		<type name="boolean"/>
@@ -2559,7 +2553,7 @@ END;]]></definition>
 <table name="module_template_positions">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="248.214" y="737.857"/>
+	<position x="438.214" y="1540.71"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2583,7 +2577,7 @@ END;]]></definition>
 <table name="module_widget_module_template_positions">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="118.15" y="1199.82"/>
+	<position x="765.293" y="1686.96"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2735,6 +2729,7 @@ END;]]></definition>
 	</return-type>
 	<definition><![CDATA[DECLARE
 	is_component	INTEGER;
+	is_permission_ok	INTEGER;
 BEGIN
 	is_component := 0;
 	SELECT
@@ -2752,6 +2747,25 @@ BEGIN
 		RAISE SQLSTATE '2F003' USING MESSAGE = 'Templates can be assigned only to Components';
 		RETURN NULL;
 	END IF;
+
+	is_permission_ok := 0;
+	SELECT
+		count(id)
+	FROM
+		module_permissions
+	WHERE
+		module IN (SELECT id FROM fn_get_module_ancestors(NEW.module)) AND
+		id = NEW.permission
+	INTO
+		is_permission_ok;
+
+	IF is_permission_ok <= 0
+	THEN
+		RAISE SQLSTATE '2F003' USING MESSAGE = 'Templates must use Permissions defined by the Component or one of its parents';
+		RETURN NULL;
+	END IF;
+
+	RETURN NEW;
 
 	RETURN NEW;
 END;]]></definition>
@@ -2879,7 +2893,7 @@ END;]]></definition>
 <table name="menus">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="911.426" y="1807.14"/>
+	<position x="1327.57" y="1685.57"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2909,7 +2923,7 @@ END;]]></definition>
 <table name="menu_items">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1388.57" y="1772.86"/>
+	<position x="1733" y="1693"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -3343,6 +3357,12 @@ END;
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
+<constraint name="fk_module_templates_permissions" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_permissions" table="public.module_templates">
+	<columns names="permission" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
 <constraint name="fk_template_positions_templates" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_templates" table="public.module_template_positions">
 	<columns names="template" ref-type="src-columns"/>
@@ -3531,9 +3551,9 @@ END;
 	 dst-table="public.module_menus"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="1816.85" y="1283.37"/>
-	<position x="1816.85" y="1166.09"/>
-	<position x="1663.71" y="1166.09"/>
+		<position x="2165.42" y="1240.51"/>
+	<position x="2165.42" y="1123.23"/>
+	<position x="2012.28" y="1123.23"/>
 	</line>
 </relationship>
 
@@ -3612,10 +3632,15 @@ END;
 	 dst-table="public.menu_items"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="1810.16" y="1856.14"/>
-	<position x="1810.16" y="1762.86"/>
-	<position x="1662.97" y="1762.86"/>
+		<position x="2154.59" y="1776.28"/>
+	<position x="2154.59" y="1683"/>
+	<position x="2007.4" y="1683"/>
 	</line>
 </relationship>
+
+<relationship name="rel_module_templates_module_permissions" type="relfk"
+	 src-table="public.module_templates"
+	 dst-table="public.module_permissions"
+	 src-required="false" dst-required="false"/>
 
 </dbmodel>

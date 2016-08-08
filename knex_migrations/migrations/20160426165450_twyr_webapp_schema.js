@@ -14,7 +14,6 @@ exports.up = function(knex, Promise) {
 			knex.schema.raw("CREATE TYPE public.module_type AS ENUM ('component','middleware','service')"),
 			knex.schema.raw("CREATE TYPE public.tenant_type AS ENUM ('department','organization')"),
 			knex.schema.raw("CREATE TYPE public.template_media_type AS ENUM ('all','desktop', 'tablet', 'mobile', 'other')"),
-			knex.schema.raw("CREATE TYPE public.template_user_type AS ENUM ('all','public', 'registered', 'administrator', 'other')"),
 			knex.schema.raw("CREATE TYPE public.publish_status AS ENUM ('draft','published')")
 		]);
 	})
@@ -96,23 +95,6 @@ exports.up = function(knex, Promise) {
 				permTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
 				permTbl.unique(['module', 'name']);
 				permTbl.unique(['module', 'id']);
-			}),
-
-			knex.schema.withSchema('public')
-			.createTableIfNotExists('module_templates', function(modTmplTbl) {
-				modTmplTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
-				modTmplTbl.uuid('module').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
-				modTmplTbl.text('name').notNullable();
-				modTmplTbl.text('description').notNullable().defaultTo('Another Module Template');
-				modTmplTbl.specificType('media', 'public.template_media_type').notNullable().defaultTo('all');
-				modTmplTbl.specificType('role', 'public.template_user_type').notNullable().defaultTo('all');
-				modTmplTbl.boolean('is_default').notNullable().defaultTo(false);
-				modTmplTbl.jsonb('metadata').notNullable().defaultTo('{}');
-				modTmplTbl.jsonb('configuration').notNullable().defaultTo('{}');
-				modTmplTbl.jsonb('configuration_schema').notNullable().defaultTo('{}');
-				modTmplTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
-				modTmplTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
-				modTmplTbl.unique(['module', 'name']);
 			}),
 
 			knex.schema.withSchema('public')
@@ -229,6 +211,23 @@ exports.up = function(knex, Promise) {
 				modMenusTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
 				modMenusTbl.unique(['ember_route']);
 				modMenusTbl.unique(['module', 'display_name']);
+			}),
+
+			knex.schema.withSchema('public')
+			.createTableIfNotExists('module_templates', function(modTmplTbl) {
+				modTmplTbl.uuid('id').notNullable().primary().defaultTo(knex.raw('uuid_generate_v4()'));
+				modTmplTbl.uuid('module').notNullable().references('id').inTable('modules').onDelete('CASCADE').onUpdate('CASCADE');
+				modTmplTbl.uuid('permission').notNullable().references('id').inTable('module_permissions').onDelete('CASCADE').onUpdate('CASCADE');
+				modTmplTbl.text('name').notNullable();
+				modTmplTbl.text('description').notNullable().defaultTo('Another Module Template');
+				modTmplTbl.specificType('media', 'public.template_media_type').notNullable().defaultTo('all');
+				modTmplTbl.boolean('is_default').notNullable().defaultTo(false);
+				modTmplTbl.jsonb('metadata').notNullable().defaultTo('{}');
+				modTmplTbl.jsonb('configuration').notNullable().defaultTo('{}');
+				modTmplTbl.jsonb('configuration_schema').notNullable().defaultTo('{}');
+				modTmplTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
+				modTmplTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
+				modTmplTbl.unique(['module', 'name']);
 			}),
 
 			knex.schema.withSchema('public')
@@ -1744,6 +1743,7 @@ exports.up = function(knex, Promise) {
 
 				'DECLARE ' +
 					'is_component			INTEGER; ' +
+					'is_permission_ok		INTEGER; ' +
 				'BEGIN ' +
 					'is_component := 0; ' +
 					'SELECT ' +
@@ -1759,6 +1759,23 @@ exports.up = function(knex, Promise) {
 					'IF is_component <= 0 ' +
 					'THEN ' +
 						'RAISE SQLSTATE \'2F003\' USING MESSAGE = \'Templates can be assigned only to Components\'; ' +
+						'RETURN NULL; ' +
+					'END IF; ' +
+
+					'is_permission_ok := 0; ' +
+					'SELECT ' +
+						'count(id) ' +
+					'FROM ' +
+						'module_permissions ' +
+					'WHERE ' +
+						'module IN (SELECT id FROM fn_get_module_ancestors(NEW.module)) AND ' +
+						'id = NEW.permission ' +
+					'INTO ' +
+						'is_permission_ok; ' +
+
+					'IF is_permission_ok <= 0 ' +
+					'THEN ' +
+						'RAISE SQLSTATE \'2F003\' USING MESSAGE = \'Templates must use Permissions defined by the Component or one of its parents\'; ' +
 						'RETURN NULL; ' +
 					'END IF; ' +
 

@@ -5,6 +5,9 @@ exports.seed = function(knex, Promise) {
 		loginWidgetId = null,
 		logoutWidgetId = null;
 
+	var publicPermissionId = null,
+		registeredPermissionId = null;
+
 	return knex.raw('SELECT id FROM modules WHERE name = ? AND parent IS NULL', ['twyr-webapp'])
 	.then(function(parentId) {
 		if(!parentId.rows.length)
@@ -23,12 +26,12 @@ exports.seed = function(knex, Promise) {
 			return knex.raw('SELECT id FROM module_permissions WHERE module = ? AND name = ?', [webappId, 'public']);
 		})
 		.then(function(publicPermId) {
-			publicPermId = publicPermId.rows[0].id;
-			return knex("module_widgets").insert({ 'module': componentId, 'permission': publicPermId, 'ember_component': 'login-widget', 'display_name': 'Twy\'r Login', 'description': 'The Twy\'r Web Application Login Widget', 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id');
+			publicPermissionId = publicPermId.rows[0].id;
+			return knex("module_widgets").insert({ 'module': componentId, 'permission': publicPermissionId, 'ember_component': 'login-widget', 'display_name': 'Twy\'r Login', 'description': 'The Twy\'r Web Application Login Widget', 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id');
 		})
 		.then(function(loginComponentId) {
 			loginWidgetId = loginComponentId[0];
-			return knex.raw('SELECT id FROM module_template_positions WHERE template = (SELECT id FROM module_templates WHERE module = ? AND role = \'public\') AND name = \'right-sidebar\'', [webappId]);
+			return knex.raw('SELECT id FROM module_template_positions WHERE template = (SELECT id FROM module_templates WHERE module = ? AND permission = ?) AND name = \'right-sidebar\'', [webappId, publicPermissionId]);
 		})
 		.then(function(tmplPositionId) {
 			tmplPositionId = tmplPositionId.rows[0].id;
@@ -38,12 +41,12 @@ exports.seed = function(knex, Promise) {
 			return knex.raw('SELECT id FROM module_permissions WHERE module = ? AND name = ?', [webappId, 'registered']);
 		})
 		.then(function(registeredPermId) {
-			registeredPermId = registeredPermId.rows[0].id;
-			return knex("module_widgets").insert({ 'module': componentId, 'permission': registeredPermId, 'ember_component': 'logout-widget', 'display_name': 'Twy\'r Logout', 'description': 'The Twy\'r Web Application Logout Widget', 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id');
+			registeredPermissionId = registeredPermId.rows[0].id;
+			return knex("module_widgets").insert({ 'module': componentId, 'permission': registeredPermissionId, 'ember_component': 'logout-widget', 'display_name': 'Twy\'r Logout', 'description': 'The Twy\'r Web Application Logout Widget', 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id');
 		})
 		.then(function(logoutComponentId) {
 			logoutWidgetId = logoutComponentId[0];
-			return knex.raw('SELECT id FROM module_template_positions WHERE template = (SELECT id FROM module_templates WHERE module = ? AND role = \'registered\') AND name = \'settings\'', [webappId]);
+			return knex.raw('SELECT id FROM module_template_positions WHERE template = (SELECT id FROM module_templates WHERE module = ? AND permission = ?) AND name = \'settings\'', [webappId, registeredPermissionId]);
 		})
 		.then(function(tmplPositionId) {
 			tmplPositionId = tmplPositionId.rows[0].id;
