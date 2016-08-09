@@ -96,6 +96,10 @@ var modulesComponent = prime({
 
 					'menus': function() {
 						return this.hasMany(self.$ModuleMenuModel, 'permission');
+					},
+
+					'templates': function() {
+						return this.hasMany(self.$ModuleTemplateModel, 'permission');
 					}
 				})
 			});
@@ -157,6 +161,10 @@ var modulesComponent = prime({
 
 					'module': function() {
 						return this.belongsTo(self.$ModuleModel, 'module');
+					},
+
+					'permission': function() {
+						return this.belongsTo(self.$ModulePermissionModel, 'permission');
 					}
 				})
 			});
@@ -503,7 +511,7 @@ var modulesComponent = prime({
 			}
 
 			return new self.$ModuleTemplateModel({ 'id': request.params.id })
-			.fetch({ 'withRelated': ['module'] });
+			.fetch({ 'withRelated': ['module', 'permission'] });
 		})
 		.then(function(moduleTemplate) {
 			var configuration = JSON.stringify(moduleTemplate.get('configuration')),
@@ -518,6 +526,7 @@ var modulesComponent = prime({
 			moduleTemplate.data.attributes.metadata = metadata;
 			moduleTemplate.data.attributes.configuration = configuration;
 			moduleTemplate.data.attributes.configuration_schema = configurationSchema;
+			moduleTemplate.data.relationships.permission.data.type = 'module-permissions';
 
 			delete moduleTemplate.included;
 			response.status(200).json(moduleTemplate);

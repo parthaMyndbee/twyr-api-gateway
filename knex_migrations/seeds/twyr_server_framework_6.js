@@ -28,7 +28,7 @@ exports.seed = function(knex, Promise) {
 			]);
 		})
 		.then(function() {
-			return knex("module_menus").insert({ 'parent': null, 'module': componentId, 'permission': managerPermId, 'ember_route': 'modules-default', 'icon_class': 'fa fa-cog', 'display_name': 'Module Manager', 'description': 'The default Module Manager that ships with the Web Application', 'tooltip': 'Default Module Manager', 'is_default_home': false });
+			return knex("module_menus").insert({ 'parent': null, 'module': componentId, 'permission': managerPermId, 'ember_route': 'modules-default', 'icon_class': 'fa fa-cog', 'display_name': 'Module Manager', 'description': 'The default Module Manager that ships with the Web Application', 'tooltip': 'Default Module Manager' });
 		});
 	});
 };

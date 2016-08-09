@@ -26,7 +26,7 @@ exports.seed = function(knex, Promise) {
 			return knex("module_templates").insert({ 'module': componentId, 'permission': menuPermId, 'name': 'menus-default', 'description': 'The default Menu Management Template', 'media': 'all', 'is_default': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } });
 		})
 		.then(function() {
-			return knex("module_menus").insert({ 'parent': null, 'module': componentId, 'permission': menuPermId, 'ember_route': 'menus-default', 'icon_class': 'fa fa-bars', 'display_name': 'Menu Manager', 'description': 'The default Menus Manager that ships with the Web Application', 'tooltip': 'Default Menu Manager', 'is_default_home': false });
+			return knex("module_menus").insert({ 'parent': null, 'module': componentId, 'permission': menuPermId, 'ember_route': 'menus-default', 'icon_class': 'fa fa-bars', 'display_name': 'Menu Manager', 'description': 'The default Menus Manager that ships with the Web Application', 'tooltip': 'Default Menu Manager' });
 		})
 		.then(function() {
 			return Promise.all([

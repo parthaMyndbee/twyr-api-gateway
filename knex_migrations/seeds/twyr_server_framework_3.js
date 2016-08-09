@@ -42,7 +42,7 @@ exports.seed = function(knex, Promise) {
 			return knex("module_widget_module_template_positions").insert({ 'template_position': tmplPositionId, 'module_widget': widgetId, 'display_order': 9999 });
 		})
 		.then(function() {
-			return knex("module_menus").insert({ 'parent': null, 'module': componentId, 'permission': registeredPermId, 'ember_route': 'profiles-default', 'icon_class': 'fa fa-user', 'display_name': 'Profile Manager', 'description': 'The Profile Management Menu', 'tooltip': 'Profile Manager', 'is_default_home': false });
+			return knex("module_menus").insert({ 'parent': null, 'module': componentId, 'permission': registeredPermId, 'ember_route': 'profiles-default', 'icon_class': 'fa fa-user', 'display_name': 'Profile Manager', 'description': 'The Profile Management Menu', 'tooltip': 'Profile Manager' });
 		});
 	});
 };

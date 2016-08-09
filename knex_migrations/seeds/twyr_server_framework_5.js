@@ -34,7 +34,7 @@ exports.seed = function(knex, Promise) {
 			]);
 		})
 		.then(function() {
-			return knex("module_menus").insert({ 'parent': null, 'module': componentId, 'permission': authorPermId, 'ember_route': 'pages-default', 'icon_class': 'fa fa-html5', 'display_name': 'Page Manager', 'description': 'The default Pages Manager that ships with the Web Application', 'tooltip': 'Default Page', 'is_default_home': false });
+			return knex("module_menus").insert({ 'parent': null, 'module': componentId, 'permission': authorPermId, 'ember_route': 'pages-default', 'icon_class': 'fa fa-html5', 'display_name': 'Page Manager', 'description': 'The default Pages Manager that ships with the Web Application', 'tooltip': 'Default Page' });
 		});
 	});
 };

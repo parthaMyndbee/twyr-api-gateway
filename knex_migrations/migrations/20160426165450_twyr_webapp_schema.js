@@ -206,7 +206,6 @@ exports.up = function(knex, Promise) {
 				modMenusTbl.text('display_name').notNullable();
 				modMenusTbl.text('description');
 				modMenusTbl.text('tooltip');
-				modMenusTbl.boolean('is_default_home').notNullable().defaultTo(false);
 				modMenusTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				modMenusTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
 				modMenusTbl.unique(['ember_route']);

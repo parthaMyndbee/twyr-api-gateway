@@ -1737,7 +1737,6 @@ CREATE TABLE public.module_menus(
 	display_name text NOT NULL,
 	description text,
 	tooltip text,
-	is_default_home boolean NOT NULL DEFAULT false::boolean,
 	created_at timestamptz NOT NULL DEFAULT now(),
 	updated_at timestamptz NOT NULL DEFAULT now(),
 	CONSTRAINT pk_module_menus PRIMARY KEY (id)

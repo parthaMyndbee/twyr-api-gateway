@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="0,71" last-zoom="0.5"
+<dbmodel pgmodeler-ver="0.8.1" last-position="548,415" last-zoom="0.8"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -2038,9 +2038,6 @@ END;]]></definition>
 	<column name="tooltip">
 		<type name="text"/>
 	</column>
-	<column name="is_default_home" not-null="true" default-value="false::boolean">
-		<type name="boolean"/>
-	</column>
 	<column name="created_at" not-null="true" default-value="now()">
 		<type name="timestamptz"/>
 	</column>
@@ -3551,7 +3548,7 @@ END;
 	 dst-table="public.module_menus"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="2165.42" y="1240.51"/>
+		<position x="2165.42" y="1234.51"/>
 	<position x="2165.42" y="1123.23"/>
 	<position x="2012.28" y="1123.23"/>
 	</line>

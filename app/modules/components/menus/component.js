@@ -286,13 +286,14 @@ var menusComponent = prime({
 
 			var promiseResolutions = [];
 			promiseResolutions.push(menusData);
-			promiseResolutions.push(dbSrvc.raw('SELECT permission FROM module_widgets WHERE id = ?', [menusData.data.attributes.module_widget]));
+			promiseResolutions.push(dbSrvc.raw('SELECT permission, description FROM module_widgets WHERE id = ?', [menusData.data.attributes.module_widget]));
 
 			return promises.all(promiseResolutions);
 		})
 		.then(function(results) {
 			var menusData = results.shift();
 			menusData.data.attributes.permission = results[0].rows[0].permission;
+			menusData.data.attributes.description = results[0].rows[0].description;
 
 			if(menusData.data.relationships.menu_items) {
 				if(menusData.data.relationships.menu_items.data) {
@@ -328,7 +329,6 @@ var menusComponent = prime({
 
 	'_addMenu': function(request, response, next) {
 		var self = this,
-			permission = null,
 			moduleId = null,
 			configSrvc = self.dependencies['configuration-service'],
 			dbSrvc = self.dependencies['database-service'].knex,
@@ -350,15 +350,17 @@ var menusComponent = prime({
 			return self['$jsonApiDeserializer'].deserializeAsync(request.body);
 		})
 		.then(function(jsonDeserializedData) {
-			permission = jsonDeserializedData.permission;
+			var permission = jsonDeserializedData.permission,
+				description = jsonDeserializedData.description;
 
 			delete jsonDeserializedData.permission;
+			delete jsonDeserializedData.description;
 			delete jsonDeserializedData.created_at;
 			delete jsonDeserializedData.updated_at;
 
 			var promiseResolutions = [];
 			promiseResolutions.push(jsonDeserializedData);
-			promiseResolutions.push(dbSrvc.raw('INSERT INTO module_widgets(module, permission, ember_component, display_name, metadata) VALUES(?, ?, ?, ?, ?) RETURNING id', [moduleId, permission, 'menu-' + jsonDeserializedData.id, jsonDeserializedData.name + ' Widget', {}]));
+			promiseResolutions.push(dbSrvc.raw('INSERT INTO module_widgets(module, permission, description, ember_component, display_name, metadata) VALUES(?, ?, ?, ?, ?) RETURNING id', [moduleId, permission, description, 'menu-' + jsonDeserializedData.id, jsonDeserializedData.name + ' Widget', {}]));
 			return promises.all(promiseResolutions);
 		})
 		.then(function(results) {
@@ -398,8 +400,7 @@ var menusComponent = prime({
 	'_updateMenu': function(request, response, next) {
 		var self = this,
 			dbSrvc = self.dependencies['database-service'].knex,
-			loggerSrvc = self.dependencies['logger-service'],
-			permission = null;
+			loggerSrvc = self.dependencies['logger-service'];
 
 		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
 		response.type('application/javascript');
@@ -413,15 +414,18 @@ var menusComponent = prime({
 			return self['$jsonApiDeserializer'].deserializeAsync(request.body);
 		})
 		.then(function(jsonDeserializedData) {
-			permission = jsonDeserializedData.permission;
+			var permission = jsonDeserializedData.permission,
+				description = jsonDeserializedData.description;
+
 
 			delete jsonDeserializedData.permission;
+			delete jsonDeserializedData.description;
 			delete jsonDeserializedData.created_at;
 			delete jsonDeserializedData.updated_at;
 
 			var promiseResolutions = [];
 			promiseResolutions.push(jsonDeserializedData);
-			promiseResolutions.push(dbSrvc.raw('UPDATE module_widgets SET display_name = ?, permission = ? WHERE id = (SELECT module_widget FROM menus WHERE id = ?)', [jsonDeserializedData.name + ' Widget', permission, jsonDeserializedData.id]));
+			promiseResolutions.push(dbSrvc.raw('UPDATE module_widgets SET display_name = ?, permission = ?, description = ? WHERE id = (SELECT module_widget FROM menus WHERE id = ?)', [jsonDeserializedData.name + ' Widget', permission, description, jsonDeserializedData.id]));
 			return promises.all(promiseResolutions);
 		})
 		.then(function(results) {
