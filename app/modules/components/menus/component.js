@@ -360,7 +360,7 @@ var menusComponent = prime({
 
 			var promiseResolutions = [];
 			promiseResolutions.push(jsonDeserializedData);
-			promiseResolutions.push(dbSrvc.raw('INSERT INTO module_widgets(module, permission, description, ember_component, display_name, metadata) VALUES(?, ?, ?, ?, ?) RETURNING id', [moduleId, permission, description, 'menu-' + jsonDeserializedData.id, jsonDeserializedData.name + ' Widget', {}]));
+			promiseResolutions.push(dbSrvc.raw('INSERT INTO module_widgets(module, permission, description, ember_component, display_name, metadata) VALUES(?, ?, ?, ?, ?, ?) RETURNING id', [moduleId, permission, description, 'menu-' + jsonDeserializedData.id, jsonDeserializedData.name + ' Widget', {}]));
 			return promises.all(promiseResolutions);
 		})
 		.then(function(results) {

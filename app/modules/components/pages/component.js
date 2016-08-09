@@ -113,7 +113,7 @@ var pagesComponent = prime({
 				throw new Error('Unauthorized Access');
 			}
 
-			return dbSrvc.raw('SELECT A.id, A.title, B.first_name || \' \' || B.last_name AS author, A.status, D.display_name AS permission, A.created_at AS created, A.updated_at AS updated FROM pages A INNER JOIN users B ON (A.author = B.id) INNER JOIN module_menus C ON (C.ember_route = \'"page-view", "\' || A.id || \'"\') INNER JOIN module_permissions D ON (D.id = C.permission)');
+			return dbSrvc.raw('SELECT A.id, A.title, B.first_name || \' \' || B.last_name AS author, A.status, D.display_name AS permission, A.created_at AS created, A.updated_at AS updated FROM pages A INNER JOIN users B ON (A.author = B.id) INNER JOIN module_menus C ON (C.ember_route = \'page-view \' || A.id) INNER JOIN module_permissions D ON (D.id = C.permission)');
 		})
 		.then(function(pageList) {
 			var responseData = { 'data': [] };
@@ -169,7 +169,7 @@ var pagesComponent = prime({
 
 			var promiseResolutions = [];
 			promiseResolutions.push(pagesData);
-			promiseResolutions.push(dbSrvc.raw('SELECT permission FROM module_menus WHERE module = ? AND ember_route = ?', [moduleId, '"page-view", "' + request.params.id + '"']));
+			promiseResolutions.push(dbSrvc.raw('SELECT permission FROM module_menus WHERE module = ? AND ember_route = ?', [moduleId, 'page-view ' + request.params.id]));
 
 			return promises.all(promiseResolutions);
 		})
@@ -236,7 +236,7 @@ var pagesComponent = prime({
 			var promiseResolutions = [];
 
 			promiseResolutions.push(savedRecord);
-			promiseResolutions.push(dbSrvc.raw('INSERT INTO module_menus(module, permission, category, ember_route, icon_class, display_name) VALUES(?, ?, ?, ?, ?, ?)', [moduleId, permission, 'Pages', '"page-view", "' + savedRecord.get('id') + '"', 'fa fa-edit', savedRecord.get('title')]));
+			promiseResolutions.push(dbSrvc.raw('INSERT INTO module_menus(module, permission, category, ember_route, icon_class, display_name) VALUES(?, ?, ?, ?, ?, ?)', [moduleId, permission, 'Pages', 'page-view ' + savedRecord.get('id'), 'fa fa-edit', savedRecord.get('title')]));
 
 			return promises.all(promiseResolutions);
 		})
@@ -295,7 +295,7 @@ var pagesComponent = prime({
 			});
 		})
 		.then(function(savedRecord) {
-			return promises.all([savedRecord, dbSrvc.raw('UPDATE module_menus SET permission = ? WHERE ember_route = ?', [permission, '"page-view", "' + request.params.id + '"'])]);
+			return promises.all([savedRecord, dbSrvc.raw('UPDATE module_menus SET permission = ? WHERE ember_route = ?', [permission, 'page-view ' + request.params.id])]);
 		})
 		.then(function(result) {
 			response.status(200).json({
@@ -340,7 +340,7 @@ var pagesComponent = prime({
 				throw new Error('Unauthorized Access');
 			}
 
-			return dbSrvc.raw('DELETE FROM module_menus WHERE module = ? AND ember_route = ?', [moduleId, '"page-view", "' + request.params.id + '"']);
+			return dbSrvc.raw('DELETE FROM module_menus WHERE module = ? AND ember_route = ?', [moduleId, 'page-view ' + request.params.id]);
 		})
 		.then(function() {
 			return new self.$PageModel({ 'id': request.params.id }).destroy();
@@ -386,7 +386,7 @@ var pagesComponent = prime({
 
 			var promiseResolutions = [];
 			promiseResolutions.push(pagesData);
-			promiseResolutions.push(dbSrvc.raw('SELECT id, name FROM module_permissions WHERE id = (SELECT permission FROM module_menus WHERE module = ? AND ember_route = ?)', [moduleId, '"page-view", "' + request.params.id + '"']));
+			promiseResolutions.push(dbSrvc.raw('SELECT id, name FROM module_permissions WHERE id = (SELECT permission FROM module_menus WHERE module = ? AND ember_route = ?)', [moduleId, 'page-view ' + request.params.id]));
 
 			if(request.user)
 				promiseResolutions.push(self._checkPermissionAsync(request.user, self['$pageAuthorPermissionId']));
