@@ -2,7 +2,7 @@
 exports.seed = function(knex, Promise) {
 	var webappId = null,
 		componentId = null,
-		authorPermId = null;
+		menuPermId = null;
 
 	return knex.raw('SELECT id FROM modules WHERE name = ? AND parent IS NULL', ['twyr-webapp'])
 	.then(function(parentId) {

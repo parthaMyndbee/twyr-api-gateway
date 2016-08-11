@@ -80,6 +80,7 @@ var mailerService = prime({
 	},
 
 	'name': 'mailer-service',
+	'basePath': __dirname,
 	'dependencies': ['logger-service']
 });
 

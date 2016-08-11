@@ -1,7 +1,7 @@
 exports.config = ({
 	"auth": {
-		"pass": "password",
-		"user": "user@smtp.org"
+		"pass": "dRena!!975",
+		"user": "shadyvd@gmail.com"
 	},
 	"host": "smtp.gmail.com",
 	"port": 465,
