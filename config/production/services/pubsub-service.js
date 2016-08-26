@@ -8,11 +8,5 @@ exports.config = ({
 		"options": {
 			"detect_buffers": true
 		}
-	},
-	"mqtt": {
-		"type": "mqtt",
-		"mqtt": "mqtt",
-		"url": "mqtt://127.0.0.1:1883",
-		"json": false
 	}
 });

@@ -199,6 +199,13 @@ var expressService = prime({
 		.use(flash())
 		.use(self.$cookieParser)
 		.use(self.$session)
+		.use(bodyParser.raw({
+			'limit': self.$config.maxRequestSize
+		}))
+		.use(bodyParser.urlencoded({
+			'extended': true,
+			'limit': self.$config.maxRequestSize
+		}))
 		.use(bodyParser.json({
 			'limit': self.$config.maxRequestSize
 		}))
@@ -206,14 +213,7 @@ var expressService = prime({
 			'type': 'application/vnd.api+json',
 			'limit': self.$config.maxRequestSize
 		}))
-		.use(bodyParser.raw({
-			'limit': self.$config.maxRequestSize
-		}))
 		.use(bodyParser.text({
-			'limit': self.$config.maxRequestSize
-		}))
-		.use(bodyParser.urlencoded({
-			'extended': true,
 			'limit': self.$config.maxRequestSize
 		}))
 		.use(dependencies['auth-service'].initialize())

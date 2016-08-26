@@ -169,28 +169,28 @@ else {
 
 		// Call load / initialize / start...
 		twyrAPIGateway.loadAsync(null)
-		.timeout(60000)
+		.timeout(180000)
 		.then(function(status) {
 			allStatuses.push('Twyr API Gateway #' + cluster.worker.id + '::Load status:\n' + JSON.stringify(status, null, '\t') + '\n\n');
 			if(!status) throw status;
 
 			return twyrAPIGateway.initializeAsync();
 		})
-		.timeout(60000)
+		.timeout(180000)
 		.then(function(status) {
 			allStatuses.push('Twyr API Gateway #' + cluster.worker.id + '::Initialize status:\n' + JSON.stringify(status, null, '\t') + '\n\n');
 			if(!status) throw status;
 
 			return twyrAPIGateway.startAsync(null);
 		})
-		.timeout(60000)
+		.timeout(180000)
 		.then(function(status) {
 			allStatuses.push('Twyr API Gateway #' + cluster.worker.id + '::Start Status:\n' + JSON.stringify(status, null, '\t') + '\n\n');
 			if(!status) throw status;
 
 			return null;
 		})
-		.timeout(60000)
+		.timeout(180000)
 		.catch(function(err) {
 			console.error('\n\n' + 'Twyr API Gateway #' + cluster.worker.id + '::Startup Error:\n', JSON.stringify(err, null, '\t'), '\n\n');
 	        cluster.worker.disconnect();
@@ -207,28 +207,28 @@ else {
 		if(!twyrAPIGateway) return;
 
 		twyrAPIGateway.stopAsync()
-		.timeout(60000)
+		.timeout(180000)
 		.then(function (status) {
 			allStatuses.push('Twyr API Gateway #' + cluster.worker.id + '::Stop Status:\n' + JSON.stringify(status, null, '\t') + '\n\n');
 			if (!status) throw status;
 
 			return twyrAPIGateway.uninitializeAsync();
 		})
-		.timeout(60000)
+		.timeout(180000)
 		.then(function (status) {
 			allStatuses.push('Twyr API Gateway #' + cluster.worker.id + '::Uninitialize Status:\n' + JSON.stringify(status, null, '\t') + '\n\n');
 			if (!status) throw status;
 
 			return twyrAPIGateway.unloadAsync();
 		})
-		.timeout(60000)
+		.timeout(180000)
 		.then(function (status) {
 			allStatuses.push('Twyr API Gateway #' + cluster.worker.id + '::Unload Status:\n' + JSON.stringify(status, null, '\t') + '\n\n');
 			if (!status) throw status;
 
 			return null;
 		})
-		.timeout(60000)
+		.timeout(180000)
 		.then(function() {
 	        cluster.worker.disconnect();
 			return null;
