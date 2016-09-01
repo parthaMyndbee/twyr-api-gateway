@@ -49,7 +49,7 @@ exports.seed = function(knex, Promise) {
 
 			return Promise.all([
 				parentId,
-				knex("module_templates").insert({ 'module': parentId, 'permission': publicPermId, 'name': 'bhairavi', 'description': 'The Twy\'r Web Application default public template', 'media': 'all', 'is_default': true, 'configuration': { 'title': 'Twy\'r Web Application: Bhairavi Template' }, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id')
+				knex("module_templates").insert({ 'module': parentId, 'permission': publicPermId, 'name': 'bhairavi', 'description': 'The Twy\'r Web Application default public template', 'is_default': true, 'configuration': { 'title': 'Twy\'r Web Application: Bhairavi Template' }, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id')
 				.then(function(templateId) {
 					templateId = templateId[0];
 					return Promise.all([
@@ -69,7 +69,7 @@ exports.seed = function(knex, Promise) {
 						knex("module_template_positions").insert({ 'template': templateId, 'name': 'footer' })
 					]);
 				}),
-				knex("module_templates").insert({ 'module': parentId, 'permission': registeredPermId, 'name': 'hamsadhvani', 'description': 'The Twy\'r Web Application default registered template', 'media': 'all', 'is_default': true, 'configuration': { 'title': 'Twy\'r Web Application: Hamsadhvani Template' }, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id')
+				knex("module_templates").insert({ 'module': parentId, 'permission': registeredPermId, 'name': 'hamsadhvani', 'description': 'The Twy\'r Web Application default registered template', 'is_default': true, 'configuration': { 'title': 'Twy\'r Web Application: Hamsadhvani Template' }, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id')
 				.then(function(templateId) {
 					templateId = templateId[0];
 					return Promise.all([

@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="548,415" last-zoom="0.8"
+<dbmodel pgmodeler-ver="0.8.1" last-position="240,671" last-zoom="0.8"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -2004,69 +2004,11 @@ END;]]></definition>
 		<function signature="public.fn_check_tenant_user_group_upsert_is_valid()"/>
 </trigger>
 
-<table name="module_menus">
+<usertype name="media_type" configuration="enumeration">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1726" y="1133.23"/>
-	<column name="id" not-null="true" default-value="uuid_generate_v4()">
-		<type name="uuid"/>
-	</column>
-	<column name="parent">
-		<type name="uuid"/>
-	</column>
-	<column name="module" not-null="true">
-		<type name="uuid"/>
-	</column>
-	<column name="permission" not-null="true">
-		<type name="uuid"/>
-	</column>
-	<column name="category" not-null="true" default-value="'Components'">
-		<type name="text"/>
-	</column>
-	<column name="ember_route" not-null="true">
-		<type name="text"/>
-	</column>
-	<column name="icon_class" not-null="true">
-		<type name="text"/>
-	</column>
-	<column name="display_name" not-null="true">
-		<type name="text"/>
-	</column>
-	<column name="description">
-		<type name="text"/>
-	</column>
-	<column name="tooltip">
-		<type name="text"/>
-	</column>
-	<column name="created_at" not-null="true" default-value="now()">
-		<type name="timestamptz"/>
-	</column>
-	<column name="updated_at" not-null="true" default-value="now()">
-		<type name="timestamptz"/>
-	</column>
-	<constraint name="pk_module_menus" type="pk-constr" table="public.module_menus">
-		<columns names="id" ref-type="src-columns"/>
-	</constraint>
-</table>
-
-<index name="uidx_module_menus_module_route" table="public.module_menus"
-	 concurrent="false" unique="true" fast-update="false" buffering="false"
-	 index-type="btree" factor="0">
-		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="ember_route"/>
-		</idxelement>
-</index>
-
-<index name="uidx_module_menus_module_name" table="public.module_menus"
-	 concurrent="false" unique="true" fast-update="false" buffering="false"
-	 index-type="btree" factor="0">
-		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="module"/>
-		</idxelement>
-		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
-			<column name="display_name"/>
-		</idxelement>
-</index>
+	<enumeration values="all,desktop,tablet,mobile,other"/>
+</usertype>
 
 <function name="fn_check_module_menu_upsert_is_valid"
 		window-func="false"
@@ -2171,12 +2113,6 @@ BEGIN
 END;]]></definition>
 </function>
 
-<trigger name="trigger_check_module_menu_upsert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
-	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
-	 table="public.module_menus">
-		<function signature="public.fn_check_module_menu_upsert_is_valid()"/>
-</trigger>
-
 <table name="module_widgets">
 	<schema name="public"/>
 	<role name="postgres"/>
@@ -2198,6 +2134,9 @@ END;]]></definition>
 	</column>
 	<column name="description">
 		<type name="text"/>
+	</column>
+	<column name="media" not-null="true" default-value="'{all}'">
+		<type name="public.media_type" dimension="1"/>
 	</column>
 	<column name="metadata" not-null="true" default-value="'{}'::jsonb">
 		<type name="jsonb"/>
@@ -2408,11 +2347,53 @@ END;
 ]]></definition>
 </function>
 
-<usertype name="template_media_type" configuration="enumeration">
+<table name="module_menus">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<enumeration values="all,desktop,tablet,mobile,other"/>
-</usertype>
+	<position x="1726" y="1133.23"/>
+	<column name="id" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid"/>
+	</column>
+	<column name="parent">
+		<type name="uuid"/>
+	</column>
+	<column name="module" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="permission" not-null="true">
+		<type name="uuid"/>
+	</column>
+	<column name="category" not-null="true" default-value="'Components'">
+		<type name="text"/>
+	</column>
+	<column name="ember_route" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="icon_class" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="display_name" not-null="true">
+		<type name="text"/>
+	</column>
+	<column name="description">
+		<type name="text"/>
+	</column>
+	<column name="media" not-null="true" default-value="'{all}'">
+		<type name="public.media_type" dimension="1"/>
+	</column>
+	<column name="tooltip">
+		<type name="text"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<column name="updated_at" not-null="true" default-value="now()">
+		<type name="timestamptz"/>
+	</column>
+	<constraint name="pk_module_menus" type="pk-constr" table="public.module_menus">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
 
 <table name="module_templates">
 	<schema name="public"/>
@@ -2433,8 +2414,8 @@ END;
 	<column name="description">
 		<type name="text"/>
 	</column>
-	<column name="media" not-null="true" default-value="'all'::template_media_type">
-		<type name="public.template_media_type"/>
+	<column name="media" not-null="true" default-value="'{all}'">
+		<type name="public.media_type" dimension="1"/>
 	</column>
 	<column name="is_default" not-null="true" default-value="false::boolean">
 		<type name="boolean"/>
@@ -2920,7 +2901,7 @@ END;]]></definition>
 <table name="menu_items">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1733" y="1693"/>
+	<position x="1751.75" y="1653"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -3203,6 +3184,31 @@ END;
 	 table="public.menu_items">
 		<function signature="public.fn_check_menu_item_upsert_is_valid()"/>
 </trigger>
+
+<trigger name="trigger_check_module_menu_upsert_is_valid" firing-type="BEFORE" per-line="true" constraint="false"
+	 ins-event="true" del-event="false" upd-event="true" trunc-event="false"
+	 table="public.module_menus">
+		<function signature="public.fn_check_module_menu_upsert_is_valid()"/>
+</trigger>
+
+<index name="uidx_module_menus_module_route" table="public.module_menus"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="ember_route"/>
+		</idxelement>
+</index>
+
+<index name="uidx_module_menus_module_name" table="public.module_menus"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="module"/>
+		</idxelement>
+		<idxelement use-sorting="true" nulls-first="false" asc-order="true">
+			<column name="display_name"/>
+		</idxelement>
+</index>
 
 <constraint name="fk_modules_modules" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.modules" table="public.modules">
@@ -3548,9 +3554,9 @@ END;
 	 dst-table="public.module_menus"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="2165.42" y="1234.51"/>
-	<position x="2165.42" y="1123.23"/>
-	<position x="2012.28" y="1123.23"/>
+		<position x="2214.38" y="1240.51"/>
+	<position x="2214.38" y="1123.23"/>
+	<position x="2044.92" y="1123.23"/>
 	</line>
 </relationship>
 
@@ -3629,9 +3635,9 @@ END;
 	 dst-table="public.menu_items"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="2154.59" y="1776.28"/>
-	<position x="2154.59" y="1683"/>
-	<position x="2007.4" y="1683"/>
+		<position x="2173.34" y="1736.28"/>
+	<position x="2173.34" y="1643"/>
+	<position x="2026.15" y="1643"/>
 	</line>
 </relationship>
 

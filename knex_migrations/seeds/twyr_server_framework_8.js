@@ -23,7 +23,7 @@ exports.seed = function(knex, Promise) {
 		})
 		.then(function(permId) {
 			mediaPermId = permId[0];
-			return knex("module_templates").insert({ 'module': componentId, 'permission': mediaPermId, 'name': 'media-default', 'description': 'The default Media Management Template', 'media': 'all', 'is_default': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } });
+			return knex("module_templates").insert({ 'module': componentId, 'permission': mediaPermId, 'name': 'media-default', 'description': 'The default Media Management Template', 'is_default': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } });
 		})
 		.then(function() {
 			return knex("module_menus").insert({ 'parent': null, 'module': componentId, 'permission': mediaPermId, 'ember_route': 'media-default', 'icon_class': 'fa fa-video-camera', 'display_name': 'Media Manager', 'description': 'The default Media Manager that ships with the Web Application', 'tooltip': 'Default Media Manager' });

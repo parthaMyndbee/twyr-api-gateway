@@ -24,7 +24,7 @@ exports.seed = function(knex, Promise) {
 		})
 		.then(function(permId) {
 			registeredPermId = permId.rows[0].id;
-			return knex("module_templates").insert({ 'module': componentId, 'permission': registeredPermId, 'name': 'profiles-default', 'description': 'The default Profile Management Template', 'media': 'all', 'is_default': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id');
+			return knex("module_templates").insert({ 'module': componentId, 'permission': registeredPermId, 'name': 'profiles-default', 'description': 'The default Profile Management Template', 'is_default': true, 'metadata': { 'author': 'Twy\'r', 'version': '0.7.1', 'website': 'https://twyr.github.io', 'demo': 'https://twyr.github.io', 'documentation': 'https://twyr.github.io' } }).returning('id');
 		})
 		.then(function(templateId) {
 			templateId = templateId[0];

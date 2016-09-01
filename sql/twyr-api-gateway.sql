@@ -1724,45 +1724,12 @@ CREATE TRIGGER trigger_check_tenant_user_group_upsert_is_valid
 	EXECUTE PROCEDURE public.fn_check_tenant_user_group_upsert_is_valid();
 -- ddl-end --
 
--- object: public.module_menus | type: TABLE --
--- DROP TABLE IF EXISTS public.module_menus CASCADE;
-CREATE TABLE public.module_menus(
-	id uuid NOT NULL DEFAULT uuid_generate_v4(),
-	parent uuid,
-	module uuid NOT NULL,
-	permission uuid NOT NULL,
-	category text NOT NULL DEFAULT 'Components',
-	ember_route text NOT NULL,
-	icon_class text NOT NULL,
-	display_name text NOT NULL,
-	description text,
-	tooltip text,
-	created_at timestamptz NOT NULL DEFAULT now(),
-	updated_at timestamptz NOT NULL DEFAULT now(),
-	CONSTRAINT pk_module_menus PRIMARY KEY (id)
-
-);
+-- object: public.media_type | type: TYPE --
+-- DROP TYPE IF EXISTS public.media_type CASCADE;
+CREATE TYPE public.media_type AS
+ ENUM ('all','desktop','tablet','mobile','other');
 -- ddl-end --
-ALTER TABLE public.module_menus OWNER TO postgres;
--- ddl-end --
-
--- object: uidx_module_menus_module_route | type: INDEX --
--- DROP INDEX IF EXISTS public.uidx_module_menus_module_route CASCADE;
-CREATE UNIQUE INDEX uidx_module_menus_module_route ON public.module_menus
-	USING btree
-	(
-	  ember_route ASC NULLS LAST
-	);
--- ddl-end --
-
--- object: uidx_module_menus_module_name | type: INDEX --
--- DROP INDEX IF EXISTS public.uidx_module_menus_module_name CASCADE;
-CREATE UNIQUE INDEX uidx_module_menus_module_name ON public.module_menus
-	USING btree
-	(
-	  module ASC NULLS LAST,
-	  display_name ASC NULLS LAST
-	);
+ALTER TYPE public.media_type OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.fn_check_module_menu_upsert_is_valid | type: FUNCTION --
@@ -1867,15 +1834,6 @@ $$;
 ALTER FUNCTION public.fn_check_module_menu_upsert_is_valid() OWNER TO postgres;
 -- ddl-end --
 
--- object: trigger_check_module_menu_upsert_is_valid | type: TRIGGER --
--- DROP TRIGGER IF EXISTS trigger_check_module_menu_upsert_is_valid ON public.module_menus  ON public.module_menus CASCADE;
-CREATE TRIGGER trigger_check_module_menu_upsert_is_valid
-	BEFORE INSERT OR UPDATE
-	ON public.module_menus
-	FOR EACH ROW
-	EXECUTE PROCEDURE public.fn_check_module_menu_upsert_is_valid();
--- ddl-end --
-
 -- object: public.module_widgets | type: TABLE --
 -- DROP TABLE IF EXISTS public.module_widgets CASCADE;
 CREATE TABLE public.module_widgets(
@@ -1885,6 +1843,7 @@ CREATE TABLE public.module_widgets(
 	ember_component text NOT NULL,
 	display_name text NOT NULL,
 	description text,
+	media public.media_type[] NOT NULL DEFAULT '{all}',
 	metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
 	created_at timestamptz NOT NULL DEFAULT now(),
 	updated_at timestamptz NOT NULL DEFAULT now(),
@@ -2063,12 +2022,27 @@ $$;
 ALTER FUNCTION public.fn_get_module_menu_descendants() OWNER TO postgres;
 -- ddl-end --
 
--- object: public.template_media_type | type: TYPE --
--- DROP TYPE IF EXISTS public.template_media_type CASCADE;
-CREATE TYPE public.template_media_type AS
- ENUM ('all','desktop','tablet','mobile','other');
+-- object: public.module_menus | type: TABLE --
+-- DROP TABLE IF EXISTS public.module_menus CASCADE;
+CREATE TABLE public.module_menus(
+	id uuid NOT NULL DEFAULT uuid_generate_v4(),
+	parent uuid,
+	module uuid NOT NULL,
+	permission uuid NOT NULL,
+	category text NOT NULL DEFAULT 'Components',
+	ember_route text NOT NULL,
+	icon_class text NOT NULL,
+	display_name text NOT NULL,
+	description text,
+	media public.media_type[] NOT NULL DEFAULT '{all}',
+	tooltip text,
+	created_at timestamptz NOT NULL DEFAULT now(),
+	updated_at timestamptz NOT NULL DEFAULT now(),
+	CONSTRAINT pk_module_menus PRIMARY KEY (id)
+
+);
 -- ddl-end --
-ALTER TYPE public.template_media_type OWNER TO postgres;
+ALTER TABLE public.module_menus OWNER TO postgres;
 -- ddl-end --
 
 -- object: public.module_templates | type: TABLE --
@@ -2079,7 +2053,7 @@ CREATE TABLE public.module_templates(
 	permission uuid NOT NULL,
 	name text NOT NULL,
 	description text,
-	media public.template_media_type NOT NULL DEFAULT 'all'::template_media_type,
+	media public.media_type[] NOT NULL DEFAULT '{all}',
 	is_default boolean NOT NULL DEFAULT false::boolean,
 	metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
 	configuration jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -2704,6 +2678,34 @@ CREATE TRIGGER trigger_check_menu_item_upsert_is_valid
 	ON public.menu_items
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_check_menu_item_upsert_is_valid();
+-- ddl-end --
+
+-- object: trigger_check_module_menu_upsert_is_valid | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_check_module_menu_upsert_is_valid ON public.module_menus  ON public.module_menus CASCADE;
+CREATE TRIGGER trigger_check_module_menu_upsert_is_valid
+	BEFORE INSERT OR UPDATE
+	ON public.module_menus
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_check_module_menu_upsert_is_valid();
+-- ddl-end --
+
+-- object: uidx_module_menus_module_route | type: INDEX --
+-- DROP INDEX IF EXISTS public.uidx_module_menus_module_route CASCADE;
+CREATE UNIQUE INDEX uidx_module_menus_module_route ON public.module_menus
+	USING btree
+	(
+	  ember_route ASC NULLS LAST
+	);
+-- ddl-end --
+
+-- object: uidx_module_menus_module_name | type: INDEX --
+-- DROP INDEX IF EXISTS public.uidx_module_menus_module_name CASCADE;
+CREATE UNIQUE INDEX uidx_module_menus_module_name ON public.module_menus
+	USING btree
+	(
+	  module ASC NULLS LAST,
+	  display_name ASC NULLS LAST
+	);
 -- ddl-end --
 
 -- object: fk_modules_modules | type: CONSTRAINT --

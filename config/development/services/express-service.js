@@ -5,7 +5,7 @@ exports.config = ({
 		"rejectUnauthorized": false
 	},
 	"port": {
-		"twyr-portal": 8080,
+		"twyr-portal": 9100,
 		"twyr-api-gateway": 9090
 	},
 	"favicon": "./favicon.ico",
@@ -31,7 +31,7 @@ exports.config = ({
 	"templateEngine": "ejs",
 	"connectionTimeout": 30,
 	"corsAllowedDomains": [
-		"http://local-portal.twyrframework.com:8080",
+		"http://local-portal.twyrframework.com:9100",
 		"http://local-api.twyrframework.com:9090"
 	]
 });

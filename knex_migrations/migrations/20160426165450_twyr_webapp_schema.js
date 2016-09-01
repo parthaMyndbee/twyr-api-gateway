@@ -13,7 +13,7 @@ exports.up = function(knex, Promise) {
 			knex.schema.raw("CREATE TYPE public.gender AS ENUM ('female','male','other')"),
 			knex.schema.raw("CREATE TYPE public.module_type AS ENUM ('component','middleware','service')"),
 			knex.schema.raw("CREATE TYPE public.tenant_type AS ENUM ('department','organization')"),
-			knex.schema.raw("CREATE TYPE public.template_media_type AS ENUM ('all','desktop', 'tablet', 'mobile', 'other')"),
+			knex.schema.raw("CREATE TYPE public.media_type AS ENUM ('all','desktop', 'tablet', 'mobile', 'other')"),
 			knex.schema.raw("CREATE TYPE public.publish_status AS ENUM ('draft','published')")
 		]);
 	})
@@ -188,6 +188,7 @@ exports.up = function(knex, Promise) {
 				modWidgetsTbl.text('ember_component').notNullable();
 				modWidgetsTbl.text('display_name').notNullable();
 				modWidgetsTbl.text('description');
+				modWidgetsTbl.specificType('media', 'public.media_type[]').notNullable().defaultTo('{all}');
 				modWidgetsTbl.jsonb('metadata').notNullable().defaultTo('{}');
 				modWidgetsTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				modWidgetsTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
@@ -205,6 +206,7 @@ exports.up = function(knex, Promise) {
 				modMenusTbl.text('icon_class').notNullable();
 				modMenusTbl.text('display_name').notNullable();
 				modMenusTbl.text('description');
+				modMenusTbl.specificType('media', 'public.media_type[]').notNullable().defaultTo('{all}');
 				modMenusTbl.text('tooltip');
 				modMenusTbl.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
 				modMenusTbl.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
@@ -219,7 +221,7 @@ exports.up = function(knex, Promise) {
 				modTmplTbl.uuid('permission').notNullable().references('id').inTable('module_permissions').onDelete('CASCADE').onUpdate('CASCADE');
 				modTmplTbl.text('name').notNullable();
 				modTmplTbl.text('description').notNullable().defaultTo('Another Module Template');
-				modTmplTbl.specificType('media', 'public.template_media_type').notNullable().defaultTo('all');
+				modTmplTbl.specificType('media', 'public.media_type[]').notNullable().defaultTo('{all}');
 				modTmplTbl.boolean('is_default').notNullable().defaultTo(false);
 				modTmplTbl.jsonb('metadata').notNullable().defaultTo('{}');
 				modTmplTbl.jsonb('configuration').notNullable().defaultTo('{}');
