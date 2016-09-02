@@ -3,7 +3,7 @@
 CAUTION: Do not modify this file unless you know what you are doing.
          Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="0.8.1" last-position="240,671" last-zoom="0.8"
+<dbmodel pgmodeler-ver="0.8.1" last-position="2054,186" last-zoom="0.75"
 	 default-schema="public" default-owner="postgres">
 <database name="twyr-api-gateway">
 </database>
@@ -440,7 +440,7 @@ END;]]></definition>
 <table name="tenants">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="4225.5" y="312.845"/>
+	<position x="4224.25" y="322.845"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -476,7 +476,7 @@ END;]]></definition>
 <table name="users">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="4974.46" y="1159.12"/>
+	<position x="5496.96" y="1152.87"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -549,7 +549,7 @@ END;]]></definition>
 <table name="tenants_users">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="4230.09" y="1211.26"/>
+	<position x="4226.34" y="1211.26"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -748,7 +748,7 @@ END;]]></definition>
 <table name="tenants_users_groups">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="3352.02" y="1212.27"/>
+	<position x="3352.02" y="1206.02"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -1314,7 +1314,7 @@ END;]]></definition>
 <table name="user_social_logins">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="5037.86" y="768.976"/>
+	<position x="5124.11" y="1726.48"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -1358,7 +1358,7 @@ END;]]></definition>
 <table name="tenant_group_permissions">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="2388.46" y="756.25"/>
+	<position x="2400.46" y="757.583"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -1429,7 +1429,9 @@ BEGIN
 			modules
 		WHERE
 			admin_only = false AND
-			type = 'component';
+			type = 'component'
+		ORDER BY
+			parent DESC;
 	END IF;
 
 	IF NEW.parent IS NULL
@@ -1444,7 +1446,9 @@ BEGIN
 		FROM
 			modules
 		WHERE
-			type = 'component';
+			type = 'component'
+		ORDER BY
+			parent DESC;
 	END IF;
 
 	RETURN NEW;
@@ -1626,8 +1630,7 @@ BEGIN
 
 		IF is_component = 0
 		THEN
-			RAISE SQLSTATE '2F003' USING MESSAGE = 'Parent component not mapped to this Tenant';
-			RETURN NULL;
+			RAISE WARNING SQLSTATE '2F003' USING MESSAGE = 'Parent component not mapped to this Tenant';
 		END IF;
 	END IF;
 
@@ -1712,7 +1715,7 @@ END;]]></definition>
 		</idxelement>
 </index>
 
-<trigger name="trigger_remove_group_permission_from_descendants" firing-type="BEFORE" per-line="true" constraint="false"
+<trigger name="trigger_remove_group_permission_from_descendants" firing-type="AFTER" per-line="true" constraint="false"
 	 ins-event="false" del-event="true" upd-event="false" trunc-event="false"
 	 table="public.tenant_group_permissions">
 		<function signature="public.fn_remove_group_permission_from_descendants()"/>
@@ -2116,7 +2119,7 @@ END;]]></definition>
 <table name="module_widgets">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1075.1" y="1156.47"/>
+	<position x="1050.1" y="1155.22"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2764,7 +2767,7 @@ END;]]></definition>
 <table name="user_contacts">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="5602.85" y="1238.57"/>
+	<position x="5997.85" y="1742.32"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2791,7 +2794,7 @@ END;]]></definition>
 <table name="user_emergency_contacts">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="5388.57" y="1774.29"/>
+	<position x="5517.32" y="1844.29"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2835,7 +2838,7 @@ END;]]></definition>
 <table name="pages">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="4674.29" y="1780"/>
+	<position x="5539.29" y="622.5"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -2901,7 +2904,7 @@ END;]]></definition>
 <table name="menu_items">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1751.75" y="1653"/>
+	<position x="1756.75" y="1650.5"/>
 	<column name="id" not-null="true" default-value="uuid_generate_v4()">
 		<type name="uuid"/>
 	</column>
@@ -3210,6 +3213,37 @@ END;
 		</idxelement>
 </index>
 
+<function name="fn_remove_descendant_module_from_tenant"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<language name="plpgsql" protected="true" sql-disabled="true"/>
+	<return-type>
+	<type name="trigger"/>
+	</return-type>
+	<definition><![CDATA[BEGIN
+	DELETE FROM
+		tenants_modules
+	WHERE
+		tenant = OLD.tenant AND
+		module IN (SELECT id FROM fn_get_module_descendants(OLD.module) WHERE level = 2);
+
+	RETURN OLD;
+END;]]></definition>
+</function>
+
+<trigger name="trigger_remove_descendant_module_from_tenant" firing-type="AFTER" per-line="true" constraint="false"
+	 ins-event="false" del-event="true" upd-event="false" trunc-event="false"
+	 table="public.tenants_modules">
+		<function signature="public.fn_remove_descendant_module_from_tenant()"/>
+</trigger>
+
 <constraint name="fk_modules_modules" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.modules" table="public.modules">
 	<columns names="parent" ref-type="src-columns"/>
@@ -3324,6 +3358,18 @@ END;
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
+<constraint name="fk_module_widgets_modules" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.modules" table="public.module_widgets">
+	<columns names="module" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fk_module_widgets_permissions" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_permissions" table="public.module_widgets">
+	<columns names="permission" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
 <constraint name="fk_module_menus_module_menus" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_menus" table="public.module_menus">
 	<columns names="parent" ref-type="src-columns"/>
@@ -3338,18 +3384,6 @@ END;
 
 <constraint name="fk_module_menus_permissions" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_permissions" table="public.module_menus">
-	<columns names="permission" ref-type="src-columns"/>
-	<columns names="id" ref-type="dst-columns"/>
-</constraint>
-
-<constraint name="fk_module_widgets_modules" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.modules" table="public.module_widgets">
-	<columns names="module" ref-type="src-columns"/>
-	<columns names="id" ref-type="dst-columns"/>
-</constraint>
-
-<constraint name="fk_module_widgets_permissions" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.module_permissions" table="public.module_widgets">
 	<columns names="permission" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
@@ -3453,9 +3487,9 @@ END;
 	 dst-table="public.tenants"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="4659.39" y="384.125"/>
-	<position x="4659.39" y="302.845"/>
-	<position x="4508.09" y="302.845"/>
+		<position x="4658.14" y="394.125"/>
+	<position x="4658.14" y="312.845"/>
+	<position x="4506.84" y="312.845"/>
 	</line>
 </relationship>
 
@@ -3635,9 +3669,9 @@ END;
 	 dst-table="public.menu_items"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="2173.34" y="1736.28"/>
-	<position x="2173.34" y="1643"/>
-	<position x="2026.15" y="1643"/>
+		<position x="2178.34" y="1733.78"/>
+	<position x="2178.34" y="1640.5"/>
+	<position x="2031.15" y="1640.5"/>
 	</line>
 </relationship>
 

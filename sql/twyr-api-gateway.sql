@@ -1132,7 +1132,9 @@ BEGIN
 			modules
 		WHERE
 			admin_only = false AND
-			type = 'component';
+			type = 'component'
+		ORDER BY
+			parent DESC;
 	END IF;
 
 	IF NEW.parent IS NULL
@@ -1147,7 +1149,9 @@ BEGIN
 		FROM
 			modules
 		WHERE
-			type = 'component';
+			type = 'component'
+		ORDER BY
+			parent DESC;
 	END IF;
 
 	RETURN NEW;
@@ -1326,8 +1330,7 @@ BEGIN
 
 		IF is_component = 0
 		THEN
-			RAISE SQLSTATE '2F003' USING MESSAGE = 'Parent component not mapped to this Tenant';
-			RETURN NULL;
+			RAISE WARNING SQLSTATE '2F003' USING MESSAGE = 'Parent component not mapped to this Tenant';
 		END IF;
 	END IF;
 
@@ -1428,7 +1431,7 @@ CREATE UNIQUE INDEX uidx_permissions ON public.module_permissions
 -- object: trigger_remove_group_permission_from_descendants | type: TRIGGER --
 -- DROP TRIGGER IF EXISTS trigger_remove_group_permission_from_descendants ON public.tenant_group_permissions  ON public.tenant_group_permissions CASCADE;
 CREATE TRIGGER trigger_remove_group_permission_from_descendants
-	BEFORE DELETE 
+	AFTER DELETE 
 	ON public.tenant_group_permissions
 	FOR EACH ROW
 	EXECUTE PROCEDURE public.fn_remove_group_permission_from_descendants();
@@ -2708,6 +2711,39 @@ CREATE UNIQUE INDEX uidx_module_menus_module_name ON public.module_menus
 	);
 -- ddl-end --
 
+-- object: public.fn_remove_descendant_module_from_tenant | type: FUNCTION --
+-- DROP FUNCTION IF EXISTS public.fn_remove_descendant_module_from_tenant() CASCADE;
+CREATE FUNCTION public.fn_remove_descendant_module_from_tenant ()
+	RETURNS trigger
+	LANGUAGE plpgsql
+	VOLATILE 
+	CALLED ON NULL INPUT
+	SECURITY INVOKER
+	COST 1
+	AS $$
+BEGIN
+	DELETE FROM
+		tenants_modules
+	WHERE
+		tenant = OLD.tenant AND
+		module IN (SELECT id FROM fn_get_module_descendants(OLD.module) WHERE level = 2);
+
+	RETURN OLD;
+END;
+$$;
+-- ddl-end --
+ALTER FUNCTION public.fn_remove_descendant_module_from_tenant() OWNER TO postgres;
+-- ddl-end --
+
+-- object: trigger_remove_descendant_module_from_tenant | type: TRIGGER --
+-- DROP TRIGGER IF EXISTS trigger_remove_descendant_module_from_tenant ON public.tenants_modules  ON public.tenants_modules CASCADE;
+CREATE TRIGGER trigger_remove_descendant_module_from_tenant
+	AFTER DELETE 
+	ON public.tenants_modules
+	FOR EACH ROW
+	EXECUTE PROCEDURE public.fn_remove_descendant_module_from_tenant();
+-- ddl-end --
+
 -- object: fk_modules_modules | type: CONSTRAINT --
 -- ALTER TABLE public.modules DROP CONSTRAINT IF EXISTS fk_modules_modules CASCADE;
 ALTER TABLE public.modules ADD CONSTRAINT fk_modules_modules FOREIGN KEY (parent)
@@ -2841,6 +2877,20 @@ REFERENCES public.modules (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
+-- object: fk_module_widgets_modules | type: CONSTRAINT --
+-- ALTER TABLE public.module_widgets DROP CONSTRAINT IF EXISTS fk_module_widgets_modules CASCADE;
+ALTER TABLE public.module_widgets ADD CONSTRAINT fk_module_widgets_modules FOREIGN KEY (module)
+REFERENCES public.modules (id) MATCH FULL
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: fk_module_widgets_permissions | type: CONSTRAINT --
+-- ALTER TABLE public.module_widgets DROP CONSTRAINT IF EXISTS fk_module_widgets_permissions CASCADE;
+ALTER TABLE public.module_widgets ADD CONSTRAINT fk_module_widgets_permissions FOREIGN KEY (permission)
+REFERENCES public.module_permissions (id) MATCH FULL
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
 -- object: fk_module_menus_module_menus | type: CONSTRAINT --
 -- ALTER TABLE public.module_menus DROP CONSTRAINT IF EXISTS fk_module_menus_module_menus CASCADE;
 ALTER TABLE public.module_menus ADD CONSTRAINT fk_module_menus_module_menus FOREIGN KEY (parent)
@@ -2858,20 +2908,6 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 -- object: fk_module_menus_permissions | type: CONSTRAINT --
 -- ALTER TABLE public.module_menus DROP CONSTRAINT IF EXISTS fk_module_menus_permissions CASCADE;
 ALTER TABLE public.module_menus ADD CONSTRAINT fk_module_menus_permissions FOREIGN KEY (permission)
-REFERENCES public.module_permissions (id) MATCH FULL
-ON DELETE CASCADE ON UPDATE CASCADE;
--- ddl-end --
-
--- object: fk_module_widgets_modules | type: CONSTRAINT --
--- ALTER TABLE public.module_widgets DROP CONSTRAINT IF EXISTS fk_module_widgets_modules CASCADE;
-ALTER TABLE public.module_widgets ADD CONSTRAINT fk_module_widgets_modules FOREIGN KEY (module)
-REFERENCES public.modules (id) MATCH FULL
-ON DELETE CASCADE ON UPDATE CASCADE;
--- ddl-end --
-
--- object: fk_module_widgets_permissions | type: CONSTRAINT --
--- ALTER TABLE public.module_widgets DROP CONSTRAINT IF EXISTS fk_module_widgets_permissions CASCADE;
-ALTER TABLE public.module_widgets ADD CONSTRAINT fk_module_widgets_permissions FOREIGN KEY (permission)
 REFERENCES public.module_permissions (id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --

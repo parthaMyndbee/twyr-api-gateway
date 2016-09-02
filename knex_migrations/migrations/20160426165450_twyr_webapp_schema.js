@@ -824,7 +824,9 @@ exports.up = function(knex, Promise) {
 							'modules ' +
 						'WHERE ' +
 							'admin_only = false AND ' +
-							'type = \'component\'; ' +
+							'type = \'component\' ' +
+						'ORDER BY ' +
+							'parent DESC; ' +
 					'END IF; ' +
 
 					'IF NEW.parent IS NULL ' +
@@ -839,7 +841,9 @@ exports.up = function(knex, Promise) {
 						'FROM ' +
 							'modules ' +
 						'WHERE ' +
-							'type = \'component\'; ' +
+							'type = \'component\' ' +
+						'ORDER BY ' +
+							'parent DESC; ' +
 					'END IF; ' +
 
 					'RETURN NEW; ' +
@@ -1076,8 +1080,7 @@ exports.up = function(knex, Promise) {
 
 						'IF is_component = 0 ' +
 						'THEN ' +
-							'RAISE SQLSTATE \'2F003\' USING MESSAGE = \'Parent component not mapped to this Tenant\'; ' +
-							'RETURN NULL; ' +
+							'RAISE WARNING SQLSTATE \'2F003\' USING MESSAGE = \'Parent component not mapped to this Tenant\'; ' +
 						'END IF; ' +
 					'END IF; ' +
 
@@ -1163,6 +1166,28 @@ exports.up = function(knex, Promise) {
 						'module = NEW.module; ' +
 
 					'RETURN NEW; ' +
+				'END; ' +
+				'$$;'
+			),
+			knex.schema.withSchema('public')
+			.raw(
+				'CREATE FUNCTION public.fn_remove_descendant_module_from_tenant () ' +
+					'RETURNS trigger ' +
+					'LANGUAGE plpgsql ' +
+					'VOLATILE  ' +
+					'CALLED ON NULL INPUT ' +
+					'SECURITY INVOKER ' +
+					'COST 1 ' +
+					'AS $$ ' +
+
+				'BEGIN ' +
+					'DELETE FROM ' +
+						'tenants_modules ' +
+					'WHERE ' +
+						'tenant = OLD.tenant AND ' +
+						'module IN (SELECT id FROM fn_get_module_descendants(OLD.module) WHERE level = 2); ' +
+
+					'RETURN OLD; ' +
 				'END; ' +
 				'$$;'
 			)
@@ -1881,9 +1906,10 @@ exports.up = function(knex, Promise) {
 			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_permission_update_is_valid BEFORE UPDATE ON public.module_permissions FOR EACH ROW EXECUTE PROCEDURE public.fn_check_permission_update_is_valid();'),
 			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_assign_default_group_to_tenant_user AFTER INSERT ON public.tenants_users FOR EACH ROW EXECUTE PROCEDURE public.fn_assign_default_group_to_tenant_user();'),
 			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_group_update_is_valid BEFORE UPDATE ON public.tenant_groups FOR EACH ROW EXECUTE PROCEDURE public.fn_check_group_update_is_valid();'),
-			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_assign_permission_to_tenant_group AFTER INSERT OR UPDATE ON public.tenants_modules FOR EACH ROW EXECUTE PROCEDURE public.fn_assign_permission_to_tenant_group();'),
 			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_tenant_module_upsert_is_valid BEFORE INSERT OR UPDATE ON public.tenants_modules FOR EACH ROW EXECUTE PROCEDURE public.fn_check_tenant_module_upsert_is_valid();'),
-			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_remove_group_permission_from_descendants BEFORE DELETE ON public.tenant_group_permissions FOR EACH ROW EXECUTE PROCEDURE public.fn_remove_group_permission_from_descendants();'),
+			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_assign_permission_to_tenant_group AFTER INSERT OR UPDATE ON public.tenants_modules FOR EACH ROW EXECUTE PROCEDURE public.fn_assign_permission_to_tenant_group();'),
+			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_remove_descendant_module_from_tenant AFTER DELETE ON public.tenants_modules FOR EACH ROW EXECUTE PROCEDURE public.fn_remove_descendant_module_from_tenant();'),
+			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_remove_group_permission_from_descendants AFTER DELETE ON public.tenant_group_permissions FOR EACH ROW EXECUTE PROCEDURE public.fn_remove_group_permission_from_descendants();'),
 			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_check_group_permission_insert_is_valid BEFORE INSERT OR UPDATE ON public.tenant_group_permissions FOR EACH ROW EXECUTE PROCEDURE public.fn_check_group_permission_insert_is_valid();'),
 			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_assign_permission_to_tenants AFTER INSERT ON public.module_permissions FOR EACH ROW EXECUTE PROCEDURE public.fn_assign_permission_to_tenants();'),
 			knex.schema.withSchema('public').raw('CREATE TRIGGER trigger_remove_descendant_group_from_tenant_user AFTER INSERT OR UPDATE ON public.tenants_users_groups FOR EACH ROW EXECUTE PROCEDURE public.fn_remove_descendant_group_from_tenant_user();'),

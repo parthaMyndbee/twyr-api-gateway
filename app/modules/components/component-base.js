@@ -187,28 +187,6 @@ var twyrComponentBase = prime({
 			return;
 		}
 
-		if(!user.tenants[tenant]) {
-			if(callback) callback(null, false);
-			return;
-		}
-
-		if((user.tenants[tenant]['permissions']).indexOf(permission)) {
-			if(callback) callback(null, true);
-			return;
-		}
-
-		if(user.tenants[tenant]['tenantParents']) {
-			allowed = false;
-			user.tenants[tenant]['tenantParents'].forEach(function(tenantParent) {
-				if(!user.tenants[tenantParent]) return;
-				allowed = allowed || ((user.tenants[tenantParent]['permissions']).indexOf(permission) >= 0);
-			});
-
-			if(callback) callback(null, allowed);
-			return;
-		}
-
-		// Should NEVER execute - tenantParents should be set when the User logs in
 		var database = this.dependencies['database-service'];
 		database.knex.raw('SELECT id FROM fn_get_tenant_ancestors(?);', [tenant])
 		.then(function(tenantParents) {
