@@ -20,13 +20,17 @@ var base = require('./../component-base').baseComponent,
 /**
  * Module dependencies, required for this module
  */
-var inflection = require('inflection');
+var _ = require('lodash'),
+	inflection = require('inflection');
 
 var tenantsComponent = prime({
 	'inherits': base,
 
 	'constructor': function(module) {
 		base.call(this, module);
+
+		this._getTenantTreeRootNodesAsync = promises.promisify(this._getTenantTreeRootNodes.bind(this));
+		this._getTenantTreeNodesAsync = promises.promisify(this._getTenantTreeNodes.bind(this));
 	},
 
 	'start': function(dependencies, callback) {
@@ -80,7 +84,102 @@ var tenantsComponent = prime({
 	'_addRoutes': function() {
 		this.$router.get('/tree', this._getTenantTree.bind(this));
 
+		this.$router.post('/', this._addTenant.bind(this));
 		this.$router.get('/:id', this._getTenant.bind(this));
+		this.$router.patch('/:id', this._updateTenant.bind(this));
+		this.$router.delete('/:id', this._deleteTenant.bind(this));
+	},
+
+	'_getTenantTreeRootNodes': function(user, callback) {
+		var self = this,
+			dbSrvc = self.dependencies['database-service'].knex,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		dbSrvc.raw('SELECT tenant FROM tenants_users WHERE login = ? AND tenant IN (SELECT tenant FROM fn_get_user_permissions(?) WHERE permission = ?)', [ user.id, user.id, self['$tenantAdministratorPermissionId'] ])
+		.then(function(userTenants) {
+			userTenants = _.map(userTenants.rows, 'tenant');
+
+			var promiseResolutions = [];
+			promiseResolutions.push(userTenants);
+
+			userTenants.forEach(function(userTenant) {
+				promiseResolutions.push(dbSrvc.raw('SELECT count(id) AS parent_count FROM fn_get_tenant_ancestors(?) WHERE level > 1 AND id IN (\'' + userTenants.join('\', \'') + '\')', [userTenant]));
+			});
+
+			return promises.all(promiseResolutions);
+		})
+		.then(function(results) {
+			var userTenants = results.shift(),
+				toBeRemoved = [];
+
+			results.forEach(function(hasParentPermissionResult, index) {
+				if(hasParentPermissionResult.rows.length && Number(hasParentPermissionResult.rows[0]['parent_count']))
+					toBeRemoved.push(index);
+			});
+
+			toBeRemoved.reverse();
+			toBeRemoved.forEach(function(idxToSplice) {
+				userTenants.splice(idxToSplice, 1);
+			});
+
+			var promiseResolutions = [];
+			promiseResolutions.push(dbSrvc.raw('SELECT id, name AS text FROM tenants WHERE id  IN (\'' + userTenants.join('\', \'') + '\')'));
+
+			return promises.all(promiseResolutions);
+		})
+		.then(function(results) {
+			var tenants = [];
+
+			results[0].rows.forEach(function(tenantDataResult, tenantIndex) {
+				var tenantData = {
+					'id': tenantDataResult.id,
+					'text': tenantDataResult.text,
+					'type': 'organization',
+					'children': true
+				};
+
+				tenants.push(tenantData);
+			});
+
+			if(callback) callback(null, tenants);
+		})
+		.catch(function(err) {
+			loggerSrvc.error('_getTenantTreeRootNodes Error: ', err);
+			if(callback) callback(err);
+		});
+	},
+
+	'_getTenantTreeNodes': function(user, tenant, callback) {
+		var self = this,
+			dbSrvc = self.dependencies['database-service'].knex,
+			loggerSrvc = self.dependencies['logger-service'],
+			promiseResolutions = [];
+
+		promiseResolutions.push(self._checkPermissionAsync(user, self['$tenantAdministratorPermissionId'], tenant));
+		promiseResolutions.push(dbSrvc.raw('SELECT id, name AS text, type FROM tenants WHERE id IN (SELECT id FROM fn_get_tenant_descendants(?) WHERE level = 2)', [tenant]));
+
+		promises.all(promiseResolutions)
+		.then(function(results) {
+			var hasPermission = results.shift(),
+				tenants = [];
+
+			results[0].rows.forEach(function(tenantDataResult, tenantIndex) {
+				var tenantData = {
+					'id': tenantDataResult.id,
+					'text': tenantDataResult.text,
+					'type': tenantDataResult.type,
+					'children': true
+				};
+
+				tenants.push(tenantData);
+			});
+
+			if(callback) callback(null, tenants);
+		})
+		.catch(function(err) {
+			loggerSrvc.error('_getTenantTreeNodes Error: ', err);
+			if(callback) callback(err);
+		});
 	},
 
 	'_getTenantTree': function(request, response, next) {
@@ -91,53 +190,100 @@ var tenantsComponent = prime({
 		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
 		response.type('application/javascript');
 
-		self._checkPermissionAsync(request.user, self['$tenantAdministratorPermissionId'])
-		.then(function(hasPermission) {
-			if(!hasPermission) {
-				throw new Error('Unauthorized Access');
-			}
+		var queryFor = request.query.id.split('::');
 
-			var responseData = [],
-				queryFor = request.query.id.split('::');
-
-			if(queryFor[0] == '#') {
-				return promises.all([
-					dbSrvc.raw('SELECT id, name AS text FROM tenants WHERE parent IS NULL;'),
-					dbSrvc.raw('SELECT unnest(enum_range(NULL::tenant_type)) AS tenant_type;')
-				]);
-			}
-
-			if(queryFor.length < 2) {
-				return [{ 'rows': [] }, { 'rows': [] }];
-			}
-
-			return promises.all([
-				dbSrvc.raw('SELECT id, name AS text FROM tenants WHERE id IN (SELECT id FROM fn_get_tenant_descendants(?) WHERE level = 2 AND type = ?)', [(queryFor[0]), inflection.singularize(queryFor[1])]),
-				dbSrvc.raw('SELECT unnest(enum_range(NULL::tenant_type)) AS tenant_type;')
-			]);
-		})
-		.then(function(results) {
-			var tenants = results[0].rows,
-				tenantTypes = results[1].rows;
-
-			tenants.forEach(function(tenantData, tenantIndex) {
-				tenantData.children = [];
-
-				tenantTypes.forEach(function(tenantType) {
-					tenantData.children.push({
-						'id': tenantData.id + '::' + tenantType['tenant_type'],
-						'text': inflection.capitalize(inflection.pluralize(tenantType['tenant_type'])),
-						'children': true
-					});
-				});
+		if(queryFor[0] == '#') {
+			self._getTenantTreeRootNodesAsync(request.user)
+			.then(function(tenants) {
+				response.status(200).json(tenants);
+				return null;
+			})
+			.catch(function(err) {
+				loggerSrvc.error('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body, '\nError: ', err);
+				response.status(500).send(err.message);
 			});
 
+			return;
+		}
+
+		self._getTenantTreeNodesAsync(request.user, queryFor[0], ((queryFor.length > 1) ? queryFor[1] : undefined))
+		.then(function(tenants) {
 			response.status(200).json(tenants);
 			return null;
 		})
 		.catch(function(err) {
 			loggerSrvc.error('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body, '\nError: ', err);
-			response.sendStatus(500);
+			response.status(500).send(err.message);
+		});
+	},
+
+	'_addTenant': function(request, response, next) {
+		var self = this,
+			dbSrvc = self.dependencies['database-service'].knex,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		self['$jsonApiDeserializer'].deserializeAsync(request.body)
+		.then(function(jsonDeserializedData) {
+			if(request.body.data.relationships.parent.data) {
+				jsonDeserializedData.parent = request.body.data.relationships.parent.data.id;
+			}
+
+			delete jsonDeserializedData.created_at;
+			delete jsonDeserializedData.updated_at;
+
+			return promises.all([jsonDeserializedData, self._checkPermissionAsync(request.user, self['$tenantAdministratorPermissionId'], jsonDeserializedData.parent)]);
+		})
+		.then(function(results) {
+			var jsonDeserializedData = results.shift(),
+				hasPermission = results.shift();
+
+			if(!hasPermission) {
+				throw new Error('Unauthorized Access');
+			}
+
+			return promises.all([
+				jsonDeserializedData,
+				self.$TenantModel.forge({ 'id': jsonDeserializedData.parent }).fetch()
+			]);
+		})
+		.then(function(results) {
+			var jsonDeserializedData = results.shift(),
+				parent = results.shift();
+
+			if((parent.get('type') == 'department') && (jsonDeserializedData.type != 'department')) {
+				throw new Error('Departments can own only other Departments');
+			}
+
+			return self.$TenantModel
+			.forge()
+			.save(jsonDeserializedData, {
+				'method': 'insert',
+				'patch': false
+			});
+		})
+		.then(function(savedRecord) {
+			response.status(200).json({
+				'data': {
+					'type': request.body.data.type,
+					'id': savedRecord.get('id')
+				}
+			});
+
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			response.status(422).json({
+				'errors': [{
+					'status': 422,
+					'source': { 'pointer': '/data/id' },
+					'title': 'Add menu error',
+					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+				}]
+			});
 		});
 	},
 
@@ -176,13 +322,116 @@ var tenantsComponent = prime({
 				}
 			}
 
+			var promiseResolutions = [];
+			promiseResolutions.push(tenantData);
+
 			if(tenantData.data.relationships.parent && tenantData.data.relationships.parent.data) {
 				tenantData.data.relationships.parent.data.type = 'tenants';
+				promiseResolutions.push(self._checkPermissionAsync(request.user, self['$tenantAdministratorPermissionId'], tenantData.data.relationships.parent.data.id));
+			}
+			else {
+				promiseResolutions.push(false);
 			}
 
 			delete tenantData.included;
-			response.status(200).json(tenantData);
+			return promises.all(promiseResolutions);
+		})
+		.then(function(results) {
+			var tenantData = results.shift(),
+				hasParentPermission = results.shift();
 
+			if(!hasParentPermission) {
+				if(tenantData.data.attributes.parent)
+					tenantData.data.attributes.parent = null;
+
+				if(tenantData.data.relationships.parent)
+					delete tenantData.data.relationships.parent;
+			}
+
+			response.status(200).json(tenantData);
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			response.status(422).json({
+				'errors': [{
+					'status': 422,
+					'source': { 'pointer': '/data/id' },
+					'title': 'Add menu error',
+					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+				}]
+			});
+		});
+	},
+
+	'_updateTenant': function(request, response, next) {
+		var self = this,
+			dbSrvc = self.dependencies['database-service'].knex,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		self._checkPermissionAsync(request.user, self['$tenantAdministratorPermissionId'], request.params.id)
+		.then(function(hasPermission) {
+			if(!hasPermission) {
+				throw new Error('Unauthorized Access');
+			}
+
+			return self['$jsonApiDeserializer'].deserializeAsync(request.body);
+		})
+		.then(function(jsonDeserializedData) {
+			delete jsonDeserializedData.created_at;
+			delete jsonDeserializedData.updated_at;
+
+			return self.$TenantModel
+			.forge()
+			.save(jsonDeserializedData, {
+				'method': 'update',
+				'patch': true
+			});
+		})
+		.then(function(result) {
+			response.status(200).json({
+				'data': {
+					'type': request.body.data.type,
+					'id': request.params.id
+				}
+			});
+
+			return null;
+		})
+		.catch(function(err) {
+			loggerSrvc.error('Error servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nBody: ', request.body, '\nParams: ', request.params, '\nError: ', err);
+			response.status(422).json({
+				'errors': [{
+					'status': 422,
+					'source': { 'pointer': '/data/id' },
+					'title': 'Add menu error',
+					'detail': (err.stack.split('\n', 1)[0]).replace('error: ', '').trim()
+				}]
+			});
+		});
+	},
+
+	'_deleteTenant': function(request, response, next) {
+		var self = this,
+			dbSrvc = self.dependencies['database-service'].knex,
+			loggerSrvc = self.dependencies['logger-service'];
+
+		loggerSrvc.debug('Servicing request ' + request.method + ' "' + request.originalUrl + '":\nQuery: ', request.query, '\nParams: ', request.params, '\nBody: ', request.body);
+		response.type('application/javascript');
+
+		self._checkPermissionAsync(request.user, self['$tenantAdministratorPermissionId'], request.params.id)
+		.then(function(hasPermission) {
+			if(!hasPermission) {
+				throw new Error('Unauthorized Access');
+			}
+
+			return new self.$TenantModel({ 'id': request.params.id }).destroy();
+		})
+		.then(function() {
+			response.status(204).json({});
 			return null;
 		})
 		.catch(function(err) {

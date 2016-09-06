@@ -1,5 +1,11 @@
 exports.config = ({
-	'templates': {
-		'path': './templates'
-	}
+	"components": {
+		"path": "./components"
+	},
+	"templates": {
+		"path": "./templates"
+	},
+	"componentDisplayOrder": [
+		"subtenant-editor-widget"
+	]
 });

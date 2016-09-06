@@ -1,6 +1,6 @@
 exports.config = ({
 	"pool": {
-		"max": 4,
+		"max": 2,
 		"min": 1
 	},
 	"debug": true,

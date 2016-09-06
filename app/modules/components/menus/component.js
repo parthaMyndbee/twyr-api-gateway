@@ -579,8 +579,6 @@ var menusComponent = prime({
 			return self['$jsonApiDeserializer'].deserializeAsync(request.body);
 		})
 		.then(function(jsonDeserializedData) {
-			console.log('jsonDeserializedData: ' + JSON.stringify(jsonDeserializedData, null, '\t'));
-
 			jsonDeserializedData.menu = request.body.data.relationships.menu.data.id;
 			if(request.body.data.relationships.component_menu.data) {
 				jsonDeserializedData.module_menu = request.body.data.relationships.component_menu.data.id;
